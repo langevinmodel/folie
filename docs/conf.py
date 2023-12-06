@@ -9,16 +9,21 @@
 import sys
 import os
 
-project = "folie"
-copyright = "2023, Hadrien Vroylandt"
-author = "Hadrien Vroylandt"
-release = "0.1"
-
-sys.path.insert(0, os.path.abspath("../../../.."))
-sys.path.insert(0, os.path.abspath("../../.."))
 sys.path.insert(0, os.path.abspath("../.."))
 sys.path.insert(0, os.path.abspath(".."))
 sys.path.insert(0, os.path.abspath("."))
+
+project = "folie"
+copyright = "2023, Hadrien Vroylandt"
+author = "Hadrien Vroylandt"
+
+try:
+    from folie import __version__
+except ImportError as exc:
+    print(exc)
+    raise
+
+release = __version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -50,9 +55,9 @@ html_static_path = ["_static"]
 # intersphinx configuration
 intersphinx_mapping = {
     "python": ("https://docs.python.org/{.major}".format(sys.version_info), None),
-    "numpy": ("https://docs.scipy.org/doc/numpy/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/reference", None),
-    "matplotlib": ("https://matplotlib.org/", None),
+    "numpy": (" https://numpy.org/doc/stable/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
     "sklearn": ("http://scikit-learn.org/stable", None),
 }
 
