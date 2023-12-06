@@ -40,6 +40,7 @@ units = ['pint>=0.20']
 tests = [
     'pytest==7.1.2',
     'pytest-cov==4.0.0',
+    "dask>=2022.2.0",
 ]
 docs = [
     "sphinx",
