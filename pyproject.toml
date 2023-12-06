@@ -1,0 +1,99 @@
+[project]
+name = "folie"
+readme = "README.md"
+description = "Finding Optimal Langevin Inferred Equations."
+keywords = [
+    "langevin-equations", "time-series-analysis"
+]
+authors = [
+    {name = 'Hadrien Vroylandt'},
+    {name = 'David Giradier'},
+    {name = 'Line Mouaffac'},
+    {name = 'Léon Huet'},
+    {name = 'Arthur France-Lanord'},
+    {name = 'Jérome Hénin'},
+    {name = 'Fabio Pietrucci'}
+]
+requires-python = ">= 3.7"
+dependencies = [
+    'numpy>=1.20',
+    'scipy>=1.7.0',
+    'scikit-learn>=1.0',
+]
+dynamic = ['version']
+
+classifiers = ["Intended Audience :: Science/Research", "License :: OSI Approved", "Programming Language :: Python", "Topic :: Scientific/Engineering", "Operating System :: Microsoft :: Windows", "Operating System :: POSIX", "Operating System :: Unix", "Operating System :: MacOS"]
+
+
+[project.urls]
+homepage = "https://langevinmodel.github.io"
+repository = "https://github.com/langevinmodel/folie"
+documentation = "https://langevinmodel.github.io/folie"
+download = "https://pypi.org/project/folie/#files"
+
+[project.optional-dependencies]
+deep-learning = ['torch']
+finite-element = ['scikit-fem']
+plotting = ['matplotlib']
+units = ['pint>=0.20']
+tests = [
+    'pytest==7.1.2',
+    'pytest-cov==3.0.0',
+    'coverage[toml]',
+    'pytest-xdist==2.5.0',
+    'flaky==3.7.0',
+    'tqdm==4.64.0',
+    "matplotlib",
+    "cmake>=3.24",
+    "ninja; platform_system!='Windows'"
+]
+docs = [
+    "sphinx",
+    "nbsphinx",
+    "sphinxcontrib-bibtex",
+    "matplotlib",
+    "sphinxcontrib-katex",
+    "sphinx-gallery",
+    "torch",
+    "memory_profiler",
+    "mdshare",
+    "nbconvert",
+    "jupyter",
+    "tqdm"
+]
+
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel",
+    "scikit-build>=0.16",
+    "numpy>=1.20",
+    "tomli; python_version < '3.11'",
+    "scipy>=1.7",
+    "versioneer[toml]==0.28"
+]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+filterwarnings = ["once", "ignore::UserWarning"]
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "folie/_version.py"
+versionfile_build = "folie/_version.py"
+tag_prefix = "v"
+
+[tool.flake8]
+ignore = ['E24', 'E121', 'E123', 'E126', 'E226', 'E704', 'W503', 'W504']
+max-line-length = 120
+
+[tool.coverage.report]
+exclude_lines = ["@plotting_function", "pragma: no cover"]
+omit = ["*/**/setup.py", "tests/*", "folie/_version.py"]
+
+[tool.coverage.run]
+omit = ["*/**/setup.py", "tests/*", "*/**/*.pyx", "folie/_version.py"]
+
+[tool.cibuildwheel]
+build-verbosity = 1
