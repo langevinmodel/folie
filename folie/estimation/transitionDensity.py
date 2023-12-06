@@ -17,7 +17,9 @@ class TransitionDensity(ABC):
         Class which represents the transition density for a model, and implements a __call__ method to evalute the
         transition density (bound to the model)
 
-        :param model: the SDE model, referenced during calls to the transition density
+            Parameters
+            ----------
+            model: the SDE model, referenced during calls to the transition density
         """
         self._model = model
         self._min_prob = np.log(1e-30)  # used to floor probabilities when evaluating the log
