@@ -39,4 +39,4 @@ def test_numba_optimized(data, request, benchmark):
     loglikelihood = transition(data.weights[0], data[0], np.concatenate((np.zeros(n_knots), np.zeros(n_knots) + 1.0)))
     assert len(loglikelihood) == 2
 
-    assert loglikelihood[1].shape == (40, 40)
+    assert loglikelihood[1].shape == (2 * n_knots,)

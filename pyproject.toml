@@ -39,14 +39,7 @@ plotting = ['matplotlib']
 units = ['pint>=0.20']
 tests = [
     'pytest==7.1.2',
-    'pytest-cov==3.0.0',
-    'coverage[toml]',
-    'pytest-xdist==2.5.0',
-    'flaky==3.7.0',
-    'tqdm==4.64.0',
-    "matplotlib",
-    "cmake>=3.24",
-    "ninja; platform_system!='Windows'"
+    'pytest-cov==4.0.0',
 ]
 docs = [
     "sphinx",
