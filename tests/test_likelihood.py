@@ -28,7 +28,7 @@ def test_likelihood_bf(data, request, transitioncls):
 
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
-def test_numba_optimized(data, request, benchmark):
+def test_numba_optimized(data, request):
     n_knots = 20
     epsilon = 1e-10
     model = fl.models.OverdampedFreeEnergy(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots), 1.0)
