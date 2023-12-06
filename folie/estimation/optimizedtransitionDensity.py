@@ -38,7 +38,8 @@ class EulerNumbaOptimizedDensity(EulerDensity):
         :param dt: float, the time step between x0 and xt
         :return: probability (same dimension as x0 and xt)
         """
-        return objective_order1_debiased(coefficients, self.model.knots, trj["pre"], trj["dt"], self.model.beta, None) / weight
+        like, jac = objective_order1_debiased(coefficients, self.model.knots, trj["pre"], trj["dt"], self.model.beta, None)
+        return like / weight, jac / weight
 
 
 @nb.njit(parallel=True)
