@@ -8,6 +8,8 @@ jobs:
   pages:
     runs-on: ubuntu-20.04
     steps:
+    - uses: actions/checkout@v4
+    - run: pip install -e .
     - id: deployment
       uses: sphinx-notes/pages@v3
       with:
