@@ -14,6 +14,7 @@ copyright = "2023, Hadrien Vroylandt"
 author = "Hadrien Vroylandt"
 release = "0.1"
 
+sys.path.insert(0, os.path.abspath("../../../.."))
 sys.path.insert(0, os.path.abspath("../../.."))
 sys.path.insert(0, os.path.abspath("../.."))
 sys.path.insert(0, os.path.abspath(".."))
@@ -22,7 +23,7 @@ sys.path.insert(0, os.path.abspath("."))
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.doctest", "sphinx.ext.intersphinx", "sphinx.ext.todo", "sphinx.ext.viewcode", "sphinx.ext.coverage", "numpydoc", "sphinx_gallery.gen_gallery", "sphinx.ext.inheritance_diagram"]
+extensions = ["sphinx.ext.autodoc", "sphinx.ext.doctest", "sphinx.ext.intersphinx", "sphinx.ext.todo", "sphinx.ext.viewcode", "sphinx.ext.coverage", "numpydoc", "sphinx_gallery.gen_gallery", "sphinx.ext.inheritance_diagram", "sphinx.ext.githubpages"]
 
 numpydoc_show_class_members = False
 autoclass_content = "both"
