@@ -2,7 +2,7 @@ name: Deploy Sphinx documentation to Pages
 
 on:
   push:
-    branches: [master] # branch to trigger deployment
+    branches: [main] # branch to trigger deployment
 
 jobs:
   pages:
@@ -16,4 +16,3 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ${{ steps.deployment.outputs.artifact }}
-          
