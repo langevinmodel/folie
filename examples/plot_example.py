@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 
 """
-===========================
-Memory Kernel Estimation
-===========================
+================================
+Overdamped Langevin Estimation
+================================
 
-How to run memory kernel estimation
+How to run a simple estimation
 """
 
 import numpy as np

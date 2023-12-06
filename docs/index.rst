@@ -8,9 +8,18 @@ Welcome to folie's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Documentation
 
+   self
+   api
+   for_developper
 
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Tutorial - Examples
+
+   auto_examples/index
 
 Indices and tables
 ==================

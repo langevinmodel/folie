@@ -3,10 +3,10 @@
 
 """
 ===========================
-Memory Kernel Estimation
+Likelihood functions
 ===========================
 
-How to run memory kernel estimation
+A set of likelihood function used for estimation
 """
 
 import numpy as np
