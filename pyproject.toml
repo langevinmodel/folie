@@ -50,6 +50,7 @@ tests = [
 docs = [
     "sphinx",
     "nbsphinx",
+    "numpydoc",
     "sphinxcontrib-bibtex",
     "matplotlib",
     "sphinxcontrib-katex",
