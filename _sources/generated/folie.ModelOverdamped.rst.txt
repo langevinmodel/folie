@@ -1,0 +1,15 @@
+﻿:mod:`folie`.ModelOverdamped
+===================================
+
+.. currentmodule:: folie
+
+.. autoclass:: ModelOverdamped
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.ModelOverdamped.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

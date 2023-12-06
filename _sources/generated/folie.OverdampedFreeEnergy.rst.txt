@@ -1,0 +1,15 @@
+﻿:mod:`folie`.OverdampedFreeEnergy
+========================================
+
+.. currentmodule:: folie
+
+.. autoclass:: OverdampedFreeEnergy
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.OverdampedFreeEnergy.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

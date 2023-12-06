@@ -1,0 +1,15 @@
+﻿:mod:`folie`.DrozdovDensity
+==================================
+
+.. currentmodule:: folie
+
+.. autoclass:: DrozdovDensity
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.DrozdovDensity.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

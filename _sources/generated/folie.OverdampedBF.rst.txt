@@ -1,0 +1,15 @@
+﻿:mod:`folie`.OverdampedBF
+================================
+
+.. currentmodule:: folie
+
+.. autoclass:: OverdampedBF
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.OverdampedBF.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

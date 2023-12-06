@@ -1,0 +1,15 @@
+﻿:mod:`folie`.ShojiOzakiDensity
+=====================================
+
+.. currentmodule:: folie
+
+.. autoclass:: ShojiOzakiDensity
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.ShojiOzakiDensity.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>
