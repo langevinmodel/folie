@@ -30,7 +30,7 @@ jobs:
 
     - name: Test folie
       run: |
-        pytest --cov=folie --cov-report=xml
+        pytest --cov=folie --cov-report=xml tests/
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

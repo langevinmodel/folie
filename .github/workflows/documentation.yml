@@ -2,8 +2,11 @@ name: Deploy Sphinx documentation to Pages
 
 on:
   push:
-    branches: [release] # branch to trigger deployment
-
+    branches: [main] # branch to trigger deployment
+    paths:
+      -'docs/**'
+  push:
+    branches: [release]
 jobs:
   pages:
     runs-on: ubuntu-20.04
