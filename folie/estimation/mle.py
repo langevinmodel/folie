@@ -112,7 +112,10 @@ class LikelihoodEstimator(Estimator):
             coefficients0 = np.asarray(coefficients0)
             minimizer = minimize
 
-        if self.transition.has_jac and use_jac:
+        # Run once, to determine if there is a jacobien and eventual compilation if needed by numba
+        init_val = self._loop_over_trajs(self.transition, data.weights, data, coefficients0, **kwargs)
+
+        if len(init_val) >= 2 and use_jac:
             res = minimizer(self._log_likelihood_negative_with_jac, coefficients0, args=(data,), jac=True, method="L-BFGS-B")
         else:
             res = minimizer(self._log_likelihood_negative, coefficients0, args=(data,), method="L-BFGS-B")

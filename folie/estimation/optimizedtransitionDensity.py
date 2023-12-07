@@ -17,10 +17,6 @@ class EulerNumbaOptimizedDensity(EulerDensity):
     def do_preprocess_traj(self):
         return True
 
-    @property
-    def has_jac(self):
-        return True
-
     def preprocess_traj(self, trj, **kwargs):
         """
         Preprocess trajectories data

@@ -37,10 +37,6 @@ class TransitionDensity(ABC):
     def do_preprocess_traj(self):
         return False
 
-    @property
-    def has_jac(self):
-        return False
-
     def density(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], t0: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return np.exp(self._logdensity(x0, xt, t0, dt))
 
