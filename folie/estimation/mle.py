@@ -46,23 +46,22 @@ class EstimatedResult(object):
 
 class CallbackFunctor:
     """
-    Callback or scipy minimize in order to store history if wanted
+    Callback for scipy minimize in order to store history if wanted
     """
 
-    def __init__(self, obj_fun):
+    def __init__(self):
         """
         obj_fun is a provided function to extract value from OptimizedResult
         """
         self.history = [np.inf]
         self.sols = []
         self.num_calls = 0
-        self.obj_fun = obj_fun
 
-    def __call__(self, x):
-        fun_val = self.obj_fun(x)
+    def __call__(self, res):
+        fun_val = res.fun
         self.num_calls += 1
         if fun_val < self.history[-1]:
-            self.sols.append(x)
+            self.sols.append(res.x)
             self.history.append(fun_val)
 
     def save_sols(self, filename):
@@ -84,7 +83,7 @@ class LikelihoodEstimator(Estimator):
         super().__init__(transition.model)
         self.transition = transition
 
-    def fit(self, data, minimizer=None, coefficients0=None, use_jac=True, **kwargs):
+    def fit(self, data, minimizer=None, coefficients0=None, use_jac=True, callback=None, **kwargs):
         r"""Fits data to the estimator's internal :class:`Model` and overwrites it. This way, every call to
         :meth:`fetch_model` yields an autonomous model instance. Sometimes a :code:`partial_fit` method is available,
         in which case the model can get updated by the estimator.
@@ -113,9 +112,9 @@ class LikelihoodEstimator(Estimator):
             minimizer = minimize
 
         if self.transition.has_jac and use_jac:
-            res = minimizer(self._log_likelihood_negative_with_jac, coefficients0, args=(data,), jac=True, method="L-BFGS-B")
+            res = minimizer(self._log_likelihood_negative_with_jac, coefficients0, args=(data,), jac=True, method="L-BFGS-B", callback=callback)
         else:
-            res = minimizer(self._log_likelihood_negative, coefficients0, args=(data,), method="L-BFGS-B")
+            res = minimizer(self._log_likelihood_negative, coefficients0, args=(data,), method="L-BFGS-B", callback=callback)
         coefficients = res.x
 
         final_like = -res.fun
@@ -158,7 +157,6 @@ class EMEstimator(LikelihoodEstimator):
 
     def __init__(
         self,
-        model,
         transition,
         *args,
         tol=1e-5,
@@ -170,7 +168,9 @@ class EMEstimator(LikelihoodEstimator):
         verbose_interval=10,
         **kwargs,
     ):
-        super().__init__(model)
+        super().__init__(transition.model)
+
+        self.transition = transition
         self.verbose = verbose
         self.verbose_interval = verbose_interval
 
@@ -181,7 +181,7 @@ class EMEstimator(LikelihoodEstimator):
 
         self.no_stop = no_stop
 
-    def fit(self, data, minimizer=None, coefficients0=None, use_jac=True, **kwargs):
+    def fit(self, data, minimizer=None, coefficients0=None, use_jac=True, callback=None, **kwargs):
         """
         In this do a loop that alternatively minimize and compute expectation
         """
@@ -189,9 +189,6 @@ class EMEstimator(LikelihoodEstimator):
         if self.transition.do_preprocess_traj:
             for trj in data:
                 self.transition.preprocess_traj(trj)
-        if coefficients0 is None:
-            raise NotImplementedError  # We could use then an exact estimation
-
         if minimizer is None:
             coefficients = np.asarray(coefficients0)
             minimizer = minimize
@@ -203,9 +200,12 @@ class EMEstimator(LikelihoodEstimator):
         max_lower_bound = -np.infty
         self.converged_ = False
 
+        # That becomes duplicate of callback
         self.logL = np.empty((n_init, self.max_iter))
         self.logL[:] = np.nan
-        self.coeffs_list_all = []
+
+        # Trouver un truc pour gérer ls callback multiple
+        callbacks = []
 
         # For referencement
         best_coeffs = None
@@ -213,7 +213,7 @@ class EMEstimator(LikelihoodEstimator):
         best_n_init = -1
 
         for init in range(n_init):
-            coeff_list_init = []
+            callbacks.append(type(callback)())  # Should work as well with None
             if do_init:
                 coefficients = self._initialize_parameters(coefficients0)  # Need to randomize initial coefficients if multiple run
             self._print_verbose_msg_init_beg(init)
@@ -223,25 +223,24 @@ class EMEstimator(LikelihoodEstimator):
             for n_iter in range(1, self.max_iter + 1):
                 prev_lower_bound = lower_bound
                 # E step
-                new_stat = self.transition.e_step(data)
+                data = self.transition.e_step(coefficients, data)
 
-                lower_bound = -self.transition(new_stat)  # TODO A changer
+                lower_bound = -self._log_likelihood_negative(coefficients, data)[0]
                 if self.verbose >= 2:
                     if lower_bound - lower_bound_m_step < 0:
-                        print("Delta ll after E step:", lower_bound - lower_bound_m_step)
-                curr_coeffs = self.model.coefficients
-                curr_coeffs["ll"] = lower_bound
-                coeff_list_init.append(curr_coeffs)
+                        print("Delta loglikelihood after E step:", lower_bound - lower_bound_m_step)
                 # M Step
                 if self.transition.has_jac and use_jac:
-                    res = minimizer(self._log_likelihood_negative_with_jac, coefficients0, args=(data,), jac=True, method="L-BFGS-B")
+                    res = minimizer(self._log_likelihood_negative_with_jac, coefficients, args=(data,), jac=True, method="L-BFGS-B")
                 else:
-                    res = minimizer(self._log_likelihood_negative, coefficients0, args=(data,), method="L-BFGS-B")
+                    res = minimizer(self._log_likelihood_negative, coefficients, args=(data,), method="L-BFGS-B")
                 coefficients = res.x
+                if callbacks[init] is not None:
+                    callbacks[init](res)
 
                 lower_bound_m_step = -res.fun
                 if self.verbose >= 2 and lower_bound_m_step - lower_bound < 0:
-                    print("Delta ll after M step:", lower_bound_m_step - lower_bound)
+                    print("Delta loglikelihood after M step:", lower_bound_m_step - lower_bound)
                 if np.isnan(lower_bound_m_step) or not np.isfinite(np.sum(coefficients)):  # If we have nan value we simply restart the iteration
                     warnings.warn(
                         "Initialization %d has NaN values. Ends iteration" % (init),
@@ -249,16 +248,16 @@ class EMEstimator(LikelihoodEstimator):
                     )
                     if self.verbose >= 2:
                         print(self.model.coefficients)
-                        print("ll: {}".format(lower_bound))
+                        print("loglikelihood: {}".format(lower_bound))
                     break
 
-                self.logL[init, n_iter - 1] = lower_bound
+                self.logL[init, n_iter - 1] = lower_bound  # Value after E step
                 change = lower_bound - prev_lower_bound
                 self._print_verbose_msg_iter_end(n_iter, change, lower_bound)
 
                 if lower_bound > max_lower_bound:
                     max_lower_bound = lower_bound
-                    best_coeffs = self.model.coefficients
+                    best_coeffs = coefficients
                     best_n_iter = n_iter
                     best_n_init = init
 
@@ -268,7 +267,7 @@ class EMEstimator(LikelihoodEstimator):
                         break
 
             self._print_verbose_msg_init_end(lower_bound, n_iter)
-            self.coeffs_list_all.append(coeff_list_init)
+            # self.coeffs_list_all.append(coeff_list_init)
             if not self.converged_:
                 warnings.warn(
                     "Initialization %d did not converge. " "Try different init parameters, " "or increase max_iter, tol " "or check for degenerate data." % (init + 1),
@@ -276,10 +275,19 @@ class EMEstimator(LikelihoodEstimator):
                 )
         if best_coeffs is not None:
             self.model.coefficients = best_coeffs
+            self.model.fitted_ = True
+            self.results_ = EstimatedResult(coefficients=best_coeffs, log_like=max_lower_bound, sample_size=data.nobs - 1)
+
         self.n_iter_ = best_n_iter
         self.n_best_init_ = best_n_init
         self.lower_bound_ = max_lower_bound
         self._print_verbose_msg_fit_end(max_lower_bound, best_n_init, best_n_iter)
+
+    def _log_likelihood_negative(self, coefficients, data, **kwargs):
+        return self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)[0]
+
+    def _log_likelihood_negative_with_jac(self, coefficients, data, **kwargs):
+        return self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)
 
     def _print_verbose_msg_init_beg(self, n_init):
         """Print verbose message on initialization."""

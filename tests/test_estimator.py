@@ -45,3 +45,12 @@ def test_numba_likelihood_estimator(data, request):
 
     model = estimator.fit_fetch(data, coefficients0=np.concatenate((np.zeros(n_knots), np.zeros(n_knots) + 1.0)))
     assert model.fitted_
+
+
+@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+def test_em_estimator(data, request):
+    bf = fl.function_basis.Linear().fit(data)
+    model = fl.models.OverdampedHidden(fl.models.OverdampedBF(bf), 2)
+    estimator = fl.EMEstimator(fl.EulerDensity(model))
+    model = estimator.fit_fetch(data)
+    assert model.fitted_

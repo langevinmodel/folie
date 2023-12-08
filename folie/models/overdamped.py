@@ -9,6 +9,8 @@ from ..base import Model
 
 
 class ModelOverdamped(Model):
+    dim = 1
+
     def __init__(self, has_exact_density: bool = False, **kwargs):
         """
         Base model for overdamped Langevin equations, defined by
@@ -129,6 +131,7 @@ class BrownianMotion(ModelOverdamped):
         sigma(X,t) = sqrt(sigma)   (constant, >0)
     """
 
+    dim = 1
     _n_coeffs_force = 1
 
     def __init__(self, **kwargs):
@@ -192,6 +195,7 @@ class OrnsteinUhlenbeck(ModelOverdamped):
         sigma(X,t) = sqrt(sigma)
     """
 
+    dim = 1
     _n_coeffs_force = 2
 
     def __init__(self, **kwargs):
