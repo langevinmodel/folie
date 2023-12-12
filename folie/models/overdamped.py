@@ -59,7 +59,7 @@ class ModelOverdamped(Model):
         raise NotImplementedError
 
     # ==============================
-    # Direct acces to parameters (Not Imlemented By Default)
+    # Direct acces to parameters (Not Implemented By Default)
     # ==============================
 
     @property
