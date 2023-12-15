@@ -12,5 +12,8 @@ from . import function_basis
 
 from .simulations import Simulator
 
+from . import functions
+
 from . import _version
-__version__ = _version.get_versions()['version']
+
+__version__ = _version.get_versions()["version"]
