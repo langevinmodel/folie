@@ -97,18 +97,18 @@ class _BaseMethodsMixin(abc.ABC):
         except AttributeError:
             state = self.__dict__
 
-        if type(self).__module__.startswith("floppyMD."):
-            from floppyMD import __version__
+        if type(self).__module__.startswith("folie."):
+            from folie import __version__
 
-            return dict(state.items(), _floppyMD_version=__version__)
+            return dict(state.items(), _folie_version=__version__)
         else:
             return state
 
     def __setstate__(self, state):
-        from floppyMD import __version__
+        from folie import __version__
 
-        if type(self).__module__.startswith("floppyMD."):
-            pickle_version = state.pop("_floppyMD_version", None)
+        if type(self).__module__.startswith("folie."):
+            pickle_version = state.pop("_folie_version", None)
             if pickle_version != __version__:
                 import warnings
 

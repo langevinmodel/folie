@@ -21,17 +21,22 @@ class Function(_BaseMethodsMixin, TransformerMixin):
     """
 
     def __init__(self, output_shape=(), **kwargs):
-        if isinstance(output_shape, collections.abc.Iterable):
-            self.output_shape_ = output_shape
-        elif isinstance(output_shape, str):
-            if output_shape in ["s", "scalar"]:
+        if output_shape is None:
+            output_shape = ()
+        self.output_shape_params = output_shape
+
+    def define_output_shape(self, dim):
+        if isinstance(self.output_shape_params, str):
+            if self.output_shape_params in ["s", "scalar"]:
                 self.output_shape_ = ()
-            elif output_shape in ["v", "vector"]:
-                self.output_shape_ = (1,)
-            elif output_shape in ["m", "matrix"]:
-                self.output_shape_ = (1, 1)
+            elif self.output_shape_params in ["v", "vector"]:
+                self.output_shape_ = (dim,)
+            elif self.output_shape_params in ["m", "matrix"]:
+                self.output_shape_ = (dim, dim)
+        elif isinstance(self.output_shape_params, collections.abc.Iterable):
+            self.output_shape_ = self.output_shape_params
         else:
-            self.output_shape_ = (1,) * output_shape
+            self.output_shape_ = (dim,) * self.output_shape_params
 
     # Force subclasses to implement this
     @abc.abstractmethod
@@ -98,15 +103,15 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         """
 
     @abc.abstractmethod
-    def zero(cls):
+    def zero(self):
         r"""Get the coefficients to evaluate the function to zero."""
 
     @abc.abstractmethod
-    def one(cls):
+    def one(self):
         r"""Get the coefficients to evaluate the function to one"""
 
-    def __call__(self, *args, **kwargs):
-        return self.transform(*args, **kwargs)
+    def __call__(self, x, *args, **kwargs):
+        return self.transform(x, *args, **kwargs).reshape(-1, *self.output_shape_)
 
     def __add__(self, other):
         return FunctionSum([self, other])
@@ -116,12 +121,6 @@ class Function(_BaseMethodsMixin, TransformerMixin):
 
     def __rmul__(self, other):
         return FunctionTensored([self, other])
-
-    def validate_input(self, x, *args, **kwargs):
-        return x
-
-    def reshape_output(self, f):
-        return f
 
     @property
     def coefficients(self):
@@ -171,7 +170,7 @@ class FunctionSum(Function):
         return self
 
     def transform(self, X, **kwargs):
-        return np.sum([fu.transform(X) for fu in self.functions_set])
+        return np.sum([fu.transform(X) for fu in self.functions_set], axis=1)
 
     def __add__(self, other):
         if type(other) is FunctionSum:
@@ -181,6 +180,20 @@ class FunctionSum(Function):
             self.functions_set.append(other)
             self.factors_set.append(1.0)
         return self
+
+    def grad_x(self, X, **kwargs):
+        return np.sum([fu.grad_x(X) for fu in self.functions_set])
+
+    def grad_coeffs(self, X, **kwargs):
+        return np.concatenate([fu.grad_coeffs(X) for fu in self.functions_set], axis=1)
+
+    def zero(self):
+        for fu in self.functions_set:
+            fu.zero()
+
+    def one(self):
+        for fu in self.functions_set:
+            fu.one()
 
     @property
     def coefficients(self):
@@ -345,12 +358,16 @@ class ConstantFunction(Function):
     A function that return a constant value
     """
 
+    def __init__(self, output_shape=()):
+        super().__init__(output_shape)
+
     def fit(self, x, y=None):
         _, dim = x.shape
+        self.define_output_shape(dim)
         return self
 
     def transform(self, x, **kwargs):
-        return self.coefficients
+        return self.coefficients * np.ones_like(x)
 
     def grad_x(self, x, **kwargs):
         return np.zeros_like(x)
@@ -358,15 +375,15 @@ class ConstantFunction(Function):
     def grad_coeffs(self, x, **kwargs):
         return np.ones_like(x)
 
-    @classmethod
-    def zero(cls):
-        r"""Get the coefficients to evaluate the function to zero."""
-        return 0.0
+    def zero(self):
+        r"""Set the coefficients to evaluate the function to zero."""
+        self._coefficients = np.zeros((1,) + self.output_shape_)
+        return self
 
-    @classmethod
-    def one(cls):
+    def one(self):
         r"""Get the coefficients to evaluate the function to one"""
-        return 1.0
+        self._coefficients = np.ones((1,) + self.output_shape_)
+        return self
 
     @property
     def is_linear(self) -> bool:

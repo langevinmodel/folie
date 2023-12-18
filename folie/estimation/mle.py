@@ -207,7 +207,7 @@ class EMEstimator(LikelihoodEstimator):
         self.logL = np.empty((n_init, self.max_iter))
         self.logL[:] = np.nan
 
-        # Trouver un truc pour gérer ls callback multiple
+        # Trouver un truc pour gérer les callback multiple
         callbacks = []
 
         # For referencement

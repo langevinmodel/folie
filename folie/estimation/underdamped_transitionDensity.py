@@ -21,8 +21,8 @@ def compute_va(trj, correct_jumps=False, jump=2 * np.pi, jump_thr=1.75 * np.pi, 
         diffs = np.where(diffs < jump_thr, diffs, diffs - jump)
         # raise NotImplementedError("Periodic data are not implemented yet")
 
-    ddiffs = np.shift(diffs, -1, axis=0) - diffs
-    sdiffs = lamb_finite_diff * np.shift(diffs, -1, axis=0) + (1.0 - lamb_finite_diff) * diffs
+    ddiffs = np.roll(diffs, -1, axis=0) - diffs
+    sdiffs = lamb_finite_diff * np.roll(diffs, -1, axis=0) + (1.0 - lamb_finite_diff) * diffs
 
     trj["v"] = sdiffs["x"] / dt
     trj["a"] = ddiffs["x"] / dt**2
