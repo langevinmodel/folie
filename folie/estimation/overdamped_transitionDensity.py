@@ -40,6 +40,16 @@ class EulerDensity(TransitionDensity):
         """
         super().__init__(model)
 
+    def preprocess_traj(self, trj, **kwargs):
+        """
+        Equivalent to no preprocessing
+        """
+        if hasattr(self._model, "dim_h"):
+            if self._model.dim_h > 0:
+                trj["sig_h"] = np.zeros((trj["x"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
+                trj["x"] = np.concatenate((trj["x"], np.zeros((trj["x"].shape[0], self._model.dim_h))), axis=1)
+        return trj
+
     def _logdensity(self, x0, xt, t0, dt: float):
         """
         The transition density obtained via Euler expansion

@@ -9,17 +9,16 @@ from ..base import Model
 
 
 class ModelOverdamped(Model):
-    dim = 1
+    _has_exact_density = False
 
-    def __init__(self, has_exact_density: bool = False, **kwargs):
+    def __init__(self, dim=1, **kwargs):
         """
         Base model for overdamped Langevin equations, defined by
 
         dX(t) = mu(X,t)dt + sigma(X,t)dW_t
 
-        :param has_exact_density: bool, set to true if an exact density is implemented
         """
-        self._has_exact_density = has_exact_density
+        self.dim = dim
         self._coefficients: Optional[np.ndarray] = None
         self.h = 1e-05
 
@@ -133,9 +132,10 @@ class BrownianMotion(ModelOverdamped):
 
     dim = 1
     _n_coeffs_force = 1
+    _has_exact_density = True
 
     def __init__(self, **kwargs):
-        super().__init__(has_exact_density=True, default_sim_method="Exact")
+        super().__init__()
         self.coefficients = np.array([0.0, 1.0])
 
     def force(self, x, t: float = 0.0):
@@ -237,7 +237,8 @@ class OrnsteinUhlenbeck(ModelOverdamped):
 
 class OverdampedBF(ModelOverdamped):
     """
-    A class that implement a overdamped model with basis function
+    A class that implement a overdamped model with basis function.
+    That should be merged with OverdampedFunction for a more general view
     """
 
     def __init__(self, basis, **kwargs):
@@ -284,3 +285,87 @@ class OverdampedBF(ModelOverdamped):
         Jacobien of the diffusion with respect to coefficients
         """
         return self.basis(x)
+
+
+class OverdampedFunctions(ModelOverdamped):
+    """
+    A class that implement a overdamped model with given functions for space dependency
+    """
+
+    def __init__(self, force, diffusion=None, dim=1, **kwargs):
+        super().__init__()
+        self._force = force.reshape((dim,))
+        if diffusion is None:
+            self._diffusion = force.copy().reshape((dim, dim))
+        else:
+            self._diffusion = diffusion.reshape((dim, dim))
+        self._n_coeffs_force = self._force.size
+        self._n_coeffs_diffusion = self._diffusion.size
+        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_force)))
+        # Il faudrait réassigner alors le big array aux functions pour qu'on aie un seul espace mémoire
+
+    def force(self, x, t: float = 0.0):
+        return self._force(x)
+
+    def diffusion(self, x, t: float = 0.0):
+        return self._diffusion(x)
+
+    @property
+    def coefficients(self):
+        """Access the coefficients"""
+        return np.concatenate((self._force.coefficients.ravel(), self._diffusion.coefficients.ravel()))
+
+    @coefficients.setter
+    def coefficients(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        self._force.coefficients = vals.ravel()[: self._n_coeffs_force]
+        self._diffusion.coefficients = vals.ravel()[self._n_coeffs_force : self._n_coeffs_force + self._n_coeffs_diffusion]
+
+    @property
+    def coefficients_force(self):
+        return self._force.coefficients
+
+    @coefficients_force.setter
+    def coefficients_force(self, vals):
+        self._force.coefficients = vals
+
+    @property
+    def coefficients_diffusion(self):
+        return self._diffusion.coefficients
+
+    @coefficients_diffusion.setter
+    def coefficients_diffusion(self, vals):
+        self._diffusion.coefficients = vals
+
+    def force_t(self, x, t: float = 0.0):
+        return 0.0
+
+    def force_x(self, x, t: float = 0.0):
+        return self._force.grad_x(x)
+
+    def force_xx(self, x, t: float = 0.0):
+        return self._force.hessian_x(x)
+
+    def diffusion_t(self, x, t: float = 0.0):
+        return 0.0
+
+    def diffusion_x(self, x, t: float = 0.0):
+        return self._diffusion.grad_x(x)
+
+    def diffusion_xx(self, x, t: float = 0.0):
+        return self._diffusion.hessian_x(x)
+
+    def is_linear(self):
+        return self._force.is_linear and self._diffusion.is_linear
+
+    def force_jac_coeffs(self, x, t: float = 0.0):
+        """
+        Jacobien of the force with respect to coefficients
+        """
+        return self._force.grad_coeffs(x)
+
+    def diffusion_jac_coeffs(self, x, t: float = 0.0):
+        """
+        Jacobien of the diffusion with respect to coefficients
+        """
+        return self._diffusion.grad_coeffs(x)

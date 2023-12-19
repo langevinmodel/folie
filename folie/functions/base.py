@@ -23,20 +23,13 @@ class Function(_BaseMethodsMixin, TransformerMixin):
     def __init__(self, output_shape=(), **kwargs):
         if output_shape is None:
             output_shape = ()
-        self.output_shape_params = output_shape
+        self.output_shape_ = output_shape
 
-    def define_output_shape(self, dim):
-        if isinstance(self.output_shape_params, str):
-            if self.output_shape_params in ["s", "scalar"]:
-                self.output_shape_ = ()
-            elif self.output_shape_params in ["v", "vector"]:
-                self.output_shape_ = (dim,)
-            elif self.output_shape_params in ["m", "matrix"]:
-                self.output_shape_ = (dim, dim)
-        elif isinstance(self.output_shape_params, collections.abc.Iterable):
-            self.output_shape_ = self.output_shape_params
-        else:
-            self.output_shape_ = (dim,) * self.output_shape_params
+    def reshape(self, new_shape):
+        """
+        Change the output shape of the function.
+        """
+        self.output_shape_ = new_shape
 
     # Force subclasses to implement this
     @abc.abstractmethod
@@ -142,14 +135,21 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         return len(self._coefficients)
 
     @property
-    def dim(self):
-        check_is_fitted(self)
-        return self.n_output_features_
-
-    @property
     def shape(self):
         check_is_fitted(self)
         return self.output_shape_
+
+    def copy(self):
+        r"""Makes a deep copy of this function.
+
+        Returns
+        -------
+        copy
+            A new copy of this model.
+        """
+        import copy
+
+        return copy.deepcopy(self)
 
 
 class FunctionSum(Function):

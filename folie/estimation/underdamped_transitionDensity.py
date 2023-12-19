@@ -37,15 +37,17 @@ class UnderdampedTransitionDensity(TransitionDensity):
         """
         super().__init__(model)
 
-    @property
-    def do_preprocess_traj(self):
-        return True
-
     def preprocess_traj(self, trj, **kwargs):
         """
         Preprocess trajectories data
         """
-        return compute_va(trj, **kwargs)
+        trj = compute_va(trj, **kwargs)
+        if hasattr(self._model, "dim_h"):
+            if self._model.dim_h > 0:
+                trj["sig_h"] = np.zeros((trj["v"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
+                trj["v"] = np.concatenate((trj["v"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
+                trj["a"] = np.concatenate((trj["a"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
+        return trj
 
 
 class BBKDensity(UnderdampedTransitionDensity):

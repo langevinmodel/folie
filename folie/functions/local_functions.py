@@ -34,6 +34,8 @@ class BSplinesFunction(Function):
         return self
 
     def transform(self, x, **kwargs):
+        nsamples, dim = x.shape
+        res = np.empty(nsamples, *self.output_shape_)
         return splev(x, (self.knots_, np.concatenate((self.coefficients, self.extra_zeros)), self.k))
 
     def grad_x(self, x, **kwargs):

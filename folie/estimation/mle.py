@@ -101,9 +101,8 @@ class LikelihoodEstimator(Estimator):
             Reference to self.
         """
 
-        if self.transition.do_preprocess_traj:
-            for trj in data:
-                self.transition.preprocess_traj(trj)
+        for trj in data:
+            self.transition.preprocess_traj(trj)
         if coefficients0 is None:
             coefficients0 = self.model.coefficients
             # TODO, use exact optimisation to provide first set of parameters
@@ -189,9 +188,8 @@ class EMEstimator(LikelihoodEstimator):
         In this do a loop that alternatively minimize and compute expectation
         """
 
-        if self.transition.do_preprocess_traj:
-            for trj in data:
-                self.transition.preprocess_traj(trj)
+        for trj in data:
+            self.transition.preprocess_traj(trj)
         if minimizer is None:
             coefficients = np.asarray(coefficients0)
             minimizer = minimize

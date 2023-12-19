@@ -10,11 +10,12 @@ class ModelUnderdamped(Model):
 
     def __init__(self, **kwargs):
         """
-        Base model for overdamped Langevin equations, defined by
+        Base model for underdamped Langevin equations, defined by
 
-        dX(t) = mu(X,t)dt + sigma(X,t)dW_t
+        dX(t) = V(t)
 
-        :param has_exact_density: bool, set to true if an exact density is implemented
+        dV(t) = f(X,t)dt+ gamma(X,t)V(t)dt + sigma(X,t)dW_t
+
         """
         self._coefficients: Optional[np.ndarray] = None
         self.h = 1e-05
@@ -26,7 +27,7 @@ class ModelUnderdamped(Model):
 
     @abstractmethod
     def friction(self, x, t=0.0):
-        """The force term of the model"""
+        """The friction term of the model"""
         raise NotImplementedError
 
     @abstractmethod

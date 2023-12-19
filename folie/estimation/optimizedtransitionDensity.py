@@ -13,10 +13,6 @@ class EulerNumbaOptimizedDensity(EulerDensity):
         """
         super().__init__(model)
 
-    @property
-    def do_preprocess_traj(self):
-        return True
-
     def preprocess_traj(self, trj, **kwargs):
         """
         Preprocess trajectories data
