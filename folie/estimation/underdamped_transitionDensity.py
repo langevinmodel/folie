@@ -58,7 +58,19 @@ class BBKDensity(UnderdampedTransitionDensity):
         """
         super().__init__(model)
 
-    def _logdensity(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], t0: Union[float, np.ndarray], dt: float) -> Union[float, np.ndarray]:
+    def preprocess_traj(self, trj, **kwargs):
+        """
+        Preprocess trajectories data
+        """
+        trj = compute_va(trj, lamb_finite_diff=0.0, **kwargs)
+        if hasattr(self._model, "dim_h"):
+            if self._model.dim_h > 0:
+                trj["sig_h"] = np.zeros((trj["v"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
+                trj["v"] = np.concatenate((trj["v"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
+                trj["a"] = np.concatenate((trj["a"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
+        return trj
+
+    def _logdensity(self, x0, xt, v, a, dt: float) -> Union[float, np.ndarray]:
         """
         The transition density obtained via Euler expansion
         :param x0: float or array, the current value
@@ -78,7 +90,19 @@ class VECDensity(UnderdampedTransitionDensity):
         """
         super().__init__(model)
 
-    def _logdensity(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], t0: Union[float, np.ndarray], dt: float) -> Union[float, np.ndarray]:
+    def preprocess_traj(self, trj, **kwargs):
+        """
+        Preprocess trajectories data
+        """
+        trj = compute_va(trj, **kwargs)
+        trj["sig_h"] = np.zeros((trj["v"].shape[0], 2 * self._model.dim, 2 * self._model.dim))  # That would be dim_x+dim_h as the velocity is in the hidden dim
+        if hasattr(self._model, "dim_h"):
+            if self._model.dim_h > 0:
+                trj["v"] = np.concatenate((trj["v"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
+                trj["a"] = np.concatenate((trj["a"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
+        return trj
+
+    def _logdensity(self, x0, xt, v, a, dt: float) -> Union[float, np.ndarray]:
         """
         The transition density obtained via Kessler expansion
         :param x0: float or array, the current value
