@@ -6,7 +6,7 @@
 Likelihood functions
 ===========================
 
-A set of likelihood function used for estimation
+A set of likelihood functions used for estimation
 """
 
 import numpy as np

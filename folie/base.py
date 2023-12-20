@@ -219,7 +219,6 @@ class Estimator(_BaseMethodsMixin):
         """
         A generator for iteration over trajectories
         """
-        # Et voir alors pour faire une version parallélisé (en distribué)
         array_res = [func(weight, trj, *args, **kwargs) for weight, trj in zip(weights, data)]
         res = [0.0] * len(array_res[0])
         weightsum = weights.sum()

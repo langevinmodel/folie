@@ -83,13 +83,13 @@ class ModelOverdamped(Model):
 
     def force_jac_coeffs(self, x, t: float = 0.0):
         """
-        Jacobien of the force with respect to coefficients
+        Jacobian of the force with respect to coefficients
         """
         raise NotImplementedError
 
     def diffusion_jac_coeffs(self, x, t: float = 0.0):
         """
-        Jacobien of the diffusion with respect to coefficients
+        Jacobian of the diffusion with respect to coefficients
         """
         raise NotImplementedError
 
@@ -159,13 +159,13 @@ class BrownianMotion(ModelOverdamped):
 
     def force_jac_coeffs(self, x, t: float = 0.0):
         """
-        Jacobien of the force with respect to coefficients
+        Jacobian of the force with respect to coefficients
         """
         raise np.ones_like(x)
 
     def diffusion_jac_coeffs(self, x, t: float = 0.0):
         """
-        Jacobien of the diffusion with respect to coefficients
+        Jacobian of the diffusion with respect to coefficients
         """
         raise np.ones_like(x)
 
@@ -276,13 +276,13 @@ class OverdampedBF(ModelOverdamped):
 
     def force_jac_coeffs(self, x, t: float = 0.0):
         """
-        Jacobien of the force with respect to coefficients
+        Jacobian of the force with respect to coefficients
         """
         return self.basis(x)
 
     def diffusion_jac_coeffs(self, x, t: float = 0.0):
         """
-        Jacobien of the diffusion with respect to coefficients
+        Jacobian of the diffusion with respect to coefficients
         """
         return self.basis(x)
 
@@ -360,12 +360,12 @@ class OverdampedFunctions(ModelOverdamped):
 
     def force_jac_coeffs(self, x, t: float = 0.0):
         """
-        Jacobien of the force with respect to coefficients
+        Jacobian of the force with respect to coefficients
         """
         return self._force.grad_coeffs(x)
 
     def diffusion_jac_coeffs(self, x, t: float = 0.0):
         """
-        Jacobien of the diffusion with respect to coefficients
+        Jacobian of the diffusion with respect to coefficients
         """
         return self._diffusion.grad_coeffs(x)

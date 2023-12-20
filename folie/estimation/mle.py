@@ -70,7 +70,7 @@ class CallbackFunctor:
 
 
 class LikelihoodEstimator(Estimator):
-    r"""Base class of all estimators
+    r"""Likelihood-based estimator
 
     Parameters
     ----------
@@ -110,7 +110,7 @@ class LikelihoodEstimator(Estimator):
             coefficients0 = np.asarray(coefficients0)
             minimizer = minimize
 
-        # Run once, to determine if there is a jacobien and eventual compilation if needed by numba
+        # Run once, to determine if there is a Jacobian and eventual compilation if needed by numba
         init_val = self._loop_over_trajs(self.transition, data.weights, data, coefficients0, **kwargs)
 
         if len(init_val) >= 2 and use_jac:

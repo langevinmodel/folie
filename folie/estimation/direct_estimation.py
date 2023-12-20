@@ -5,7 +5,7 @@ from ..base import Estimator
 
 
 class KramersMoyalEstimator(Estimator):
-    r"""Base class of all estimators
+    r"""Kramers-Moyal estimator
 
     Parameters
     ----------

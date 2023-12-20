@@ -61,13 +61,13 @@ class ModelUnderdamped(Model):
 
     def force_jac_coeffs(self, x, t: float = 0.0):
         """
-        Jacobien of the force with respect to coefficients
+        Jacobian of the force with respect to coefficients
         """
         raise NotImplementedError
 
     def diffusion_jac_coeffs(self, x, t: float = 0.0):
         """
-        Jacobien of the diffusion with respect to coefficients
+        Jacobian of the diffusion with respect to coefficients
         """
         raise NotImplementedError
 
