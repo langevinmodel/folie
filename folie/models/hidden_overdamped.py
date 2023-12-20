@@ -27,6 +27,12 @@ class OverdampedHidden(OverdampedFunctions):
         self._friction = friction.reshape((self.dim, self.dim_h))
         self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_force)))
 
+    def force(self, x, t: float = 0.0):
+        return self._force(x[:, : self.dim_x]) + np.einsum("tdh,th-> td", self.friction(x[:, : self.dim_x]), x[:, self.dim_x :])
+
+    def force_x(self, x, t: float = 0.0):
+        return self._force.grad_x(x[:, : self.dim_x]) + np.einsum("tdhe,th-> tde", self.friction.grad_x(x[:, : self.dim_x]), x[:, self.dim_x :])
+
     @property
     def coefficients(self):
         """Access the coefficients"""
