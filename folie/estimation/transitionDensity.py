@@ -65,7 +65,7 @@ class TransitionDensity(ABC):
         Compute Likelihood of one trajectory
         """
         self._model.coefficients = coefficients
-        return (-np.sum(np.maximum(self._min_prob, self._logdensity(x0=trj["x"], xt=trj["xt"][1:], t0=0.0, dt=trj["dt"]))) / weight,)
+        return (-np.sum(np.maximum(self._min_prob, self._logdensity(x0=trj["x"], xt=trj["xt"], t0=0.0, dt=trj["dt"]))) / weight,)
 
 
 class GaussianTransitionDensity(TransitionDensity):

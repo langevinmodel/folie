@@ -17,7 +17,6 @@ class BSplinesFunction(Function):
 
     def fit(self, x, y=None):
         _, dim = x.shape
-        self.define_output_shape(dim)
         if isinstance(self.knots, int):
             x_range = np.linspace(np.min(x), np.max(x), self.knots)
         else:

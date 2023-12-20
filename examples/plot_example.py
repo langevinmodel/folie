@@ -23,7 +23,7 @@ for i in range(1, trj.shape[1]):
 bf = fl.function_basis.Linear().fit(data)
 model = fl.models.OverdampedBF(bf)
 estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
-model = estimator.fit_fetch(data, params0=[1.0, 1.0])
+model = estimator.fit_fetch(data, coefficients0=[1.0, 1.0])
 
 # To find a correct parametrization of the space
 bins = np.histogram_bin_edges(data[0]["x"], bins=15)

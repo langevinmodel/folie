@@ -21,7 +21,17 @@ def data(request):
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 def test_direct_estimator(data, request):
     bf = fl.function_basis.Linear().fit(data)
-    model = fl.models.ModelUnderdamped(bf)
+    model = fl.models.OverdampedBF(bf)
+    estimator = fl.KramersMoyalEstimator(model)
+    model = estimator.fit_fetch(data)
+    assert model.fitted_
+
+
+@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+def test_direct_estimator_underdamped(data, request):
+    fun_lin = fl.functions.Linear().fit(data)
+    fun_cst = fl.functions.Constant().fit(data)
+    model = fl.models.UnderdampedFunctions(fun_lin, fun_lin.copy(), fun_cst)
     estimator = fl.UnderdampedKramersMoyalEstimator(model)
     model = estimator.fit_fetch(data)
     assert model.fitted_

@@ -9,8 +9,8 @@ from .transitionDensity import TransitionDensity
 try:
     from ._filter_smoother import filtersmoother
 except ImportError as err:
-    print(err)
-    warnings.warn("Python fallback will been used for filtersmoother module. Consider compiling the fortran module")
+    # print(err)
+    # warnings.warn("Python fallback will been used for filtersmoother module. Consider compiling the fortran module")
     from ._kalman_python import filtersmoother
 
 

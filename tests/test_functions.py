@@ -6,7 +6,7 @@ import folie as fl
 @pytest.mark.parametrize(
     "fct,parameters,expected",
     [
-        (fl.functions.ConstantFunction, {}, 1),
+        (fl.functions.Constant, {}, 1),
         (fl.functions.BSplinesFunction, {"knots": 7}, 7),
     ],
 )
@@ -24,7 +24,7 @@ def test_functions(fct, parameters, expected):
 @pytest.mark.parametrize(
     "fct,parameters,expected",
     [
-        (fl.functions.ConstantFunction, {}, 1),
+        (fl.functions.Constant, {}, 1),
         (fl.functions.BSplinesFunction, {"knots": 7}, 7),
     ],
 )
@@ -42,7 +42,7 @@ def test_functions_ND(fct, parameters, expected):
 @pytest.mark.parametrize(
     "fct,parameters,expected",
     [
-        (fl.functions.ConstantFunction, {}, 1),
+        (fl.functions.Constant, {}, 1),
         (fl.functions.BSplinesFunction, {"knots": 7}, 7),
     ],
 )
@@ -60,7 +60,7 @@ def test_functions_ND_various_dim(fct, parameters, expected):
 @pytest.mark.parametrize(
     "fct,parameters,expected",
     [
-        (fl.functions.ConstantFunction, {}, 1),
+        (fl.functions.Constant, {}, 1),
     ],
 )
 def test_matrix_functions_ND(fct, parameters, expected):
@@ -76,9 +76,9 @@ def test_matrix_functions_ND(fct, parameters, expected):
 
 def test_functions_sum():
     data = np.linspace(-1, 1, 25).reshape(-1, 1)
-    fun1 = fl.functions.ConstantFunction((1,)).fit(data).zero()
+    fun1 = fl.functions.Constant((1,)).fit(data).zero()
 
-    fun2 = fl.functions.ConstantFunction((1,)).fit(data).one()
+    fun2 = fl.functions.Constant((1,)).fit(data).one()
 
     fun_sum = fun1 + fun2
 
@@ -108,9 +108,9 @@ def test_functions_tensor():
 @pytest.mark.skip(reason="Change for more complex functions")
 def test_functions_composition():
     data = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun1 = fl.functions.ConstantFunction((2,)).fit(data).one()
+    fun1 = fl.functions.Constant((2,)).fit(data).one()
 
-    fun2 = fl.functions.ConstantFunction().fit(data).one()
+    fun2 = fl.functions.Constant().fit(data).one()
 
     fun_compo = fl.functions.FunctionComposition(fun1, fun2)
 

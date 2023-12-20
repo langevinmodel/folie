@@ -50,6 +50,7 @@ for name, transitioncls in zip(
     ],
 ):
     likelihood = transitioncls(model)
+    likelihood.preprocess_traj(data[0])
     likelihood_vals_force = np.zeros_like(force_range)
     for n, f in enumerate(force_range):
         likelihood_vals_force[n] = likelihood(1.0, data[0], np.array([f, 1.0]))[0]
