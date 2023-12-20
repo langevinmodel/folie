@@ -6,7 +6,7 @@ import folie as fl
 @pytest.mark.parametrize(
     "fct,parameters,expected",
     [
-        (fl.functions.ConstantFunction, {}, 1),
+        (fl.functions.Constant, {}, 1),
         (fl.functions.BSplinesFunction, {"knots": 7}, 7),
     ],
 )
