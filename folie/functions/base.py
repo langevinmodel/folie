@@ -25,9 +25,17 @@ class Function(_BaseMethodsMixin, TransformerMixin):
             output_shape = ()
         self.output_shape_ = output_shape
 
-    def reshape(self, new_shape):
+    def reshape(self, new_shape, force_reshape=False):
         """
         Change the output shape of the function.
+
+        Parameters
+        ----------
+            new_shape : tuple, array-like
+                The new output shape of the function
+            force_reshape : bool, defaut=False
+                Whatever to force reshape if current shape of coefficients is incompatible with new shape
+                If True new zeros coefficients will be added as needed
         """
         self.output_shape_ = new_shape
 

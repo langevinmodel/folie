@@ -25,7 +25,7 @@ class OverdampedHidden(OverdampedFunctions):
         self.dim_h = dim_h
         self.dim_x = dim
         self.dim = self.dim_x + self.dim_h
-        self._friction = friction.reshape((self.dim, self.dim_h))
+        self._friction = friction.reshape((self.dim, self.dim_h), force_reshape=True)
         self._n_coeffs_friction = self._friction.size
         self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion), np.ones(self._n_coeffs_friction)))
 
