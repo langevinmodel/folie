@@ -217,6 +217,8 @@ class EMEstimator(LikelihoodEstimator):
             callbacks.append(type(callback)())  # Should work as well with None
             if do_init:
                 coefficients = self._initialize_parameters(coefficients0)  # Need to randomize initial coefficients if multiple run
+            mu0 = np.zeros(self.transition._model.dim_h)
+            sig0 = np.identity(self.transition._model.dim_h)
             self._print_verbose_msg_init_beg(init)
             lower_bound = -np.infty if do_init else self.lower_bound_
             lower_bound_m_step = -np.infty
@@ -224,7 +226,7 @@ class EMEstimator(LikelihoodEstimator):
             for n_iter in range(1, self.max_iter + 1):
                 prev_lower_bound = lower_bound
                 # E step
-                data = self.transition.e_step(coefficients, data)
+                mu0, sig0 = self._loop_over_trajs(self.transition.e_step, data.weights, data, coefficients, mu0, sig0)
 
                 lower_bound = -self._log_likelihood_negative(coefficients, data)[0]
                 if self.verbose >= 2:

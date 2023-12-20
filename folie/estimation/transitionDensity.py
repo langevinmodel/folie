@@ -35,8 +35,14 @@ class TransitionDensity(ABC):
 
     def preprocess_traj(self, trj, **kwargs):
         """
-        Equivalent to no preprocessing
+        Basic preprocessing
         """
+        trj["xt"] = trj["x"][1:]
+        trj["x"] = trj["x"][:-1]
+        if hasattr(self._model, "dim_h"):
+            if self._model.dim_h > 0:
+                trj["sig_h"] = np.zeros((trj["x"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
+                trj["x"] = np.concatenate((trj["x"], np.zeros((trj["x"].shape[0], self._model.dim_h))), axis=1)
         return trj
 
     def density(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], t0: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
@@ -59,7 +65,7 @@ class TransitionDensity(ABC):
         Compute Likelihood of one trajectory
         """
         self._model.coefficients = coefficients
-        return (-np.sum(np.maximum(self._min_prob, self._logdensity(x0=trj["x"][:-1], xt=trj["x"][1:], t0=0.0, dt=trj["dt"]))) / weight,)
+        return (-np.sum(np.maximum(self._min_prob, self._logdensity(x0=trj["x"], xt=trj["xt"][1:], t0=0.0, dt=trj["dt"]))) / weight,)
 
 
 class GaussianTransitionDensity(TransitionDensity):

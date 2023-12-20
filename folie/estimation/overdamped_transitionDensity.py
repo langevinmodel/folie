@@ -3,7 +3,15 @@ The code in this file is copied and adapted from pymle (https://github.com/jkirk
 """
 
 import numpy as np
+import warnings
 from .transitionDensity import TransitionDensity
+
+try:
+    from ._filter_smoother import filtersmoother
+except ImportError as err:
+    print(err)
+    warnings.warn("Python fallback will been used for filtersmoother module. Consider compiling the fortran module")
+    from ._kalman_python import filtersmoother
 
 
 class ExactDensity(TransitionDensity):
@@ -44,6 +52,8 @@ class EulerDensity(TransitionDensity):
         """
         Equivalent to no preprocessing
         """
+        trj["xt"] = trj["x"][1:]
+        trj["x"] = trj["x"][:-1]
         if hasattr(self._model, "dim_h"):
             if self._model.dim_h > 0:
                 trj["sig_h"] = np.zeros((trj["x"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
@@ -66,6 +76,26 @@ class EulerDensity(TransitionDensity):
     def run_step(self, x, dt, dW, t=0.0):
         sig_sq_dt = np.sqrt(self._model.diffusion(x, t) * dt)
         return x + self._model.force(x, t) * dt + sig_sq_dt * dW
+
+    def e_step(self, weight, trj, coefficients, mu0, sig0):
+        """
+        In presence of hidden variables, reconstruct then using a Kalman Filter.
+        Assume that the model is an OverdampedHidden model
+        """
+        self._model.coefficients = coefficients
+        muh, Sigh = filtersmoother(
+            trj["xt"][:, : self._model.dim_x],
+            self._model.force_visible_part(trj["x"]) * trj["dt"],
+            self._model.friction(trj["x"]) * trj["dt"],
+            self._model.diffusion(trj["x"]) * trj["dt"],
+            mu0,
+            sig0,
+        )
+
+        trj["sig_h"] = Sigh
+        trj["x"][:, self._model.dim_x :] = muh[:, self._model.dim_h :]
+        trj["xt"][:, self._model.dim_x :] = muh[:, : self._model.dim_h]
+        return muh[0, self._model.dim_h :] / weight, Sigh[0, self._model.dim_h :, self._model.dim_h :] / weight  # Return µ0 and sig0
 
 
 class OzakiDensity(TransitionDensity):

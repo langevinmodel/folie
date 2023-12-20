@@ -1,14 +1,12 @@
-from typing import Optional
-from abc import abstractmethod
 import numpy as np
 
-from ..base import Model
+from .overdamped import OverdampedFunctions
 
 
-class ModelUnderdamped(Model):
+class UnderdampedFunctions(OverdampedFunctions):
     dim = 1
 
-    def __init__(self, **kwargs):
+    def __init__(self, force, friction, diffusion, dim=1, **kwargs):
         """
         Base model for underdamped Langevin equations, defined by
 
@@ -17,80 +15,35 @@ class ModelUnderdamped(Model):
         dV(t) = f(X,t)dt+ gamma(X,t)V(t)dt + sigma(X,t)dW_t
 
         """
-        self._coefficients: Optional[np.ndarray] = None
-        self.h = 1e-05
+        super().__init__(force, diffusion, dim=dim)
+        self._friction = friction.reshape((self.dim, self.dim))
+        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion), np.ones(self._n_coeffs_friction)))
 
-    @abstractmethod
-    def force(self, x, t=0.0):
-        """The force term of the model"""
-        raise NotImplementedError
+    def friction(self, x, t: float = 0.0):
+        return self.friction(x[:, : self.dim_x])
 
-    @abstractmethod
-    def friction(self, x, t=0.0):
-        """The friction term of the model"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def diffusion(self, x, t=0.0):
-        """The diffusion term of the model"""
-        raise NotImplementedError
-
-    # ==============================
-    # Direct acces to parameters (Not Implemented By Default)
-    # ==============================
+    def friction_x(self, x, t: float = 0.0):
+        return self.friction.grad_x(x[:, : self.dim_x])
 
     @property
-    def coefficients_force(self):
+    def coefficients(self):
         """Access the coefficients"""
-        return self._coefficients[: self._n_coeffs_force]
+        return np.concatenate((self._force.coefficients.ravel(), self._diffusion.coefficients.ravel(), self._friction.coefficients.ravel()))
 
-    @coefficients_force.setter
-    def coefficients_force(self, vals):
+    @coefficients.setter
+    def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
-        self._coefficients[: self._n_coeffs_force] = vals.ravel()
+        self._force.coefficients = vals.ravel()[: self._n_coeffs_force]
+        self._diffusion.coefficients = vals.ravel()[self._n_coeffs_force : self._n_coeffs_force + self._n_coeffs_diffusion]
+        self._friction.coefficients = vals.ravel()[self._n_coeffs_force + self._n_coeffs_diffusion :]
 
     @property
-    def coefficients_diffusion(self):
-        """Access the coefficients"""
-        return self._coefficients[self._n_coeffs_force :]
+    def coefficients_friction(self):
+        return self._force.coefficients
 
-    @coefficients_diffusion.setter
-    def coefficients_diffusion(self, vals):
-        """Set parameters, used by fitter to move through param space"""
-        self._coefficients[self._n_coeffs_force :] = vals.ravel()
+    @coefficients_friction.setter
+    def coefficients_friction(self, vals):
+        self._friction.coefficients = vals
 
-    def force_jac_coeffs(self, x, t: float = 0.0):
-        """
-        Jacobian of the force with respect to coefficients
-        """
-        raise NotImplementedError
-
-    def diffusion_jac_coeffs(self, x, t: float = 0.0):
-        """
-        Jacobian of the diffusion with respect to coefficients
-        """
-        raise NotImplementedError
-
-    # ==============================
-    # Derivatives (Numerical By Default)
-    # ==============================
-
-    def force_x(self, x, t: float = 0.0):
-        """Calculate first spatial derivative of force, dmu/dx"""
-        return (self.force(x + self.h, t) - self.force(x - self.h, t)) / (2 * self.h)
-
-    def force_t(self, x, t: float = 0.0):
-        """Calculate first time derivative of force, dmu/dt"""
-        return (self.force(x, t + self.h) - self.force(x, t)) / self.h
-
-    def force_xx(self, x, t: float = 0.0):
-        """Calculate second spatial derivative of force, d^2mu/dx^2"""
-        return (self.force(x + self.h, t) - 2 * self.force(x, t) + self.force(x - self.h, t)) / (self.h * self.h)
-
-    def diffusion_x(self, x, t: float = 0.0):
-        """Calculate first spatial derivative of diffusion term, dsigma/dx"""
-        return (self.diffusion(x + self.h, t) - self.diffusion(x - self.h, t)) / (2 * self.h)
-
-    def diffusion_xx(self, x, t: float = 0.0):
-        """Calculate second spatial derivative of diffusion term, d^2sigma/dx^2"""
-        return (self.diffusion(x + self.h, t) - 2 * self.diffusion(x, t) + self.diffusion(x - self.h, t)) / (self.h * self.h)
+    def is_linear(self):
+        return self._force.is_linear and self.friction.is_linear and self.diffusion.is_linear

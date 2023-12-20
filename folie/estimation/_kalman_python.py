@@ -4,7 +4,7 @@ Somes utilities function
 import numpy as np
 
 
-def filter_kalman(mutm, Sigtm, Xt, mutilde_tm, expAh, SST, dim_x, dim_h):
+def filter_kalman(mutm, Sigtm, Xt, mutilde_tm, R, SST, dim_x, dim_h):
     """
     Compute the foward step using Kalman filter, predict and update step
 
@@ -12,18 +12,18 @@ def filter_kalman(mutm, Sigtm, Xt, mutilde_tm, expAh, SST, dim_x, dim_h):
     ----------
     mutm, Sigtm: Values of the foward distribution at t-1
     Xt, mutilde_tm: Values of the trajectories at T and t-1
-    expAh, SST: Coefficients parameters["expA"][:, dim_x:] (dim_x+dim_h, dim_h) and SS^T (dim_x+dim_h, dim_x+dim_h)
+    R, SST: Coefficients friction (dim_x+dim_h, dim_h) and diffusion (dim_x+dim_h, dim_x+dim_h)
     dim_x,dim_h: Dimension of visibles and hidden variables
     """
     # Predict step marginalization Normal Gaussian
-    mutemp = mutilde_tm + np.matmul(expAh, mutm)
-    Sigtemp = SST + np.matmul(expAh, np.matmul(Sigtm, expAh.T))
+    mutemp = mutilde_tm + np.matmul(R, mutm)
+    Sigtemp = SST + np.matmul(R, np.matmul(Sigtm, R.T))
     # Update step conditionnal Normal Gaussian
     invSYY = np.linalg.inv(Sigtemp[:dim_x, :dim_x])
     marg_mu = mutemp[dim_x:] + np.matmul(Sigtemp[dim_x:, :dim_x], np.matmul(invSYY, Xt - mutemp[:dim_x]))
     marg_sig = Sigtemp[dim_x:, dim_x:] - np.matmul(Sigtemp[dim_x:, :dim_x], np.matmul(invSYY, Sigtemp[dim_x:, :dim_x].T))
     marg_sig = 0.5 * marg_sig + 0.5 * marg_sig.T  # Enforce symmetry
-    R = expAh[dim_x:, :] - np.matmul(Sigtemp[dim_x:, :dim_x], np.matmul(invSYY, expAh[:dim_x, :]))
+    R = R[dim_x:, :] - np.matmul(Sigtemp[dim_x:, :dim_x], np.matmul(invSYY, R[:dim_x, :]))
     # Pair probability distibution Z_t,Z_{t-1}
     mu_pair = np.hstack((marg_mu, mutm))
     Sig_pair = np.zeros((2 * dim_h, 2 * dim_h))
@@ -35,16 +35,16 @@ def filter_kalman(mutm, Sigtm, Xt, mutilde_tm, expAh, SST, dim_x, dim_h):
     return marg_mu, marg_sig, mu_pair, Sig_pair
 
 
-def smoothing_rauch(muft, Sigft, muStp, SigStp, Xtplus, mutilde_t, expAh, SST, dim_x, dim_h):
+def smoothing_rauch(muft, Sigft, muStp, SigStp, Xtplus, mutilde_t, R, SST, dim_x, dim_h):
     """
     Compute the backward step using Kalman smoother
     """
 
-    invTemp = np.linalg.inv(SST + np.matmul(expAh, np.matmul(Sigft, expAh.T)))
-    R = np.matmul(np.matmul(Sigft, expAh.T), invTemp)
+    invTemp = np.linalg.inv(SST + np.matmul(R, np.matmul(Sigft, R.T)))
+    R = np.matmul(np.matmul(Sigft, R.T), invTemp)
 
-    mu_dym_rev = muft + np.matmul(R[:, :dim_x], Xtplus) - np.matmul(R, np.matmul(expAh, muft) + mutilde_t)
-    Sig_dym_rev = Sigft - np.matmul(np.matmul(R, expAh), Sigft)
+    mu_dym_rev = muft + np.matmul(R[:, :dim_x], Xtplus) - np.matmul(R, np.matmul(R, muft) + mutilde_t)
+    Sig_dym_rev = Sigft - np.matmul(np.matmul(R, R), Sigft)
 
     marg_mu = mu_dym_rev + np.matmul(R[:, dim_x:], muStp)
     marg_sig = np.matmul(R[:, dim_x:], np.matmul(SigStp, R[:, dim_x:].T)) + Sig_dym_rev

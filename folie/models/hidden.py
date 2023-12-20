@@ -1,4 +1,5 @@
 from .overdamped import OverdampedFunctions
+from .underdamped import UnderdampedFunctions
 import numpy as np
 
 
@@ -19,19 +20,32 @@ class OverdampedHidden(OverdampedFunctions):
 
     """
 
-    def __init__(self, force, friction, diffusion, dim_x=1, dim_h=0, **kwargs):
-        super().__init__(force, diffusion, dim=dim_x + dim_h)
+    def __init__(self, force, friction, diffusion, dim=1, dim_h=0, **kwargs):
+        super().__init__(force, diffusion, dim=dim + dim_h)
         self.dim_h = dim_h
-        self.dim_x = dim_x
+        self.dim_x = dim
         self.dim = self.dim_x + self.dim_h
         self._friction = friction.reshape((self.dim, self.dim_h))
-        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_force)))
+        self._n_coeffs_friction = self._friction.size
+        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion), np.ones(self._n_coeffs_friction)))
 
     def force(self, x, t: float = 0.0):
         return self._force(x[:, : self.dim_x]) + np.einsum("tdh,th-> td", self.friction(x[:, : self.dim_x]), x[:, self.dim_x :])
 
     def force_x(self, x, t: float = 0.0):
         return self._force.grad_x(x[:, : self.dim_x]) + np.einsum("tdhe,th-> tde", self.friction.grad_x(x[:, : self.dim_x]), x[:, self.dim_x :])
+
+    def force_visible_part(self, x, t: float = 0.0):
+        return self._force(x[:, : self.dim_x])
+
+    def force_visible_part_x(self, x, t: float = 0.0):
+        return self._force.grad_x(x[:, : self.dim_x])
+
+    def friction(self, x, t: float = 0.0):
+        return self._friction(x[:, : self.dim_x])
+
+    def friction_x(self, x, t: float = 0.0):
+        return self._friction.grad_x(x[:, : self.dim_x])
 
     @property
     def coefficients(self):
@@ -54,4 +68,15 @@ class OverdampedHidden(OverdampedFunctions):
         self._friction.coefficients = vals
 
     def is_linear(self):
-        return True
+        return self._force.is_linear and self.friction.is_linear and self.diffusion.is_linear
+
+
+class UnderdampedHidden(UnderdampedFunctions):
+    """
+    TODO: A class that implement an underdamped model with some extras hidden variables linearly correlated with visible ones
+    """
+
+    def __init__(self, force, friction, diffusion, dim=1, dim_h=0, **kwargs):
+        super().__init__(force, diffusion, dim=dim + dim_h)
+        self.dim_h = dim_h
+        self.dim_x = dim
