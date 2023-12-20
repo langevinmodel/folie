@@ -11,7 +11,7 @@ authors = [
     {name = 'Line Mouaffac'},
     {name = 'Léon Huet'},
     {name = 'Arthur France-Lanord'},
-    {name = 'Jérome Hénin'},
+    {name = 'Jérôme Hénin'},
     {name = 'Fabio Pietrucci'}
 ]
 requires-python = ">= 3.7"
