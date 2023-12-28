@@ -294,11 +294,11 @@ class OverdampedFunctions(ModelOverdamped):
 
     def __init__(self, force, diffusion=None, dim=1, **kwargs):
         super().__init__()
-        self._force = force.reshape((dim,), force_reshape=True)
+        self._force = force.resize((dim,))
         if diffusion is None:
-            self._diffusion = force.copy().reshape((dim, dim), force_reshape=True)
+            self._diffusion = force.copy().resize((dim, dim))
         else:
-            self._diffusion = diffusion.reshape((dim, dim), force_reshape=True)
+            self._diffusion = diffusion.resize((dim, dim))
         self._n_coeffs_force = self._force.size
         self._n_coeffs_diffusion = self._diffusion.size
         self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_force)))

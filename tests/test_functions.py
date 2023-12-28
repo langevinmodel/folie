@@ -4,85 +4,86 @@ import folie as fl
 
 
 @pytest.mark.parametrize(
-    "fct,parameters,expected",
+    "fct,parameters",
     [
-        (fl.functions.Constant, {}, 1),
-        (fl.functions.Linear, {}, 1),
-        (fl.functions.BSplinesFunction, {"knots": 7}, 7),
+        (fl.functions.Constant, {}),
+        (fl.functions.Linear, {}),
+        (fl.functions.BSplinesFunction, {"knots": 7}),
     ],
 )
-def test_functions(fct, parameters, expected):
+def test_functions(fct, parameters):
     data = np.linspace(-1, 1, 25).reshape(-1, 1)
-    fun = fct(**parameters).fit(data).one()
+    fun = fct(**parameters).fit(data)
 
     assert fun(data).shape == (25,)
 
     assert fun.grad_x(data).shape == (25, 1)
 
-    assert fun.grad_coeffs(data).shape == (25, expected)
+    assert fun.grad_coeffs(data).shape == (25, fun.size)
 
 
 @pytest.mark.parametrize(
-    "fct,parameters,expected",
+    "fct,parameters",
     [
-        (fl.functions.Constant, {}, 1),
-        (fl.functions.Linear, {}, 1),
-        (fl.functions.BSplinesFunction, {"knots": 7}, 7),
+        (fl.functions.Constant, {}),
+        (fl.functions.Linear, {}),
+        (fl.functions.BSplinesFunction, {"knots": 7}),
     ],
 )
-def test_functions_ND(fct, parameters, expected):
+def test_functions_ND(fct, parameters):
     data = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun = fct((2,), **parameters).fit(data).one()
+    fun = fct((2,), **parameters).fit(data)
 
     assert fun(data).shape == (12, 2)
 
     assert fun.grad_x(data).shape == (12, 2, 2)
 
-    assert fun.grad_coeffs(data).shape == (12, 2, expected)
+    assert fun.grad_coeffs(data).shape == (12, 2, fun.size)
 
 
 @pytest.mark.parametrize(
-    "fct,parameters,expected",
+    "fct,parameters",
     [
-        (fl.functions.Constant, {}, 1),
-        (fl.functions.Linear, {}, 1),
-        (fl.functions.BSplinesFunction, {"knots": 7}, 7),
+        (fl.functions.Constant, {}),
+        (fl.functions.Linear, {}),
+        (fl.functions.BSplinesFunction, {"knots": 7}),
     ],
 )
-def test_functions_ND_various_dim(fct, parameters, expected):
+def test_functions_ND_various_dim(fct, parameters):
     data = np.linspace(-1, 1, 24).reshape(-1, 3)
-    fun = fct((4,), **parameters).fit(data).one()
+    fun = fct((4,), **parameters).fit(data)
 
     assert fun(data).shape == (8, 4)
 
-    assert fun.grad_x(data).shape == (8, 4, 2)
+    assert fun.grad_x(data).shape == (8, 4, 3)
 
-    assert fun.grad_coeffs(data).shape == (12, 4, expected)
+    assert fun.grad_coeffs(data).shape == (8, 4, fun.size)
 
 
 @pytest.mark.parametrize(
-    "fct,parameters,expected",
+    "fct,parameters",
     [
-        (fl.functions.Constant, {}, 1),
-        (fl.functions.Linear, {}, 1),
+        (fl.functions.Constant, {}),
+        (fl.functions.Linear, {}),
+        (fl.functions.BSplinesFunction, {"knots": 7}),
     ],
 )
-def test_matrix_functions_ND(fct, parameters, expected):
+def test_matrix_functions_ND(fct, parameters):
     data = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun = fct(**parameters).fit(data).reshape((2, 2)).one()
+    fun = fct(**parameters).fit(data).resize((2, 2))
 
     assert fun(data).shape == (12, 2, 2)
 
     assert fun.grad_x(data).shape == (12, 2, 2, 2)
 
-    assert fun.grad_coeffs(data).shape == (12, 2, 2, expected)
+    assert fun.grad_coeffs(data).shape == (12, 2, 2, fun.size)
 
 
 def test_functions_sum():
     data = np.linspace(-1, 1, 25).reshape(-1, 1)
-    fun1 = fl.functions.Linear((1,)).fit(data).zero()
+    fun1 = fl.functions.Linear((1,)).fit(data)
 
-    fun2 = fl.functions.Linear((1,)).fit(data).one()
+    fun2 = fl.functions.Linear((1,)).fit(data)
 
     fun_sum = fun1 + fun2
 
@@ -96,9 +97,9 @@ def test_functions_sum():
 @pytest.mark.skip(reason="Not implemented yet")
 def test_functions_tensor():
     data = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun1 = fl.functions.Linear().fit(data).one()
+    fun1 = fl.functions.Linear().fit(data)
 
-    fun2 = fl.functions.Linear().fit(data).one()
+    fun2 = fl.functions.Linear().fit(data)
 
     fun_ten = fun1 * fun2
 
@@ -112,9 +113,9 @@ def test_functions_tensor():
 @pytest.mark.skip(reason="Change for more complex functions")
 def test_functions_composition():
     data = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun1 = fl.functions.Linear((2,)).fit(data).one()
+    fun1 = fl.functions.Linear((2,)).fit(data)
 
-    fun2 = fl.functions.Linear().fit(data).one()
+    fun2 = fl.functions.Linear().fit(data)
 
     fun_compo = fl.functions.FunctionComposition(fun1, fun2)
 

@@ -16,7 +16,7 @@ class UnderdampedFunctions(OverdampedFunctions):
 
         """
         super().__init__(force, diffusion, dim=dim)
-        self._friction = friction.reshape((self.dim, self.dim))
+        self._friction = friction.resize((self.dim, self.dim))
         self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion), np.ones(self._n_coeffs_friction)))
 
     def friction(self, x, t: float = 0.0):

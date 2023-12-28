@@ -30,6 +30,7 @@ class BSplinesFunction(FunctionFromBasis):
         knots, c, _ = splrep(x_range, y, k=self.k, per=self.periodic)
         self.knots_ = knots
         self._coefficients = c[: -(self.k + 1)]
+        self.n_basis_features_ = len(c[: -(self.k + 1)]) * dim
         return self
 
     def transform(self, x, **kwargs):
@@ -60,4 +61,3 @@ class BSplinesFunction(FunctionFromBasis):
     #     r"""Get the coefficients to evaluate the function to one"""
     #     self._coefficients = np.ones((len(self.knots_) - self.k - 1,) + self.output_shape_)
     #     return self
-

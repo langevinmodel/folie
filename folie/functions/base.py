@@ -3,7 +3,6 @@ import abc
 
 
 from sklearn.base import TransformerMixin
-from sklearn.utils.validation import check_is_fitted
 
 from ..base import _BaseMethodsMixin
 
@@ -17,7 +16,9 @@ class Function(_BaseMethodsMixin, TransformerMixin):
     def __init__(self, output_shape=(), **kwargs):
         if output_shape is None:
             output_shape = ()
-        self.output_shape_ = output_shape
+        self.output_shape_ = np.asarray(output_shape, dtype=int)
+        self.output_size_ = np.prod(self.output_shape_)
+        self._coefficients = None
 
     def resize(self, new_shape):
         """
@@ -32,24 +33,11 @@ class Function(_BaseMethodsMixin, TransformerMixin):
                 If True new zeros coefficients will be added as needed
         """
         self.output_shape_ = new_shape
+        self.output_size_ = np.prod(self.output_shape_)
         return self
 
-    # Force subclasses to implement this
-    @abc.abstractmethod
     def fit(self, x, y=None):
-        """
-        Compute number of output features.
-
-        Parameters
-        ----------
-        x : array-like, shape (n_samples, n_features)
-            The data.
-
-        Returns
-        -------
-        self : instance
-        """
-        raise NotImplementedError
+        return self
 
     @abc.abstractmethod
     def transform(self, x, **kwargs):
@@ -113,7 +101,7 @@ class Function(_BaseMethodsMixin, TransformerMixin):
     @property
     def coefficients(self):
         """Access the coefficients"""
-        return self._coefficients
+        return self._coefficients.ravel()
 
     @coefficients.setter
     def coefficients(self, vals):
@@ -127,7 +115,7 @@ class Function(_BaseMethodsMixin, TransformerMixin):
 
     @property
     def size(self):
-        return len(self._coefficients)
+        return np.size(self._coefficients)
 
     @property
     def shape(self):
@@ -149,14 +137,18 @@ class Function(_BaseMethodsMixin, TransformerMixin):
 class FunctionFromBasis(Function):
     def __init__(self, output_shape=(), basis=None):
         super().__init__(output_shape)
-        if basis is not None:
-            self.basis = basis
+        self.basis = basis
+
+    def fit(self, x, y=None):
+        if self.basis is not None:
+            self.basis.fit(x)
             self.n_basis_features_ = self.basis.n_output_features_
-        self.output_size_ = np.prod(output_shape)
+        self.coefficients = np.zeros((self.n_basis_features_, self.output_size_))
+        return self
 
     def resize(self, new_shape):
-        self._coefficients.resize(new_shape)
-        return super().reshape(new_shape)
+        self._coefficients = np.resize(self._coefficients, (self.n_basis_features_, self.output_size_))
+        return super().resize(new_shape)
 
     @property
     def coefficients(self):
@@ -166,22 +158,18 @@ class FunctionFromBasis(Function):
     @coefficients.setter
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
-        self._coefficients[:] = vals.reshape((self.n_basis_features_, self.output_size_))
-
-    def fit(self, x, y=None):
-        _, dim = x.shape
-        self.input_dim = dim
-        return self
+        self._coefficients = vals.reshape((self.n_basis_features_, self.output_size_))
 
     def transform(self, x, **kwargs):
-        return np.einsum("...d,ld->l...", self.basis(x), self._coefficients)
+        return self.basis(x) @ self._coefficients
 
     def grad_x(self, x, **kwargs):
-        return np.einsum("lde,d...->l...e", self.basis.deriv(x), self._coefficients).reshape(-1, *self.output_shape_)  # A modifier
+        _, dim = x.shape
+        return np.einsum("nbd,bs->nsd", self.basis.deriv(x), self._coefficients).reshape(-1, *self.output_shape_, dim)
 
     def grad_coeffs(self, x, **kwargs):
-        coeff_grad = np.ones_like(self._coefficients)
-        return np.einsum("ld,...d,->l...", self.basis(x), coeff_grad).reshape(-1, *self.output_shape_)  # A modifier
+        grad_coeffs = (np.ones((self.n_basis_features_, 1, 1)) * np.eye(self.output_size_)[None, :, :]).reshape(-1, *self.output_shape_, self.size)
+        return self.basis(x) @ grad_coeffs
 
     @property
     def is_linear(self) -> bool:

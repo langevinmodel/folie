@@ -12,16 +12,18 @@ class Constant(FunctionFromBasis):
 
     def fit(self, x, y=None):
         _, dim = x.shape
+        self.n_basis_features_ = dim
+        self.coefficients = np.ones((self.n_basis_features_, self.output_size_))
         return self
 
     def transform(self, x, **kwargs):
-        return np.einsum("...d,ld->l...", self._coefficients, np.ones_like(x))
+        return np.dot(np.ones_like(x), self._coefficients)
 
     def grad_x(self, x, **kwargs):
-        return np.zeros((x.shape[0],) + self.output_shape_ + (x.shape[1],))
+        return np.zeros((x.shape[0], *self.output_shape_, x.shape[1]))
 
     def grad_coeffs(self, x, **kwargs):
-        return np.ones((x.shape[0],) + self.output_shape_ + (1,))
+        return np.ones((x.shape[0], *self.output_shape_, self.size))
 
 
 class Linear(FunctionFromBasis):
@@ -34,14 +36,18 @@ class Linear(FunctionFromBasis):
 
     def fit(self, x, y=None):
         _, dim = x.shape
-        self.define_output_shape(dim)
+        self.n_basis_features_ = dim
+        self.coefficients = np.ones((self.n_basis_features_, self.output_size_))
         return self
 
     def transform(self, x, **kwargs):
-        return np.einsum("...d,ld->l...", self._coefficients, x)
+        return x @ self._coefficients
 
     def grad_x(self, x, **kwargs):
-        return np.zeros_like(x)
+        len, dim = x.shape
+        x_grad = np.ones((len, 1, 1)) * np.eye(dim)[None, :, :]
+        return np.einsum("nbd,bs->nsd", x_grad, self._coefficients).reshape(-1, *self.output_shape_, dim)
 
     def grad_coeffs(self, x, **kwargs):
-        return np.ones_like(x)
+        grad_coeffs = (np.ones((self.n_basis_features_, 1, 1)) * np.eye(self.output_size_)[None, :, :]).reshape(-1, *self.output_shape_, self.size)
+        return x @ grad_coeffs
