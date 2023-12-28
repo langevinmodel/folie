@@ -1,9 +1,9 @@
-from .base import Function
+from .base import FunctionFromBasis
 import numpy as np
 from scipy.interpolate import splev, splrep
 
 
-class BSplinesFunction(Function):
+class BSplinesFunction(FunctionFromBasis):
     """
     A function that use a set of B-splines
     """
@@ -51,17 +51,13 @@ class BSplinesFunction(Function):
             features[:, istart:iend] = splev(x, (self.knots_, coeffs, self.k))
         return features
 
-    def zero(self):
-        r"""Get the coefficients to evaluate the function to zero."""
-        self._coefficients = np.zeros((len(self.knots_) - self.k - 1,) + self.output_shape_)
-        return self
+    # def zero(self):
+    #     r"""Get the coefficients to evaluate the function to zero."""
+    #     self._coefficients = np.zeros((len(self.knots_) - self.k - 1,) + self.output_shape_)
+    #     return self
 
-    def one(self):
-        r"""Get the coefficients to evaluate the function to one"""
-        self._coefficients = np.ones((len(self.knots_) - self.k - 1,) + self.output_shape_)
-        return self
+    # def one(self):
+    #     r"""Get the coefficients to evaluate the function to one"""
+    #     self._coefficients = np.ones((len(self.knots_) - self.k - 1,) + self.output_shape_)
+    #     return self
 
-    @property
-    def is_linear(self) -> bool:
-        """Return True is the model is linear in its parameters"""
-        return True

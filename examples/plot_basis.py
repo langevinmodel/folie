@@ -20,7 +20,14 @@ x_range = np.linspace(-2, 2, 30).reshape(-1, 1)
 
 t, c, k = splrep(x_range, x_range**4 - 2 * x_range**2 + 0.5 * x_range)
 
-basis_set = {"Linear": bf.Linear(), "Polynom": bf.Polynomial(3), "Hermite Polynom": bf.Polynomial(3, np.polynomial.Hermite), "Fourier": bf.Fourier(order=2, freq=1.0), "B Splines": bf.BSplines(6, k=3), "Splines Fct": bf.SplineFct(t, c, k)}
+basis_set = {
+    "Linear": bf.Linear(),
+    "Polynom": bf.Polynomial(3),
+    "Hermite Polynom": bf.Polynomial(3, np.polynomial.Hermite),
+    "Fourier": bf.Fourier(order=2, freq=1.0),
+    "B Splines": bf.BSplines(6, k=3),
+    "Splines Fct": bf.SplineFct(t, c, k),
+}
 for key, basis in basis_set.items():
     basis.fit(x_range)
 

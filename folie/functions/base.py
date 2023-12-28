@@ -1,11 +1,5 @@
-"""
-The code in this file is adapted from deeptime (https://github.com/deeptime-ml/deeptime/blob/main/deeptime/base.py)
-"""
-
 import numpy as np
 import abc
-
-import collections
 
 
 from sklearn.base import TransformerMixin
@@ -25,7 +19,7 @@ class Function(_BaseMethodsMixin, TransformerMixin):
             output_shape = ()
         self.output_shape_ = output_shape
 
-    def reshape(self, new_shape, force_reshape=False):
+    def resize(self, new_shape):
         """
         Change the output shape of the function.
 
@@ -38,6 +32,7 @@ class Function(_BaseMethodsMixin, TransformerMixin):
                 If True new zeros coefficients will be added as needed
         """
         self.output_shape_ = new_shape
+        return self
 
     # Force subclasses to implement this
     @abc.abstractmethod
@@ -103,14 +98,6 @@ class Function(_BaseMethodsMixin, TransformerMixin):
             The gradient
         """
 
-    @abc.abstractmethod
-    def zero(self):
-        r"""Get the coefficients to evaluate the function to zero."""
-
-    @abc.abstractmethod
-    def one(self):
-        r"""Get the coefficients to evaluate the function to one"""
-
     def __call__(self, x, *args, **kwargs):
         return self.transform(x, *args, **kwargs).reshape(-1, *self.output_shape_)
 
@@ -144,7 +131,6 @@ class Function(_BaseMethodsMixin, TransformerMixin):
 
     @property
     def shape(self):
-        check_is_fitted(self)
         return self.output_shape_
 
     def copy(self):
@@ -158,6 +144,49 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         import copy
 
         return copy.deepcopy(self)
+
+
+class FunctionFromBasis(Function):
+    def __init__(self, output_shape=(), basis=None):
+        super().__init__(output_shape)
+        if basis is not None:
+            self.basis = basis
+            self.n_basis_features_ = self.basis.n_output_features_
+        self.output_size_ = np.prod(output_shape)
+
+    def resize(self, new_shape):
+        self._coefficients.resize(new_shape)
+        return super().reshape(new_shape)
+
+    @property
+    def coefficients(self):
+        """Access the coefficients"""
+        return self._coefficients.ravel()
+
+    @coefficients.setter
+    def coefficients(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        self._coefficients[:] = vals.reshape((self.n_basis_features_, self.output_size_))
+
+    def fit(self, x, y=None):
+        _, dim = x.shape
+        self.input_dim = dim
+        return self
+
+    def transform(self, x, **kwargs):
+        return np.einsum("...d,ld->l...", self.basis(x), self._coefficients)
+
+    def grad_x(self, x, **kwargs):
+        return np.einsum("lde,d...->l...e", self.basis.deriv(x), self._coefficients).reshape(-1, *self.output_shape_)  # A modifier
+
+    def grad_coeffs(self, x, **kwargs):
+        coeff_grad = np.ones_like(self._coefficients)
+        return np.einsum("ld,...d,->l...", self.basis(x), coeff_grad).reshape(-1, *self.output_shape_)  # A modifier
+
+    @property
+    def is_linear(self) -> bool:
+        """Return True is the model is linear in its parameters"""
+        return True
 
 
 class FunctionSum(Function):
@@ -194,14 +223,6 @@ class FunctionSum(Function):
 
     def grad_coeffs(self, X, **kwargs):
         return np.concatenate([fu.grad_coeffs(X) for fu in self.functions_set], axis=1)
-
-    def zero(self):
-        for fu in self.functions_set:
-            fu.zero()
-
-    def one(self):
-        for fu in self.functions_set:
-            fu.one()
 
     @property
     def coefficients(self):
@@ -294,14 +315,6 @@ class FunctionComposition(Function):
         transformed : array_like
             The transformed data
         """
-
-    @classmethod
-    def zero(cls):
-        r"""Get the coefficients to evaluate the function to zero."""
-
-    @classmethod
-    def one(cls):
-        r"""Get the coefficients to evaluate the function to one"""
 
 
 class FunctionTensored(Function):

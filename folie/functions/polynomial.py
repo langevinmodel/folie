@@ -1,12 +1,8 @@
-"""
-The code in this file is adapted from deeptime (https://github.com/deeptime-ml/deeptime/blob/main/deeptime/base.py)
-"""
-
 import numpy as np
-from .base import Function
+from .base import FunctionFromBasis
 
 
-class Constant(Function):
+class Constant(FunctionFromBasis):
     """
     A function that return a constant value
     """
@@ -19,31 +15,16 @@ class Constant(Function):
         return self
 
     def transform(self, x, **kwargs):
-        return self.coefficients * np.ones_like(x)
+        return np.einsum("...d,ld->l...", self._coefficients, np.ones_like(x))
 
     def grad_x(self, x, **kwargs):
-        return np.zeros_like(x)
+        return np.zeros((x.shape[0],) + self.output_shape_ + (x.shape[1],))
 
     def grad_coeffs(self, x, **kwargs):
-        return np.ones_like(x)
-
-    def zero(self):
-        r"""Set the coefficients to evaluate the function to zero."""
-        self._coefficients = np.zeros((1,) + self.output_shape_)
-        return self
-
-    def one(self):
-        r"""Get the coefficients to evaluate the function to one"""
-        self._coefficients = np.ones((1,) + self.output_shape_)
-        return self
-
-    @property
-    def is_linear(self) -> bool:
-        """Return True is the model is linear in its parameters"""
-        return True
+        return np.ones((x.shape[0],) + self.output_shape_ + (1,))
 
 
-class Linear(Function):
+class Linear(FunctionFromBasis):
     """
     The linear function f(x) = c x
     """
@@ -57,25 +38,10 @@ class Linear(Function):
         return self
 
     def transform(self, x, **kwargs):
-        return self.coefficients * np.ones_like(x)
+        return np.einsum("...d,ld->l...", self._coefficients, x)
 
     def grad_x(self, x, **kwargs):
         return np.zeros_like(x)
 
     def grad_coeffs(self, x, **kwargs):
         return np.ones_like(x)
-
-    def zero(self):
-        r"""Set the coefficients to evaluate the function to zero."""
-        self._coefficients = np.zeros((1,) + self.output_shape_)
-        return self
-
-    def one(self):
-        r"""Get the coefficients to evaluate the function to one"""
-        self._coefficients = np.ones((1,) + self.output_shape_)
-        return self
-
-    @property
-    def is_linear(self) -> bool:
-        """Return True is the model is linear in its parameters"""
-        return True
