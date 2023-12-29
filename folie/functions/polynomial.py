@@ -11,7 +11,7 @@ class Constant(FunctionFromBasis):
         super().__init__(output_shape)
 
     def fit(self, x, y=None):
-        _, dim = x.shape
+        dim = x.dim
         self.n_basis_features_ = dim
         self.coefficients = np.ones((self.n_basis_features_, self.output_size_))
         return self
@@ -35,7 +35,7 @@ class Linear(FunctionFromBasis):
         super().__init__(output_shape)
 
     def fit(self, x, y=None):
-        _, dim = x.shape
+        dim = x.dim
         self.n_basis_features_ = dim
         self.coefficients = np.ones((self.n_basis_features_, self.output_size_))
         return self
@@ -49,5 +49,5 @@ class Linear(FunctionFromBasis):
         return np.einsum("nbd,bs->nsd", x_grad, self._coefficients).reshape(-1, *self.output_shape_, dim)
 
     def grad_coeffs(self, x, **kwargs):
-        grad_coeffs = (np.ones((self.n_basis_features_, 1, 1)) * np.eye(self.output_size_)[None, :, :]).reshape(-1, *self.output_shape_, self.size)
-        return x @ grad_coeffs
+        grad_coeffs = np.eye(self.size).reshape(self.n_basis_features_, *self.output_shape_, self.size)
+        return np.tensordot(x, grad_coeffs, axes=1)

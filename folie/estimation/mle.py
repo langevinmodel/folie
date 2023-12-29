@@ -170,9 +170,7 @@ class EMEstimator(LikelihoodEstimator):
         verbose_interval=10,
         **kwargs,
     ):
-        super().__init__(transition.model)
-
-        self.transition = transition
+        super().__init__(transition)
         self.verbose = verbose
         self.verbose_interval = verbose_interval
 

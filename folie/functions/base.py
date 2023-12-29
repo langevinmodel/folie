@@ -147,8 +147,9 @@ class FunctionFromBasis(Function):
         return self
 
     def resize(self, new_shape):
+        super().resize(new_shape)
         self._coefficients = np.resize(self._coefficients, (self.n_basis_features_, self.output_size_))
-        return super().resize(new_shape)
+        return self
 
     @property
     def coefficients(self):
@@ -168,8 +169,8 @@ class FunctionFromBasis(Function):
         return np.einsum("nbd,bs->nsd", self.basis.deriv(x), self._coefficients).reshape(-1, *self.output_shape_, dim)
 
     def grad_coeffs(self, x, **kwargs):
-        grad_coeffs = (np.ones((self.n_basis_features_, 1, 1)) * np.eye(self.output_size_)[None, :, :]).reshape(-1, *self.output_shape_, self.size)
-        return self.basis(x) @ grad_coeffs
+        grad_coeffs = np.eye(self.size).reshape(self.n_basis_features_, *self.output_shape_, self.size)
+        return np.tensordot(x, grad_coeffs, axes=1)
 
     @property
     def is_linear(self) -> bool:

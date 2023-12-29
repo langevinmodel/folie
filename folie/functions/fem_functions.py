@@ -13,7 +13,7 @@ class FiniteElementFunction(FunctionFromBasis):
         self.basis = basis
 
     def fit(self, x, y=None):
-        _, dim = x.shape
+        dim = x.dim
         self.n_basis_features_ = self.basis.N
         self.coefficients = np.zeros((self.n_basis_features_, self.output_size_))
         return self
@@ -27,6 +27,5 @@ class FiniteElementFunction(FunctionFromBasis):
         return np.einsum("nbd,bs->nsd", np.ones_like(x), self._coefficients).reshape(-1, *self.output_shape_, dim)
 
     def grad_coeffs(self, x, **kwargs):
-        #  Changer ke ones_like pour avoir le gradient
-        grad_coeffs = (np.ones((self.n_basis_features_, 1, 1)) * np.eye(self.output_size_)[None, :, :]).reshape(-1, *self.output_shape_, self.size)
-        return self.basis.probes(x) @ grad_coeffs
+        grad_coeffs = np.eye(self.size).reshape(self.n_basis_features_, *self.output_shape_, self.size)
+        return np.tensordot(self.basis.probes(x), grad_coeffs, axes=1)

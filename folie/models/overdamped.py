@@ -301,7 +301,7 @@ class OverdampedFunctions(ModelOverdamped):
             self._diffusion = diffusion.resize((dim, dim))
         self._n_coeffs_force = self._force.size
         self._n_coeffs_diffusion = self._diffusion.size
-        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_force)))
+        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion)))
         # Il faudrait réassigner alors le big array aux functions pour qu'on aie un seul espace mémoire
 
     def force(self, x, t: float = 0.0):
