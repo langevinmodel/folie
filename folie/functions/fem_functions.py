@@ -1,6 +1,6 @@
 from .base import FunctionFromBasis
 import numpy as np
-import skfem
+from ..data import Trajectories, traj_stats
 
 
 class FiniteElementFunction(FunctionFromBasis):
@@ -13,7 +13,11 @@ class FiniteElementFunction(FunctionFromBasis):
         self.basis = basis
 
     def fit(self, x, y=None):
-        dim = x.dim
+        if isinstance(x, Trajectories):
+            xstats = x.stats
+        else:
+            xstats = traj_stats(x)
+        dim = xstats.dim
         self.n_basis_features_ = self.basis.N
         self.coefficients = np.zeros((self.n_basis_features_, self.output_size_))
         return self

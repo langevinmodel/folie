@@ -1,5 +1,6 @@
 import numpy as np
 from .base import FunctionFromBasis
+from ..data import Trajectories, traj_stats
 
 
 class Constant(FunctionFromBasis):
@@ -11,7 +12,11 @@ class Constant(FunctionFromBasis):
         super().__init__(output_shape)
 
     def fit(self, x, y=None):
-        dim = x.dim
+        if isinstance(x, Trajectories):
+            xstats = x.stats
+        else:
+            xstats = traj_stats(x)
+        dim = xstats.dim
         self.n_basis_features_ = dim
         self.coefficients = np.ones((self.n_basis_features_, self.output_size_))
         return self
@@ -35,7 +40,11 @@ class Linear(FunctionFromBasis):
         super().__init__(output_shape)
 
     def fit(self, x, y=None):
-        dim = x.dim
+        if isinstance(x, Trajectories):
+            xstats = x.stats
+        else:
+            xstats = traj_stats(x)
+        dim = xstats.dim
         self.n_basis_features_ = dim
         self.coefficients = np.ones((self.n_basis_features_, self.output_size_))
         return self

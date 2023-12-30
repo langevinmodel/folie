@@ -185,18 +185,18 @@ class FunctionSum(Function):
 
     def __init__(self, functions):
         self.functions_set = functions
-
+        self.output_shape_ = self.functions_set[0].output_shape_
+        for fu in self.functions_set:
+            if fu.output_shape_ != self.output_shape_:
+                raise ValueError("Cannot sum function with different output shape")
+        self.output_size_ = np.prod(self.output_shape_)
         # Do some samity check on the output of each functions
 
-    def fit(self, data):
+    def resize(self, new_shape):
+        super().resize(new_shape)
         for fu in self.functions_set:
-            fu.fit(data)
-        self.n_output_features_ = np.sum([fu.n_output_features_ for fu in self.functions_set])
-        self.dim_out_basis = 1
+            fu.resize(new_shape)
         return self
-
-    def transform(self, X, **kwargs):
-        return np.sum([fu.transform(X) for fu in self.functions_set], axis=1)
 
     def __add__(self, other):
         if type(other) is FunctionSum:
@@ -207,11 +207,21 @@ class FunctionSum(Function):
             self.factors_set.append(1.0)
         return self
 
+    def fit(self, data):
+        for fu in self.functions_set:
+            fu.fit(data)
+        self.n_output_features_ = np.sum([fu.n_output_features_ for fu in self.functions_set])
+        self.dim_out_basis = 1
+        return self
+
+    def transform(self, X, **kwargs):
+        return np.add.reduce([fu.transform(X) for fu in self.functions_set])
+
     def grad_x(self, X, **kwargs):
-        return np.sum([fu.grad_x(X) for fu in self.functions_set])
+        return np.add.reduce([fu.grad_x(X) for fu in self.functions_set])
 
     def grad_coeffs(self, X, **kwargs):
-        return np.concatenate([fu.grad_coeffs(X) for fu in self.functions_set], axis=1)
+        return np.concatenate([fu.grad_coeffs(X) for fu in self.functions_set], axis=-1)
 
     @property
     def coefficients(self):
@@ -221,12 +231,23 @@ class FunctionSum(Function):
     @coefficients.setter
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
-        self._coefficients = vals
+        curr_size = 0
+        for fu in self.functions_set:
+            fu.coefficients = vals.ravel[curr_size : curr_size + fu.size]
+            curr_size += fu.size
 
     @property
     def is_linear(self) -> bool:
         """Return True is the model is linear in its parameters"""
         return False
+
+    @property
+    def size(self):
+        return np.sum([fu.size for fu in self.functions_set])
+
+    @property
+    def shape(self):
+        return self.functions_set[0].output_shape_
 
 
 class FunctionComposition(Function):
