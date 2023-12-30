@@ -28,6 +28,16 @@ def test_likelihood_bf(data, request, benchmark, transitioncls):
 
 
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize("transitioncls", [fl.EulerDensity, fl.OzakiDensity, fl.ShojiOzakiDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
+def test_likelihood_functions(data, request, benchmark, transitioncls):
+    fun = fl.functions.Linear().fit(data)
+    model = fl.models.OverdampedFunctions(fun, fun.copy())
+    transition = transitioncls(model)
+    loglikelihood = benchmark(transition, data.weights[0], data[0], np.array([1.0, 1.0]))
+    assert len(loglikelihood) == 1
+
+
+@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 def test_numba_optimized(data, request, benchmark):
     n_knots = 20
     epsilon = 1e-10

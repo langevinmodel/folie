@@ -32,7 +32,7 @@ class Function(_BaseMethodsMixin, TransformerMixin):
                 Whatever to force reshape if current shape of coefficients is incompatible with new shape
                 If True new zeros coefficients will be added as needed
         """
-        self.output_shape_ = new_shape
+        self.output_shape_ = np.asarray(new_shape, dtype=int)
         self.output_size_ = np.prod(self.output_shape_)
         return self
 

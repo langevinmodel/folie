@@ -292,13 +292,19 @@ class OverdampedFunctions(ModelOverdamped):
     A class that implement a overdamped model with given functions for space dependency
     """
 
-    def __init__(self, force, diffusion=None, dim=1, **kwargs):
+    def __init__(self, force, diffusion=None, dim=0, **kwargs):
         super().__init__()
-        self._force = force.resize((dim,))
-        if diffusion is None:
-            self._diffusion = force.copy().resize((dim, dim))
+        if dim >= 1:
+            force_shape = (dim,)
+            diffusion_shape = (dim, dim)
         else:
-            self._diffusion = diffusion.resize((dim, dim))
+            force_shape = ()
+            diffusion_shape = ()
+        self._force = force.resize(force_shape)
+        if diffusion is None:
+            self._diffusion = force.copy().resize(diffusion_shape)
+        else:
+            self._diffusion = diffusion.resize(diffusion_shape)
         self._n_coeffs_force = self._force.size
         self._n_coeffs_diffusion = self._diffusion.size
         self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion)))

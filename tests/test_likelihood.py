@@ -29,6 +29,29 @@ def test_likelihood_bf(data, request, transitioncls):
     assert len(loglikelihood) == 1
 
 
+@pytest.mark.skip(reason="Not implemented yet")
+@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize(
+    "transitioncls",
+    [
+        fl.EulerDensity,
+    ],
+)
+def testlikelihood_derivative(data, request, transitioncls):
+    bf = fl.function_basis.Linear().fit(data)
+    model = fl.models.OverdampedBF(bf)
+    transition = transitioncls(model)
+    transition.preprocess_traj(data[0])
+    loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
+    assert len(loglikelihood) == 2
+
+    assert loglikelihood[1].shape == (len(model.coefficients),)
+
+    # Testing for evaluation of the jacobian
+    jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition(data.weights[0], data[0], p)[0], 1e-5)
+    np.testing.assert_allclose(loglikelihood[1], jac)
+
+
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_numba_optimized(data, request):
     n_knots = 20
@@ -45,5 +68,5 @@ def test_numba_optimized(data, request):
     assert loglikelihood[1].shape == (2 * n_knots,)
 
     # Testing for evaluation of the jacobian
-    jac = scipy.optimize.approx_fprime(coeffs0, lambda p: transition(data.weights[0], data[0], p)[0], 1e-8)
+    jac = scipy.optimize.approx_fprime(coeffs0, lambda p: transition(data.weights[0], data[0], p)[0], 1e-9)
     np.testing.assert_allclose(loglikelihood[1], jac)

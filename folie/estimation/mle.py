@@ -191,6 +191,8 @@ class EMEstimator(LikelihoodEstimator):
         if minimizer is None:
             coefficients = np.asarray(coefficients0)
             minimizer = minimize
+        if coefficients0 is None:
+            coefficients0 = self.transition._model.coefficients
 
         # if we enable warm_start, we will have a unique initialisation
         do_init = not (self.warm_start and hasattr(self, "converged_"))
@@ -283,6 +285,12 @@ class EMEstimator(LikelihoodEstimator):
         self.n_best_init_ = best_n_init
         self.lower_bound_ = max_lower_bound
         self._print_verbose_msg_fit_end(max_lower_bound, best_n_init, best_n_iter)
+
+    def _initialize_parameters(self, coefficients0):
+        """
+        Random initialisation of the parameters
+        """
+        return coefficients0
 
     def _log_likelihood_negative(self, coefficients, data, **kwargs):
         return self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)[0]

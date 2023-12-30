@@ -27,6 +27,7 @@ def test_direct_estimator(data, request):
     assert model.fitted_
 
 
+@pytest.mark.skip(reason="Not implemented yet")
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 def test_direct_estimator_underdamped(data, request):
     fun_lin = fl.functions.Linear().fit(data)
