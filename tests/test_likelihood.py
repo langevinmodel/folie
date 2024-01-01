@@ -19,7 +19,7 @@ def data(request):
 
 
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
-@pytest.mark.parametrize("transitioncls", [fl.EulerDensity, fl.OzakiDensity, fl.ShojiOzakiDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
+@pytest.mark.parametrize("transitioncls", [fl.OzakiDensity, fl.ShojiOzakiDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
 def test_likelihood_bf(data, request, transitioncls):
     bf = fl.function_basis.Linear().fit(data)
     model = fl.models.OverdampedBF(bf)
@@ -29,7 +29,6 @@ def test_likelihood_bf(data, request, transitioncls):
     assert len(loglikelihood) == 1
 
 
-@pytest.mark.skip(reason="Not implemented yet")
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 @pytest.mark.parametrize(
     "transitioncls",
@@ -38,18 +37,17 @@ def test_likelihood_bf(data, request, transitioncls):
     ],
 )
 def testlikelihood_derivative(data, request, transitioncls):
-    bf = fl.function_basis.Linear().fit(data)
-    model = fl.models.OverdampedBF(bf)
+    fun_lin = fl.functions.Linear().fit(data)
+    model = fl.models.OverdampedFunctions(fun_lin, dim=1)
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])
     loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
     assert len(loglikelihood) == 2
 
     assert loglikelihood[1].shape == (len(model.coefficients),)
-
     # Testing for evaluation of the jacobian
-    jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition(data.weights[0], data[0], p)[0], 1e-5)
-    np.testing.assert_allclose(loglikelihood[1], jac)
+    finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition(data.weights[0], data[0], p)[0])
+    np.testing.assert_allclose(loglikelihood[1], finite_diff_jac, rtol=1e-05)
 
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)

@@ -19,14 +19,14 @@ def data(request):
     return trj_list
 
 
-# @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
-# def test_likelihood_optimization(data, request, benchmark):
-#     bf = fl.function_basis.Linear().fit(data)
-#     model = fl.models.OverdampedBF(bf)
-#     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
-#     fitted_estimator = benchmark(estimator.fit, data, coefficients0=[1.0, 1.0])
-#     model = fitted_estimator.fetch_model()
-#     assert model.fitted_
+@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+def test_likelihood_optimization(data, request, benchmark):
+    bf = fl.function_basis.Linear().fit(data)
+    model = fl.models.OverdampedBF(bf)
+    estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
+    fitted_estimator = benchmark(estimator.fit, data, coefficients0=[1.0, 1.0])
+    model = fitted_estimator.fetch_model()
+    assert model.fitted_
 
 
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
@@ -36,5 +36,16 @@ def test_numba_optimized(data, request, benchmark):
     model = fl.models.OverdampedFreeEnergy(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots), 1.0)
     estimator = fl.LikelihoodEstimator(fl.EulerNumbaOptimizedDensity(model), n_jobs=multiprocessing.cpu_count())
     fitted_estimator = benchmark(estimator.fit, data, coefficients0=np.concatenate((np.zeros(n_knots), np.zeros(n_knots) + 1.0)))
+    model = fitted_estimator.fetch_model()
+    assert model.fitted_
+
+
+@pytest.mark.parametrize("data", ["numpy"], indirect=True)
+def test_em_estimator(data, request, benchmark):
+    fun_lin = fl.functions.Linear().fit(data)
+    fun_cst = fl.functions.Constant().fit(data).resize((3, 3))
+    model = fl.models.OverdampedHidden(fun_lin, fun_lin.copy(), fun_cst, dim=1, dim_h=2)
+    estimator = fl.EMEstimator(fl.EulerDensity(model))
+    fitted_estimator = benchmark(estimator.fit, data)
     model = fitted_estimator.fetch_model()
     assert model.fitted_

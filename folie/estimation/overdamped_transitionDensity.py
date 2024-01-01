@@ -58,9 +58,18 @@ class EulerDensity(TransitionDensity):
             if self._model.dim_h > 0:
                 trj["sig_h"] = np.zeros((trj["x"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
                 trj["x"] = np.concatenate((trj["x"], np.zeros((trj["x"].shape[0], self._model.dim_h))), axis=1)
+                trj["xt"] = np.concatenate((trj["xt"], np.zeros((trj["xt"].shape[0], self._model.dim_h))), axis=1)
         return trj
 
-    def _logdensity(self, x0, xt, t0, dt: float):
+    def __call__(self, weight, trj, coefficients):
+        """
+        Compute Likelihood of one trajectory
+        """
+        self._model.coefficients = coefficients
+        like, jac = self._logdensity(x0=trj["x"], xt=trj["xt"], t0=0.0, dt=trj["dt"])
+        return (-np.sum(np.maximum(self._min_prob, like)) / weight, -np.sum(jac, axis=0) / weight)
+
+    def _logdensity1D(self, x0, xt, t0, dt: float):
         """
         The transition density obtained via Euler expansion
         :param x0: float or array, the current value
@@ -69,9 +78,29 @@ class EulerDensity(TransitionDensity):
         :param dt: float, the time step between x0 and xt
         :return: probability (same dimension as x0 and xt)
         """
+        print(x0.shape, xt.shape)
         sig2t = (self._model.diffusion(x0, t0).ravel()) * 2 * dt
         mut = x0.ravel() + self._model.force(x0, t0).ravel() * dt
         return -((xt.ravel() - mut) ** 2) / sig2t - 0.5 * np.log(np.pi * sig2t)
+
+    def _logdensity(self, x0, xt, t0, dt):
+        """
+        The transition density evaluated at these arguments
+        :param x0: float or array, the current value
+        :param xt: float or array, the value to transition to  (must be same dimension as x0)
+        :param t0: float, the time of at which to evalate the coefficients. Irrelevant For time inhomogenous models
+        :param dt: float, the time step between x0 and xt
+        :return: probability (same dimension as x0 and xt)
+        """
+        E = x0 + self._model.force(x0, t0) * dt
+        V = (self._model.diffusion(x0, t0)) * 2 * dt
+        invV = np.linalg.inv(V)
+        jacV = (self._model.diffusion_jac_coeffs(x0, t0)) * 2 * dt
+        l_jac_E = np.einsum("ti,tij,tjc-> tc", xt - E, invV, self._model.force_jac_coeffs(x0, t0) * dt)
+        l_jac_V = 0.5 * np.einsum("ti,tijc,tj-> tc", xt - E, np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV), xt - E) - 0.5 * np.einsum("tijc,tji->tc", jacV, invV)
+        print(np.min(np.linalg.det(V)), np.sum(-0.5 * np.einsum("ti,tij,tj-> t", xt - E, invV, xt - E) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V))))
+        return -0.5 * np.einsum("ti,tij,tj-> t", xt - E, invV, xt - E) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V)), np.hstack((l_jac_E, l_jac_V))
+        # return -0.5 * np.dot(np.dot(xt - E, np.linalg.inv(V)), xt - E) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V))
 
     def run_step(self, x, dt, dW, t=0.0):
         sig_sq_dt = np.sqrt(self._model.diffusion(x, t) * dt)
@@ -147,16 +176,16 @@ class ShojiOzakiDensity(TransitionDensity):
         sig = np.sqrt(self._model.diffusion(x0, t0).ravel())
         mu = self._model.force(x0, t0).ravel()
 
-        Mt = 0.5 * sig**2 * self._model.force_xx(x0, t0).ravel() + self._model.force_t(x0, t0)
+        Mt = 0.5 * sig ** 2 * self._model.force_xx(x0, t0).ravel() + self._model.force_t(x0, t0)
         Lt = self._model.force_x(x0, t0).ravel()
         if (Lt == 0).any():  # TODO: need to fix this
             B = sig * np.sqrt(dt)
-            A = x0.ravel() + mu * dt + Mt * dt**2 / 2
+            A = x0.ravel() + mu * dt + Mt * dt ** 2 / 2
         else:
             B = sig * np.sqrt((np.exp(2 * Lt * dt) - 1) / (2 * Lt))
 
             elt = np.exp(Lt * dt) - 1
-            A = x0.ravel() + mu / Lt * elt + Mt / (Lt**2) * (elt - Lt * dt)
+            A = x0.ravel() + mu / Lt * elt + Mt / (Lt ** 2) * (elt - Lt * dt)
 
         return -0.5 * ((xt.ravel() - A) / B) ** 2 - 0.5 * np.log(2 * np.pi) - np.log(B)
 
@@ -189,7 +218,7 @@ class ElerianDensity(EulerDensity):
         A = sig * sig_x * dt * 0.5
         B = -0.5 * sig / sig_x + x0.ravel() + mu * dt - A
         z = (xt.ravel() - B) / A
-        C = 1.0 / (sig_x**2 * dt)
+        C = 1.0 / (sig_x ** 2 * dt)
 
         scz = np.sqrt(C * z)
         cpz = -0.5 * (C + z)
@@ -220,10 +249,10 @@ class KesslerDensity(EulerDensity):
         mu_x = self._model.force_x(x0, t0).ravel()
         mu_xx = self._model.force_xx(x0, t0).ravel()
         x0 = x0.ravel()
-        d = dt**2 / 2
+        d = dt ** 2 / 2
         E = x0 + mu * dt + (mu * mu_x + 0.5 * sig * mu_xx) * d
 
-        V = x0**2 + (2 * mu * x0 + sig) * dt + (2 * mu * (mu_x * x0 + mu + 0.5 * sig_x) + sig * (mu_xx * x0 + 2 * mu_x + 0.5 * sig_xx)) * d - E**2
+        V = x0 ** 2 + (2 * mu * x0 + sig) * dt + (2 * mu * (mu_x * x0 + mu + 0.5 * sig_x) + sig * (mu_xx * x0 + 2 * mu_x + 0.5 * sig_xx)) * d - E ** 2
         V = np.abs(V)
         return -0.5 * ((xt.ravel() - E) ** 2 / V) - 0.5 * np.log(np.sqrt(2 * np.pi) * V)
 
@@ -251,7 +280,7 @@ class DrozdovDensity(EulerDensity):
         mu_x = self._model.force_x(x0, t0).ravel()
         mu_xx = self._model.force_xx(x0, t0).ravel()
 
-        d = dt**2 / 2
+        d = dt ** 2 / 2
         E = x0.ravel() + mu * dt + (mu * mu_x + 0.5 * sig * mu_xx) * d
 
         V = sig * dt + (mu * sig_x + 2 * mu_x * sig + sig * sig_xx) * d

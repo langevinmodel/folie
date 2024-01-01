@@ -33,13 +33,19 @@ class OverdampedHidden(OverdampedFunctions):
         self._n_coeffs_force = self._force.size
         self._n_coeffs_diffusion = self._diffusion.size
         self._n_coeffs_friction = self._friction.size
-        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion), np.ones(self._n_coeffs_friction)))
+        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.eye(self.dim).flatten(), np.ones(self._n_coeffs_friction)))
 
     def force(self, x, t: float = 0.0):
         return self._force(x[:, : self.dim_x]) + np.einsum("tdh,th-> td", self.friction(x[:, : self.dim_x]), x[:, self.dim_x :])
 
     def force_x(self, x, t: float = 0.0):
-        return self._force.grad_x(x[:, : self.dim_x]) + np.einsum("tdhe,th-> tde", self.friction.grad_x(x[:, : self.dim_x]), x[:, self.dim_x :])
+        return self._force.grad_x(x[:, : self.dim_x]) + np.einsum("tdhe,th-> tde", self._friction.grad_x(x[:, : self.dim_x]), x[:, self.dim_x :])
+
+    def force_jac_coeffs(self, x, t: float = 0.0):
+        """
+        Jacobian of the force with respect to coefficients
+        """
+        return np.concatenate((self._force.grad_coeffs(x[:, : self.dim_x]), np.einsum("tdhc,th-> tdc", self._friction.grad_coeffs(x[:, : self.dim_x]), x[:, self.dim_x :])), axis=-1)
 
     def force_visible_part(self, x, t: float = 0.0):
         return self._force(x[:, : self.dim_x])
@@ -52,6 +58,12 @@ class OverdampedHidden(OverdampedFunctions):
 
     def friction_x(self, x, t: float = 0.0):
         return self._friction.grad_x(x[:, : self.dim_x])
+
+    def diffusion(self, x, t: float = 0.0):
+        return self._diffusion(x[:, : self.dim_x])
+
+    def diffusion_x(self, x, t: float = 0.0):
+        return self._diffusion.grad_x(x[:, : self.dim_x])
 
     @property
     def coefficients(self):

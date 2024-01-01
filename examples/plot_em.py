@@ -17,13 +17,14 @@ import folie as fl
 # Trouver comment on rentre les données
 trj = np.loadtxt("example_2d.trj")
 data = fl.Trajectories(dt=trj[1, 0] - trj[0, 0])
-for i in range(1, trj.shape[1]):
-    data.append(trj[:, i : i + 1])
+# for i in range(1, trj.shape[1]):
+data.append(trj[:, 1:2])
 
-bf = fl.function_basis.Linear().fit(data)
-model = fl.models.OverdampedBF(bf)
-estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
-model = estimator.fit_fetch(data, coefficients0=[1.0, 1.0])
+fun_lin = fl.functions.Linear().fit(data)
+fun_cst = fl.functions.Constant().fit(data).resize((3, 3))
+model = fl.models.OverdampedHidden(fun_lin, fun_lin.copy(), fun_cst, dim=1, dim_h=2)
+estimator = fl.EMEstimator(fl.EulerDensity(model), max_iter=10, verbose=3, verbose_interval=1)
+model = estimator.fit_fetch(data)
 
 # To find a correct parametrization of the space
 bins = np.histogram_bin_edges(data[0]["x"], bins=15)

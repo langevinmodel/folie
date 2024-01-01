@@ -47,3 +47,19 @@ def test_numba_optimized(data, request, benchmark):
         transition.preprocess_traj(trj)
     loglikelihood = benchmark(transition, data.weights[0], data[0], np.concatenate((np.zeros(n_knots), np.zeros(n_knots) + 1.0)))
     assert len(loglikelihood) == 2
+
+
+@pytest.mark.parametrize("data", ["numpy"], indirect=True)
+def test_likelihood_functions(data, request, benchmark):
+    fun_lin = fl.functions.Linear().fit(data)
+    fun_cst = fl.functions.Constant().fit(data).resize((3, 3))
+    model = fl.models.OverdampedHidden(fun_lin, fun_lin.copy(), fun_cst, dim=1, dim_h=2)
+    transition = fl.EulerDensity(model)
+
+    for i, trj in enumerate(data):
+        transition.preprocess_traj(trj)
+
+    mu0 = np.zeros(model.dim_h)
+    sig0 = np.identity(model.dim_h)
+    e_step = benchmark(transition.e_step, data.weights[0], data[0], model.coefficients, mu0, sig0)
+    assert len(e_step) == 2

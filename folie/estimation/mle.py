@@ -185,14 +185,13 @@ class EMEstimator(LikelihoodEstimator):
         """
         In this do a loop that alternatively minimize and compute expectation
         """
-
         for trj in data:
             self.transition.preprocess_traj(trj)
+        if coefficients0 is None:
+            coefficients0 = self.transition._model.coefficients
         if minimizer is None:
             coefficients = np.asarray(coefficients0)
             minimizer = minimize
-        if coefficients0 is None:
-            coefficients0 = self.transition._model.coefficients
 
         # if we enable warm_start, we will have a unique initialisation
         do_init = not (self.warm_start and hasattr(self, "converged_"))
@@ -213,6 +212,8 @@ class EMEstimator(LikelihoodEstimator):
         best_n_iter = -1
         best_n_init = -1
 
+        init_val = self._loop_over_trajs(self.transition, data.weights, data, coefficients0, **kwargs)
+        has_jac = len(init_val) > 1 and use_jac
         for init in range(n_init):
             callbacks.append(type(callback)())  # Should work as well with None
             if do_init:
@@ -228,19 +229,19 @@ class EMEstimator(LikelihoodEstimator):
                 # E step
                 mu0, sig0 = self._loop_over_trajs(self.transition.e_step, data.weights, data, coefficients, mu0, sig0)
 
-                lower_bound = -self._log_likelihood_negative(coefficients, data)[0]
+                lower_bound = -self._log_likelihood_negative(coefficients, data)
                 if self.verbose >= 2:
                     if lower_bound - lower_bound_m_step < 0:
                         print("Delta loglikelihood after E step:", lower_bound - lower_bound_m_step)
                 # M Step
-                if self.transition.has_jac and use_jac:
+                if has_jac:
                     res = minimizer(self._log_likelihood_negative_with_jac, coefficients, args=(data,), jac=True, method="L-BFGS-B")
                 else:
                     res = minimizer(self._log_likelihood_negative, coefficients, args=(data,), method="L-BFGS-B")
                 coefficients = res.x
                 if callbacks[init] is not None:
                     callbacks[init](res)
-
+                print("Coucou")
                 lower_bound_m_step = -res.fun
                 if self.verbose >= 2 and lower_bound_m_step - lower_bound < 0:
                     print("Delta loglikelihood after M step:", lower_bound_m_step - lower_bound)
@@ -280,11 +281,11 @@ class EMEstimator(LikelihoodEstimator):
             self.model.coefficients = best_coeffs
             self.model.fitted_ = True
             self.results_ = EstimatedResult(coefficients=best_coeffs, log_like=max_lower_bound, sample_size=data.nobs - 1)
-
         self.n_iter_ = best_n_iter
         self.n_best_init_ = best_n_init
         self.lower_bound_ = max_lower_bound
         self._print_verbose_msg_fit_end(max_lower_bound, best_n_init, best_n_iter)
+        return self
 
     def _initialize_parameters(self, coefficients0):
         """
