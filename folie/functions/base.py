@@ -98,6 +98,12 @@ class Function(_BaseMethodsMixin, TransformerMixin):
     def __rmul__(self, other):
         return FunctionTensored([self, other])
 
+    def differentiate(self):
+        """
+        If available differentiate the function with respect to x and return the resulting function
+        """
+        raise NotImplementedError
+
     @property
     def coefficients(self):
         """Access the coefficients"""

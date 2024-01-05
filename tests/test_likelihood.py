@@ -38,6 +38,27 @@ def test_likelihood_bf(data, request, transitioncls):
 )
 def testlikelihood_derivative(data, request, transitioncls):
     fun_lin = fl.functions.Linear().fit(data)
+    model = fl.models.OverdampedFunctions(fun_lin)
+    transition = transitioncls(model)
+    transition.preprocess_traj(data[0])
+    loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
+    assert len(loglikelihood) == 2
+
+    assert loglikelihood[1].shape == (len(model.coefficients),)
+    # Testing for evaluation of the jacobian
+    finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition(data.weights[0], data[0], p)[0])
+    np.testing.assert_allclose(loglikelihood[1], finite_diff_jac, rtol=1e-05)
+
+
+@pytest.mark.parametrize("data", ["numpy"], indirect=True)
+@pytest.mark.parametrize(
+    "transitioncls",
+    [
+        fl.EulerHiddenDensity,
+    ],
+)
+def testlikelihoodND_derivative(data, request, transitioncls):
+    fun_lin = fl.functions.Linear().fit(data)
     model = fl.models.OverdampedFunctions(fun_lin, dim=1)
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])
@@ -47,6 +68,34 @@ def testlikelihood_derivative(data, request, transitioncls):
     assert loglikelihood[1].shape == (len(model.coefficients),)
     # Testing for evaluation of the jacobian
     finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition(data.weights[0], data[0], p)[0])
+    np.testing.assert_allclose(loglikelihood[1], finite_diff_jac, rtol=1e-04)
+
+
+@pytest.mark.parametrize("data", ["numpy"], indirect=True)
+@pytest.mark.parametrize(
+    "transitioncls",
+    [
+        fl.EulerHiddenDensity,
+    ],
+)
+@pytest.mark.parametrize("dim_h", [1])
+def testlikelihood_hiddenND_derivative(data, request, transitioncls, dim_h):
+    fun_lin = fl.functions.Linear().fit(data)
+    fun_cst = fl.functions.Constant().fit(data)
+    model = fl.models.OverdampedHidden(fun_lin, fun_cst.copy(), fun_cst, dim=1, dim_h=dim_h)
+    transition = transitioncls(model)
+    transition.preprocess_traj(data[0])
+
+    muh0, sigh0 = transition.e_step(data.weights[0], data[0], model.coefficients, np.zeros(dim_h), np.eye(dim_h))
+    assert muh0.shape == (dim_h,)
+    assert sigh0.shape == (dim_h, dim_h)
+
+    loglikelihood = transition.hiddencorrection(data.weights[0], data[0], model.coefficients)
+    assert len(loglikelihood) == 2
+
+    assert loglikelihood[1].shape == (len(model.coefficients),)
+    # Testing for evaluation of the jacobian
+    finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition.hiddencorrection(data.weights[0], data[0], p)[0], 1e-3)
     np.testing.assert_allclose(loglikelihood[1], finite_diff_jac, rtol=1e-05)
 
 

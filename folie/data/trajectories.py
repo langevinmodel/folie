@@ -69,11 +69,11 @@ class Trajectories(MutableSequence):
 
     @property
     def nobs(self):
-        return np.sum([len(trj) for trj in self.trajectories_data])
+        return np.sum([trj["x"].shape[0] for trj in self.trajectories_data])
 
     @property
     def weights(self):
-        return np.array([len(trj) for trj in self.trajectories_data])
+        return np.array([trj["x"].shape[0] for trj in self.trajectories_data])
 
     def to_xarray(self):
         """

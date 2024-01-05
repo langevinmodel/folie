@@ -68,7 +68,7 @@ class KramersMoyalEstimator(Estimator):
         dx = trj["x"][1:] - trj["x"][:-1] - model.force(x) * trj["dt"]
 
         diffusion_basis = model.diffusion_jac_coeffs(x)
-        return np.dot(diffusion_basis.T, dx**2) / trj["dt"], np.dot(diffusion_basis.T, diffusion_basis)
+        return np.dot(diffusion_basis.T, dx ** 2) / trj["dt"], np.dot(diffusion_basis.T, diffusion_basis)
 
 
 class UnderdampedKramersMoyalEstimator(Estimator):
@@ -147,7 +147,7 @@ class UnderdampedKramersMoyalEstimator(Estimator):
         TODO: Adapter vérifier dimension array
         """
         force_basis = model.force_jac_coeffs(trj["x"])  # En vrai ça devrait être base force + friction
-        friction_basis = model.force_jac_coeffs()
+        friction_basis = model.friction_jac_coeffs(trj["x"])
         # Do concatenation of the basis
         basis = np.concatenate((force_basis, np.dot(trj["v"], friction_basis)))
         return np.dot(basis.T, trj["a"]) / trj["dt"], np.dot(basis.T, trj["a"] ** 2) / trj["dt"], np.dot(basis.T, basis)

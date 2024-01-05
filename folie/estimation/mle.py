@@ -241,7 +241,6 @@ class EMEstimator(LikelihoodEstimator):
                 coefficients = res.x
                 if callbacks[init] is not None:
                     callbacks[init](res)
-                print("Coucou")
                 lower_bound_m_step = -res.fun
                 if self.verbose >= 2 and lower_bound_m_step - lower_bound < 0:
                     print("Delta loglikelihood after M step:", lower_bound_m_step - lower_bound)
@@ -294,10 +293,12 @@ class EMEstimator(LikelihoodEstimator):
         return coefficients0
 
     def _log_likelihood_negative(self, coefficients, data, **kwargs):
-        return self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)[0]
+        return self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)[0] + self._loop_over_trajs(self.hiddencorrection, data.weights, data, coefficients, **kwargs)[0]
 
     def _log_likelihood_negative_with_jac(self, coefficients, data, **kwargs):
-        return self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)
+        like, jac = self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)
+        like_c, jac_c = self._loop_over_trajs(self.hiddencorrection, data.weights, data, coefficients, **kwargs)
+        return like + like_c, jac + jac_c
 
     def _print_verbose_msg_init_beg(self, n_init):
         """Print verbose message on initialization."""

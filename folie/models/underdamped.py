@@ -19,6 +19,18 @@ class UnderdampedFunctions(OverdampedFunctions):
         self._friction = friction.resize((self.dim, self.dim))
         self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion), np.ones(self._n_coeffs_friction)))
 
+    def meandispl(self, x, v, t: float = 0.0):
+        return self._force(x[:, : self.dim_x]) + np.einsum("tdh,th-> td", self.friction(x[:, : self.dim_x]), v)
+
+    def meandispl_x(self, x, v, t: float = 0.0):
+        return self._force.grad_x(x[:, : self.dim_x]) + np.einsum("tdhe,th-> tde", self._friction.grad_x(x[:, : self.dim_x]), v)
+
+    def meandispl_jac_coeffs(self, x, v, t: float = 0.0):
+        """
+        Jacobian of the force with respect to coefficients
+        """
+        return np.concatenate((self._force.grad_coeffs(x[:, : self.dim_x]), np.einsum("tdhc,th-> tdc", self._friction.grad_coeffs(x[:, : self.dim_x]), v)), axis=-1)
+
     def friction(self, x, t: float = 0.0):
         return self.friction(x[:, : self.dim_x])
 

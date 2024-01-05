@@ -22,6 +22,10 @@ class ModelOverdamped(Model):
         self._coefficients: Optional[np.ndarray] = None
         self.h = 1e-05
 
+    def meandispl(self, x, t=0.0):
+        """The mean displacement term of the model"""
+        return self.force(x, t)
+
     @abstractmethod
     def force(self, x, t=0.0):
         """The force term of the model"""
@@ -81,6 +85,12 @@ class ModelOverdamped(Model):
         """Set parameters, used by fitter to move through param space"""
         self._coefficients[self._n_coeffs_force :] = vals.ravel()
 
+    def meandispl_jac_coeffs(self, x, t: float = 0.0):
+        """
+        Jacobian of the force with respect to coefficients
+        """
+        return self.force_jac_coeffs(x, t)
+
     def force_jac_coeffs(self, x, t: float = 0.0):
         """
         Jacobian of the force with respect to coefficients
@@ -96,6 +106,18 @@ class ModelOverdamped(Model):
     # ==============================
     # Derivatives (Numerical By Default)
     # ==============================
+
+    def meandispl_x(self, x, t: float = 0.0):
+        """Calculate first spatial derivative of force, dmu/dx"""
+        return self.force_x(x, t)
+
+    def meandispl_t(self, x, t: float = 0.0):
+        """Calculate first time derivative of force, dmu/dt"""
+        return self.force_t(x, t)
+
+    def meandispl_xx(self, x, t: float = 0.0):
+        """Calculate second spatial derivative of force, d^2mu/dx^2"""
+        return self.force_x(x, t)
 
     def force_x(self, x, t: float = 0.0):
         """Calculate first spatial derivative of force, dmu/dx"""
