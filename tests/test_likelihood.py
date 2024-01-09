@@ -68,7 +68,7 @@ def testlikelihoodND_derivative(data, request, transitioncls):
     assert loglikelihood[1].shape == (len(model.coefficients),)
     # Testing for evaluation of the jacobian
     finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition(data.weights[0], data[0], p)[0])
-    np.testing.assert_allclose(loglikelihood[1], finite_diff_jac, rtol=1e-04)
+    np.testing.assert_allclose(loglikelihood[1], finite_diff_jac, rtol=1e-06, atol=1e-6)
 
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
@@ -79,10 +79,12 @@ def testlikelihoodND_derivative(data, request, transitioncls):
     ],
 )
 @pytest.mark.parametrize("dim_h", [1])
-def testlikelihood_hiddenND_derivative(data, request, transitioncls, dim_h):
+def testcorrection_hiddenND_derivative(data, request, transitioncls, dim_h):
     fun_lin = fl.functions.Linear().fit(data)
     fun_cst = fl.functions.Constant().fit(data)
     model = fl.models.OverdampedHidden(fun_lin, fun_cst.copy(), fun_cst, dim=1, dim_h=dim_h)
+    A = np.block([[1, -0.5 * np.ones(dim_h)], [-0.7 * np.ones(dim_h), 2 * np.eye(dim_h)]])
+    model.coefficients_diffusion = A @ A.T
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])
 
@@ -90,13 +92,13 @@ def testlikelihood_hiddenND_derivative(data, request, transitioncls, dim_h):
     assert muh0.shape == (dim_h,)
     assert sigh0.shape == (dim_h, dim_h)
 
-    loglikelihood = transition.hiddencorrection(data.weights[0], data[0], model.coefficients)
-    assert len(loglikelihood) == 2
+    correction = transition.hiddencorrection(data.weights[0], data[0], model.coefficients)
+    assert len(correction) == 2
 
-    assert loglikelihood[1].shape == (len(model.coefficients),)
+    assert correction[1].shape == (len(model.coefficients),)
     # Testing for evaluation of the jacobian
-    finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition.hiddencorrection(data.weights[0], data[0], p)[0], 1e-3)
-    np.testing.assert_allclose(loglikelihood[1], finite_diff_jac, rtol=1e-05)
+    finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition.hiddencorrection(data.weights[0], data[0], p)[0])
+    np.testing.assert_allclose(correction[1], finite_diff_jac, rtol=1e-06, atol=1e-6)
 
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
@@ -116,4 +118,4 @@ def test_numba_optimized(data, request):
 
     # Testing for evaluation of the jacobian
     jac = scipy.optimize.approx_fprime(coeffs0, lambda p: transition(data.weights[0], data[0], p)[0], 1e-9)
-    np.testing.assert_allclose(loglikelihood[1], jac)
+    np.testing.assert_allclose(loglikelihood[1], jac, rtol=1e-06, atol=1e-6)

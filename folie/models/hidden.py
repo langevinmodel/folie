@@ -33,7 +33,7 @@ class OverdampedHidden(OverdampedFunctions):
         self._n_coeffs_force = self._force.size
         self._n_coeffs_diffusion = self._diffusion.size
         self._n_coeffs_friction = self._friction.size
-        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.eye(self.dim).flatten(), np.ones(self._n_coeffs_friction)))
+        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_friction), np.eye(self.dim).flatten()))
 
     def meandispl(self, x, t: float = 0.0):
         return self._force(x[:, : self.dim_x]) + np.einsum("tdh,th-> td", self.friction(x[:, : self.dim_x]), x[:, self.dim_x :])
@@ -71,17 +71,23 @@ class OverdampedHidden(OverdampedFunctions):
     def diffusion_x(self, x, t: float = 0.0):
         return self._diffusion.grad_x(x[:, : self.dim_x])
 
+    def diffusion_jac_coeffs(self, x, t: float = 0.0):
+        """
+        Jacobian of the diffusion with respect to coefficients
+        """
+        return self._diffusion.grad_coeffs(x[:, : self.dim_x])
+
     @property
     def coefficients(self):
         """Access the coefficients"""
-        return np.concatenate((self._force.coefficients.ravel(), self._diffusion.coefficients.ravel(), self._friction.coefficients.ravel()))
+        return np.concatenate((self._force.coefficients.ravel(), self._friction.coefficients.ravel(), self._diffusion.coefficients.ravel()))
 
     @coefficients.setter
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
         self._force.coefficients = vals.ravel()[: self._n_coeffs_force]
-        self._diffusion.coefficients = vals.ravel()[self._n_coeffs_force : self._n_coeffs_force + self._n_coeffs_diffusion]
-        self._friction.coefficients = vals.ravel()[self._n_coeffs_force + self._n_coeffs_diffusion :]
+        self._friction.coefficients = vals.ravel()[self._n_coeffs_force : self._n_coeffs_force + self._n_coeffs_friction]
+        self._diffusion.coefficients = vals.ravel()[self._n_coeffs_force + self._n_coeffs_friction :]
 
     @property
     def coefficients_friction(self):

@@ -293,11 +293,11 @@ class EMEstimator(LikelihoodEstimator):
         return coefficients0
 
     def _log_likelihood_negative(self, coefficients, data, **kwargs):
-        return self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)[0] + self._loop_over_trajs(self.hiddencorrection, data.weights, data, coefficients, **kwargs)[0]
+        return self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)[0] + self._loop_over_trajs(self.transition.hiddencorrection, data.weights, data, coefficients, **kwargs)[0]
 
     def _log_likelihood_negative_with_jac(self, coefficients, data, **kwargs):
         like, jac = self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)
-        like_c, jac_c = self._loop_over_trajs(self.hiddencorrection, data.weights, data, coefficients, **kwargs)
+        like_c, jac_c = self._loop_over_trajs(self.transition.hiddencorrection, data.weights, data, coefficients, **kwargs)
         return like + like_c, jac + jac_c
 
     def _print_verbose_msg_init_beg(self, n_init):

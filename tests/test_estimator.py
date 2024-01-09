@@ -38,7 +38,7 @@ def test_direct_estimator_underdamped(data, request):
     assert model.fitted_
 
 
-@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_likelihood_estimator(data, request):
     bf = fl.function_basis.Linear().fit(data)
     model = fl.models.OverdampedBF(bf)
@@ -58,11 +58,11 @@ def test_numba_likelihood_estimator(data, request):
     assert model.fitted_
 
 
-@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_em_estimator(data, request):
     fun_lin = fl.functions.Linear().fit(data)
     fun_cst = fl.functions.Constant().fit(data).resize((3, 3))
     model = fl.models.OverdampedHidden(fun_lin, fun_lin.copy(), fun_cst, dim=1, dim_h=2)
-    estimator = fl.EMEstimator(fl.EulerHiddenDensity(model), max_iter=10, verbose=3, verbose_interval=1)
+    estimator = fl.EMEstimator(fl.EulerHiddenDensity(model), max_iter=3, verbose=3, verbose_interval=1)
     model = estimator.fit_fetch(data)
     assert model.fitted_

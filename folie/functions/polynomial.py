@@ -28,7 +28,8 @@ class Constant(FunctionFromBasis):
         return np.zeros((x.shape[0], *self.output_shape_, x.shape[1]))
 
     def grad_coeffs(self, x, **kwargs):
-        return np.ones((x.shape[0], *self.output_shape_, self.size))
+        grad_coeffs = np.eye(self.size).reshape(self.n_basis_features_, *self.output_shape_, self.size)
+        return np.tensordot(np.ones_like(x), grad_coeffs, axes=1)
 
 
 class Linear(FunctionFromBasis):

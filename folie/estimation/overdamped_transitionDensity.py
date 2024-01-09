@@ -152,25 +152,20 @@ class EulerHiddenDensity(EulerDensity):
         VE = np.einsum("tdf,tfh-> tdh", invV, E2)
 
         extra_ll = -0.5 * np.einsum("tij,tji->t", invV[:, dh:, dh:], dhdh) + 0.5 * np.einsum("tij,tji->t", EV[:, :, dh:], dhh) + 0.5 * np.einsum("tij,tji->t", VE[:, dh:, :], hdh) - 0.5 * np.einsum("tij,tji->t", EVE, hh)
-
-        # extra_ll = -0.5 * np.einsum("tij,tji->t", invV[:, dh:, dh:], dhdh)
-        # print(np.einsum("tij,tjk->ik", EV[:, :, dh:], dhh), np.einsum("tij,tjk->ik", VE[:, dh:, :], hdh))
         jacE2 = self._model.friction_jac_coeffs(x0, t0) * dt
 
         EVjE = np.einsum("tdh,tdf,tfgc-> thgc", E2, invV, jacE2)
         jEV = np.einsum("tdhc,tdf-> thfc", jacE2, invV)
         VjE = np.einsum("tdf,tfhc-> tdhc", invV, jacE2)
 
-        l_jac_E = 0.5 * np.einsum("tijc,tji->tc", jEV[:, :, dh:, :], dhh) + 0.5 * np.einsum("tijc,tji->tc", VjE[:, dh:, ...], hdh) - np.einsum("tijc,tji->tc", EVjE, hh)
-        l_jac_E = -np.einsum("tijc,tji->tc", EVjE, hh)
+        l_jac_E = -0.5 * np.einsum("tijc,tji->tc", jEV[:, :, dh:, :], dhh) - 0.5 * np.einsum("tijc,tji->tc", VjE[:, dh:, ...], hdh) + np.einsum("tijc,tji->tc", EVjE, hh)
 
         jacV = self._model.diffusion_jac_coeffs(x0, t0) * dt
-        jacinvV = np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV)
+        jacinvV = -np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV)
         EjVE = np.einsum("tdh,tdfc,tfg-> thgc", E2, jacinvV, E2)
         EjV = np.einsum("tdh,tdfc-> thfc", E2, jacinvV)
         jVE = np.einsum("tdfc,tfh-> tdhc", jacinvV, E2)
         l_jac_V = 0.5 * np.einsum("tijc,tji->tc", jacinvV[:, dh:, dh:, :], dhdh) - 0.5 * np.einsum("tijc,tji->tc", jVE[:, dh:, :], hdh) - 0.5 * np.einsum("tijc,tji->tc", EjV[:, :, dh:], dhh) + 0.5 * np.einsum("tijc,tji->tc", EjVE, hh)
-        # l_jac_V = 0.5 * np.einsum("tijc,tji->tc", jacinvV[:, dh:, dh:, :], dhdh)
         return extra_ll, np.hstack((l_jac_E, l_jac_V))
 
     def hiddencorrection(self, weight, trj, coefficients):
