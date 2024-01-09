@@ -65,5 +65,4 @@ class BSplinesFunction(FunctionFromBasis):
     def grad_coeffs(self, x, **kwargs):
         nsamples, dim = x.shape
         grad_coeffs = np.eye(self.size).reshape(self.n_basis_features_, self.input_dim_, *self.output_shape_, self.size)
-        print(grad_coeffs.shape)
         return np.trace(BSpline(self.bspline.t, grad_coeffs, self.bspline.k)(x), axis1=1, axis2=2)

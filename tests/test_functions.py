@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 import folie as fl
+import scipy.optimize
 
 
 @pytest.mark.parametrize(
@@ -19,7 +20,17 @@ def test_functions(fct, parameters):
 
     assert fun.grad_x(data).shape == (25, 1)
 
+    finite_diff_jac = scipy.optimize.approx_fprime(data[0], lambda x: fun(np.asarray([x]))[0])
+    np.testing.assert_allclose(fun.grad_x(data[0:1])[0], finite_diff_jac, rtol=1e-06)
+
     assert fun.grad_coeffs(data).shape == (25, fun.size)
+
+    def eval_fun(c):
+        fun.coefficients = c
+        return fun(data[0:1])[0]
+
+    finite_diff_jac = scipy.optimize.approx_fprime(fun.coefficients, eval_fun)
+    np.testing.assert_allclose(fun.grad_coeffs(data[0:1])[0], finite_diff_jac, rtol=1e-06)
 
 
 @pytest.mark.parametrize(
@@ -37,6 +48,9 @@ def test_functions_ND(fct, parameters):
     assert fun(data).shape == (12, 2)
 
     assert fun.grad_x(data).shape == (12, 2, 2)
+
+    finite_diff_jac = scipy.optimize.approx_fprime(data[0, :], lambda x: fun(x.reshape(1, -1))[0, :])
+    np.testing.assert_allclose(fun.grad_x(data[0:1, :])[0, :], finite_diff_jac, rtol=1e-04)
 
     assert fun.grad_coeffs(data).shape == (12, 2, fun.size)
 
