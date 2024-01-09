@@ -1,5 +1,6 @@
 import numpy as np
 from . import Basis
+from ..data import Trajectories, DescribeResult, traj_stats
 
 
 class Fourier(Basis):
@@ -21,7 +22,13 @@ class Fourier(Basis):
         self.const_removed = remove_const
 
     def fit(self, X):
-        self.n_output_features_ = X.dim * self.order
+        if isinstance(X, Trajectories):
+            xstats = X.stats
+        elif isinstance(X, DescribeResult):
+            xstats = X
+        else:
+            xstats = traj_stats(X)
+        self.n_output_features_ = xstats.dim * self.order
         self.dim_out_basis = 1
         return self
 

@@ -1,5 +1,6 @@
 import numpy as np
 from . import Basis
+from ..data import Trajectories, DescribeResult, traj_stats
 
 import scipy.interpolate
 
@@ -18,8 +19,14 @@ class SplineFct(Basis):
         self.dim_out_basis = 1
 
     def fit(self, X):
+        if isinstance(X, Trajectories):
+            xstats = X.stats
+        elif isinstance(X, DescribeResult):
+            xstats = X
+        else:
+            xstats = traj_stats(X)
         self.spl_ = scipy.interpolate.BSpline(self.t, self.c, self.k)
-        self.n_output_features_ = X.dim
+        self.n_output_features_ = xstats.dim
         return self
 
     def transform(self, X, **kwargs):
@@ -76,10 +83,16 @@ class BSplines(Basis):  # TODO replace current implementation by one using Bspli
         self.dim_out_basis = 1
 
     def fit(self, X, knots=None):
-        dim = X.dim
+        if isinstance(X, Trajectories):
+            xstats = X.stats
+        elif isinstance(X, DescribeResult):
+            xstats = X
+        else:
+            xstats = traj_stats(X)
+        dim = xstats.dim
         # TODO determine non uniform position of knots given the datas
         if knots is None:
-            knots = np.linspace(X.stats.min, X.stats.max, self.n_knots)
+            knots = np.linspace(xstats.min, xstats.max, self.n_knots)
         self.bsplines_ = _get_bspline_basis(knots, self.k, periodic=self.periodic)
         self._nsplines = len(self.bsplines_)
         self.n_output_features_ = len(self.bsplines_) * dim

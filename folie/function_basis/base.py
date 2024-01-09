@@ -12,43 +12,13 @@ from typing import Optional
 from typing import Sequence
 
 import scipy.interpolate
-import scipy.stats
 
 
 from sklearn.base import TransformerMixin
 from sklearn.utils.validation import check_is_fitted
 
 from ..base import _BaseMethodsMixin
-
-
-def x_sequence_or_item(wrapped_func):
-    """Allow a feature library's method to handle list or item inputs."""
-
-    @wraps(wrapped_func)
-    def func(self, x, *args, **kwargs):
-        if isinstance(x, Sequence):
-            xs = [AxesArray(xi, comprehend_axes(xi)) for xi in x]
-            result = wrapped_func(self, xs, *args, **kwargs)
-            if isinstance(result, Sequence):  # e.g. transform() returns x
-                return [AxesArray(xp, comprehend_axes(xp)) for xp in result]
-            return result  # e.g. fit() returns self
-        else:
-            if not sparse.issparse(x):
-                x = AxesArray(x, comprehend_axes(x))
-
-                def reconstructor(x):
-                    return x
-
-            else:  # sparse arrays
-                reconstructor = type(x)
-                axes = comprehend_axes(x)
-                wrap_axes(axes, x)
-            result = wrapped_func(self, [x], *args, **kwargs)
-            if isinstance(result, Sequence):  # e.g. transform() returns x
-                return reconstructor(result[0])
-            return result  # e.g. fit() returns self
-
-    return func
+from ..data import Trajectories, DescribeResult, traj_stats
 
 
 class Basis(_BaseMethodsMixin, TransformerMixin):
@@ -143,7 +113,6 @@ class ConcatBasis(Basis):
     ):
         self.libraries = libraries
 
-    @x_sequence_or_item
     def fit(self, x_full, y=None):
         """
         Compute number of output features.
@@ -171,7 +140,6 @@ class ConcatBasis(Basis):
 
         return self
 
-    @x_sequence_or_item
     def transform(self, x_full):
         """Transform data with libs provided below.
 
@@ -310,7 +278,6 @@ class TensoredBasis(Basis):
         """
         self.inputs_per_library = inputs_per_library
 
-    @x_sequence_or_item
     def fit(self, x_full, y=None):
         """
         Compute number of output features.
@@ -346,7 +313,6 @@ class TensoredBasis(Basis):
 
         return self
 
-    @x_sequence_or_item
     def transform(self, x_full):
         """Transform data with libs provided below.
 
@@ -434,11 +400,15 @@ class BasisCombiner(Basis):  # TODO A mixer avec ConcatBasis
         self.basis_set = basis
         self.const_removed = np.any([b.const_removed for b in self.basis_set])  # Check if one of the basis set have the constant removed
 
-    def fit(self, describe_result):
-        if isinstance(describe_result, np.ndarray):
-            describe_result = scipy.stats.describe(describe_result)
+    def fit(self, X):
+        if isinstance(X, Trajectories):
+            xstats = X.stats
+        elif isinstance(X, DescribeResult):
+            xstats = X
+        else:
+            xstats = traj_stats(X)
         for b in self.basis_set:
-            b.fit(describe_result)
+            b.fit(xstats)
         self.n_output_features_ = np.sum([b.n_output_features_ for b in self.basis_set])
         self.dim_out_basis = 1
         return self

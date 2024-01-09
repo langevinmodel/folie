@@ -1,5 +1,6 @@
 import numpy as np
 from . import Basis
+from ..data import Trajectories, DescribeResult, traj_stats
 
 
 class Linear(Basis):
@@ -13,10 +14,16 @@ class Linear(Basis):
         self.const_removed = False
 
     def fit(self, X, y=None):
-        self.n_output_features_ = X.dim
+        if isinstance(X, Trajectories):
+            xstats = X.stats
+        elif isinstance(X, DescribeResult):
+            xstats = X
+        else:
+            xstats = traj_stats(X)
+        self.n_output_features_ = xstats.dim
         self.dim_out_basis = 1
         if self.centered:
-            self.mean_ = X.stats.mean
+            self.mean_ = xstats.mean
         else:
             self.mean_ = np.zeros((self.n_output_features_,))
         return self
@@ -53,7 +60,13 @@ class Polynomial(Basis):
         self.const_removed = remove_const
 
     def fit(self, X, y=None):
-        self.n_output_features_ = X.dim * self.degree
+        if isinstance(X, Trajectories):
+            xstats = X.stats
+        elif isinstance(X, DescribeResult):
+            xstats = X
+        else:
+            xstats = traj_stats(X)
+        self.n_output_features_ = xstats.dim * self.degree
         self.dim_out_basis = 1
         return self
 

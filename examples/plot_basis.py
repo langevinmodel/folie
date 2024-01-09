@@ -18,7 +18,7 @@ from scipy.interpolate import splrep
 
 x_range = np.linspace(-2, 2, 30).reshape(-1, 1)
 
-t, c, k = splrep(x_range, x_range**4 - 2 * x_range**2 + 0.5 * x_range)
+t, c, k = splrep(x_range, x_range ** 4 - 2 * x_range ** 2 + 0.5 * x_range)
 
 basis_set = {
     "Linear": bf.Linear(),
@@ -38,7 +38,7 @@ for key, basis in basis_set.items():
     axs[m // 3][m % 3].set_xlabel("$x$")
     axs[m // 3][m % 3].set_ylabel("$h_k(x)$")
     axs[m // 3][m % 3].grid()
-    y = basis.basis(x_range)
+    y = basis.transform(x_range)
 
     for n in range(y.shape[1]):
         axs[m // 3][m % 3].plot(x_range[:, 0], y[:, n])

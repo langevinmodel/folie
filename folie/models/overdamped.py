@@ -183,13 +183,13 @@ class BrownianMotion(ModelOverdamped):
         """
         Jacobian of the force with respect to coefficients
         """
-        raise np.ones_like(x)
+        return np.ones_like(x)
 
     def diffusion_jac_coeffs(self, x, t: float = 0.0):
         """
         Jacobian of the diffusion with respect to coefficients
         """
-        raise np.ones_like(x)
+        return np.ones_like(x)
 
     # =======================
     # (Optional) Overrides for numerical derivatives to improve performance
