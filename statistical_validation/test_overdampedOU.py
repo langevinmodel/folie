@@ -3,10 +3,11 @@ import folie as fl
 import matplotlib.pyplot as plt
 
 model_simu = fl.models.OrnsteinUhlenbeck()
+model_simu.coefficients = np.array([0.1, 1.2, 2.0])
 data_dts = []
 list_dts = [1e-3, 5e-3, 1e-2, 5e-2]
 for dt in list_dts:
-    simulator = fl.Simulator(fl.ExactDensity(model_simu), 1e-3)
+    simulator = fl.Simulator(fl.ExactDensity(model_simu), dt)
     data_dts.append(simulator.run(5000, np.zeros((25,)), 25))
 
 fig, axs = plt.subplots(1, len(model_simu.coefficients))
@@ -31,10 +32,11 @@ for name, transitioncls in zip(
         coeffs_vals[n, :] = res.coefficients
     for n in range(len(axs)):
         axs[n].plot(list_dts, np.abs(coeffs_vals[:, n] - model_simu.coefficients[n]), "-+", label=name)
+    print(coeffs_vals)
 for n in range(len(axs)):
     axs[n].legend()
     axs[n].set_yscale("log")
     axs[n].grid()
-    axs[n].set_xlabel("$\\Delta t")
-    axs[n].set_ylabel("$|c-c_{real}|$")
+    axs[n].set_xlabel(r"$\Delta t$")
+    axs[n].set_ylabel(r"$|c-c_{real}|$")
 plt.show()

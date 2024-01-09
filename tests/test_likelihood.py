@@ -117,5 +117,5 @@ def test_numba_optimized(data, request):
     assert loglikelihood[1].shape == (2 * n_knots,)
 
     # Testing for evaluation of the jacobian
-    jac = scipy.optimize.approx_fprime(coeffs0, lambda p: transition(data.weights[0], data[0], p)[0], 1e-9)
+    jac = scipy.optimize.approx_fprime(coeffs0, lambda p: transition(data.weights[0], data[0], p)[0])
     np.testing.assert_allclose(loglikelihood[1], jac, rtol=1e-06, atol=1e-6)

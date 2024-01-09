@@ -80,9 +80,9 @@ class EulerDensity(TransitionDensity):
         """
         sig2t = (self._model.diffusion(x0, t0).ravel()) * 2 * dt
         mut = x0.ravel() + self._model.meandispl(x0, t0).ravel() * dt
-        jacV = (self._model.diffusion_jac_coeffs(x0, t0)) * 2 * dt
+        jacV = (self._model.diffusion_jac_coeffs(x0.ravel(), t0)) * 2 * dt
 
-        l_jac_mu = 2 * ((xt.ravel() - mut) / sig2t)[:, None] * self._model.meandispl_jac_coeffs(x0, t0) * dt
+        l_jac_mu = 2 * ((xt.ravel() - mut) / sig2t)[:, None] * self._model.meandispl_jac_coeffs(x0.ravel(), t0) * dt
         l_jac_V = (((xt.ravel() - mut) ** 2) / sig2t ** 2)[:, None] * jacV - 0.5 * jacV / sig2t[:, None]
 
         return -((xt.ravel() - mut) ** 2) / sig2t - 0.5 * np.log(np.pi * sig2t), np.hstack((l_jac_mu, l_jac_V))

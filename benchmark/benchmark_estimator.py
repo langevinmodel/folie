@@ -45,7 +45,7 @@ def test_em_estimator(data, request, benchmark):
     fun_lin = fl.functions.Linear().fit(data)
     fun_cst = fl.functions.Constant().fit(data).resize((3, 3))
     model = fl.models.OverdampedHidden(fun_lin, fun_lin.copy(), fun_cst, dim=1, dim_h=2)
-    estimator = fl.EMEstimator(fl.EulerHiddenDensity(model))
+    estimator = fl.EMEstimator(fl.EulerHiddenDensity(model), max_iter=2)
     fitted_estimator = benchmark(estimator.fit, data)
     model = fitted_estimator.fetch_model()
     assert model.fitted_

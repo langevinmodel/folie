@@ -213,7 +213,7 @@ class OrnsteinUhlenbeck(ModelOverdamped):
     dX(t) = mu(X,t)*dt + sigma(X,t)*dW_t
 
     where:
-        mu(X,t)    = kappa * (theta - X)
+        mu(X,t)    = kappa - theta* X
         sigma(X,t) = sqrt(sigma)
     """
 
@@ -222,10 +222,10 @@ class OrnsteinUhlenbeck(ModelOverdamped):
 
     def __init__(self, **kwargs):
         super().__init__(has_exact_density=True)
-        self.coefficients = np.array([1.0, 0.0, 1.0])
+        self.coefficients = np.array([0.0, 1.0, 1.0])
 
     def force(self, x, t: float = 0.0):
-        return self._coefficients[0] * (self._coefficients[1] - x)
+        return self._coefficients[0] - self._coefficients[1] * x
 
     def diffusion(self, x, t: float = 0.0):
         return self._coefficients[2]
@@ -255,6 +255,18 @@ class OrnsteinUhlenbeck(ModelOverdamped):
 
     def diffusion_xx(self, x, t: float = 0.0):
         return np.zeros_like(x)
+
+    def force_jac_coeffs(self, x, t: float = 0.0):
+        """
+        Jacobian of the force with respect to coefficients
+        """
+        return np.concatenate((np.ones_like(x)[..., None], x[..., None]), axis=-1)
+
+    def diffusion_jac_coeffs(self, x, t: float = 0.0):
+        """
+        Jacobian of the diffusion with respect to coefficients
+        """
+        return np.ones_like(x)[..., None]
 
 
 class OverdampedBF(ModelOverdamped):
