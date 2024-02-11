@@ -213,6 +213,9 @@ class FunctionSum(Function):
             self.factors_set.append(1.0)
         return self
 
+    def differentiate(self):
+        return FunctionSum([fu.differentiate() for fu in self.functions_set])
+
     def fit(self, data):
         for fu in self.functions_set:
             fu.fit(data)
@@ -302,7 +305,6 @@ class FunctionComposition(Function):
         """
         return
 
-    @abc.abstractmethod
     def grad_x(self, x, **kwargs):
         r"""Gradient of the function with respect to input data
 
@@ -317,7 +319,11 @@ class FunctionComposition(Function):
             The transformed data
         """
 
-    @abc.abstractmethod
+    def hessian_x(self, x, **kwargs):
+        """
+        Hessien of the function with respect to input data
+        """
+
     def grad_coeffs(self, x, **kwargs):
         r"""Transforms the input data.
 
@@ -388,3 +394,116 @@ class FunctionTensored(Function):
         self.functions_set = fitted_fun
 
         return self
+
+    def transform(self, x, **kwargs):
+        r"""Transforms the input data.
+
+        Parameters
+        ----------
+        x : array_like
+            Input data.
+
+        Returns
+        -------
+        transformed : array_like
+            The transformed data
+        """
+        return
+
+    def grad_x(self, x, **kwargs):
+        r"""Gradient of the function with respect to input data
+
+        Parameters
+        ----------
+        x : array_like
+            Input data.
+
+        Returns
+        -------
+        transformed : array_like
+            The transformed data
+        """
+
+    def hessian_x(self, x, **kwargs):
+        """
+        Hessien of the function with respect to input data
+        """
+
+    def grad_coeffs(self, x, **kwargs):
+        r"""Transforms the input data.
+
+        Parameters
+        ----------
+        x : array_like
+            Input data.
+
+        Returns
+        -------
+        transformed : array_like
+            The transformed data
+        """
+
+
+class FreezeCoefficients(Function):
+    r"""
+    Function that only expose a subset of the coefficients of the underlying function
+    """
+
+    def __init__(self, f, freezed_coefficients):
+        self.f = f
+
+    def fit(self, x, y=None):
+        self.f.fit(x, y)
+
+        return self
+
+    def transform(self, x, **kwargs):
+        r"""Transforms the input data.
+
+        Parameters
+        ----------
+        x : array_like
+            Input data.
+
+        Returns
+        -------
+        transformed : array_like
+            The transformed data
+        """
+        return self.f.transform(x)
+
+    def grad_x(self, x, **kwargs):
+        r"""Gradient of the function with respect to input data
+
+        Parameters
+        ----------
+        x : array_like
+            Input data.
+
+        Returns
+        -------
+        transformed : array_like
+            The transformed data
+        """
+
+        return self.f.grad_x(x)
+
+    def hessian_x(self, x, **kwargs):
+        """
+        Hessian of the function with respect to input data
+        """
+        return self.f.hessian_x(x)
+
+    def grad_coeffs(self, x, **kwargs):
+        r"""Transforms the input data.
+
+        Parameters
+        ----------
+        x : array_like
+            Input data.
+
+        Returns
+        -------
+        transformed : array_like
+            The transformed data
+        """

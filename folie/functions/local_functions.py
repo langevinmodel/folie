@@ -1,7 +1,7 @@
 from .base import FunctionFromBasis
 import numpy as np
 from scipy.interpolate import make_interp_spline, BSpline
-from ..data import Trajectories, traj_stats
+from ..data import stats_from_input_data
 
 
 class BSplinesFunction(FunctionFromBasis):
@@ -15,11 +15,8 @@ class BSplinesFunction(FunctionFromBasis):
         self.k = k
         self.knots = knots
 
-    def fit(self, x, y=None):
-        if isinstance(x, Trajectories):
-            xstats = x.stats
-        else:
-            xstats = traj_stats(x)
+    def fit(self, X=None, y=None):
+        xstats = stats_from_input_data(X)
         dim = xstats.dim
         if isinstance(self.knots, int):
             self.x_spline = np.linspace(xstats.min[0], xstats.max[0], self.knots)
@@ -34,6 +31,12 @@ class BSplinesFunction(FunctionFromBasis):
         self.bspline = make_interp_spline(self.x_spline, y, k=self.k, bc_type=self.bc_type)
         self.n_basis_features_ = self.bspline.c.shape[0]
         return self
+
+    def differentiate(self):
+        fun = BSplinesFunction(np.concatenate((self.output_shape_, [self.dim])))
+        self.output_shape_ = np.asarray(output_shape, dtype=int)
+        fun = self.copy()
+        # fun.bspline=
 
     def resize(self, new_shape):
         super().resize(new_shape)
@@ -61,6 +64,10 @@ class BSplinesFunction(FunctionFromBasis):
     def grad_x(self, x, **kwargs):
         nsamples, dim = x.shape
         return np.diagonal(self.bspline.derivative()(x), axis1=1, axis2=2).reshape(nsamples, *self.output_shape_, dim)
+
+    def hessian_x(self, x, **kwargs):
+        nsamples, dim = x.shape
+        return np.diagonal(self.bspline.derivative(2)(x), axis1=1, axis2=2).reshape(nsamples, *self.output_shape_, dim, dim)
 
     def grad_coeffs(self, x, **kwargs):
         nsamples, dim = x.shape

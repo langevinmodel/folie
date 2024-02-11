@@ -8,7 +8,15 @@ def traj_stats(X):
     """
     Simply return the dimension of the data
     """
-    nobs, dim = X.shape
+    if X.ndim == 2:
+        nobs, dim = X.shape
+    elif X.ndim == 1:
+        nobs = X.shape[0]
+        dim = 1
+        X = X.reshape(-1, 1)
+    else:
+        nobs = X.shape[0]
+        dim = X.shape[1]
     return DescribeResult(nobs, dim, np.min(X, axis=0), np.max(X, axis=0), np.mean(X, axis=0), np.var(X, axis=0))
 
 

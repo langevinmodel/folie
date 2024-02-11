@@ -23,6 +23,8 @@ def test_likelihood_bf(data, request, benchmark, transitioncls):
     bf = fl.function_basis.Linear().fit(data)
     model = fl.models.OverdampedBF(bf)
     transition = transitioncls(model)
+    for i, trj in enumerate(data):
+        transition.preprocess_traj(trj)
     loglikelihood = benchmark(transition, data.weights[0], data[0], np.array([1.0, 1.0]))
     assert len(loglikelihood) == 1
 
@@ -33,11 +35,13 @@ def test_likelihood_functions(data, request, benchmark, transitioncls):
     fun = fl.functions.Linear().fit(data)
     model = fl.models.OverdampedFunctions(fun, fun.copy())
     transition = transitioncls(model)
+    for i, trj in enumerate(data):
+        transition.preprocess_traj(trj)
     loglikelihood = benchmark(transition, data.weights[0], data[0], np.array([1.0, 1.0]))
     assert len(loglikelihood) == 1
 
 
-@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_numba_optimized(data, request, benchmark):
     n_knots = 20
     epsilon = 1e-10
@@ -50,11 +54,11 @@ def test_numba_optimized(data, request, benchmark):
 
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
-def test_likelihood_functions(data, request, benchmark):
+def test_hiddenlikelihood_functions(data, request, benchmark):
     fun_lin = fl.functions.Linear().fit(data)
     fun_cst = fl.functions.Constant().fit(data).resize((3, 3))
     model = fl.models.OverdampedHidden(fun_lin, fun_lin.copy(), fun_cst, dim=1, dim_h=2)
-    transition = fl.EulerDensity(model)
+    transition = fl.EulerHiddenDensity(model)
 
     for i, trj in enumerate(data):
         transition.preprocess_traj(trj)

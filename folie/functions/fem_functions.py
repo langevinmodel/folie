@@ -1,9 +1,9 @@
 from .base import FunctionFromBasis
 import numpy as np
-from ..data import Trajectories, traj_stats
+from ..data import stats_from_input_data
 
 
-class FiniteElementFunction(FunctionFromBasis):
+class FiniteElement(FunctionFromBasis):
     """
     Build functions from finite elements basis
     """
@@ -12,12 +12,9 @@ class FiniteElementFunction(FunctionFromBasis):
         super().__init__(output_shape)
         self.basis = basis
 
-    def fit(self, x, y=None):
-        if isinstance(x, Trajectories):
-            xstats = x.stats
-        else:
-            xstats = traj_stats(x)
-        dim = xstats.dim
+    def fit(self, X=None, y=None):
+        xstats = stats_from_input_data(X)
+        self.input_dim_ = xstats.dim
         self.n_basis_features_ = self.basis.N
         self.coefficients = np.zeros((self.n_basis_features_, self.output_size_))
         return self
