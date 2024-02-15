@@ -54,7 +54,7 @@ class Trajectories(MutableSequence):
         self.trajectories_data.insert(i, self._check_data(v))
 
     def __str__(self):
-        return ["Trajectory of length {} and dimension {}.".format(len(trj), self.dim) for trj in self.trajectories_data]
+        return "".join(["Trajectory of length {} and dimension {}.\n".format(len(trj["x"]), self.dim) for trj in self.trajectories_data])
 
     @property
     def stats(self):
