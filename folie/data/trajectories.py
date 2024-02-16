@@ -28,6 +28,7 @@ class Trajectories(MutableSequence):
             v = Trajectory(v, self.dt)
         if len(v["x"].shape) == 1:
             dim_x = 1
+            v["x"] = v["x"].reshape(-1, 1)
         else:
             dim_x = v["x"].shape[-1]
         if self.dim is None:

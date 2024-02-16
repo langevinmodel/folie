@@ -23,7 +23,7 @@ data.append(trj[:, 1:2])
 fun_lin = fl.functions.Linear().fit(data)
 fun_cst = fl.functions.Constant().fit(data).resize((3, 3))
 model = fl.models.OverdampedHidden(fun_lin, fun_lin.copy(), fun_cst, dim=1, dim_h=2)
-estimator = fl.EMEstimator(fl.EulerHiddenDensity(model), max_iter=3, verbose=2, verbose_interval=1)
+estimator = fl.EMEstimator(fl.EulerDensity(model), max_iter=3, verbose=2, verbose_interval=1)
 model = estimator.fit_fetch(data)
 
 # To find a correct parametrization of the space

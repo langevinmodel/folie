@@ -58,7 +58,7 @@ def test_hiddenlikelihood_functions(data, request, benchmark):
     fun_lin = fl.functions.Linear().fit(data)
     fun_cst = fl.functions.Constant().fit(data).resize((3, 3))
     model = fl.models.OverdampedHidden(fun_lin, fun_lin.copy(), fun_cst, dim=1, dim_h=2)
-    transition = fl.EulerHiddenDensity(model)
+    transition = fl.EulerDensity(model)
 
     for i, trj in enumerate(data):
         transition.preprocess_traj(trj)

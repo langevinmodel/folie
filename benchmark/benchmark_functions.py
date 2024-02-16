@@ -43,3 +43,19 @@ def test_functions_gradx(data, request, benchmark, fct, parameters):
     fun_vals = benchmark(fun.grad_x, data)
 
     assert fun_vals.shape == (data.shape[0], 1)
+
+
+@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize(
+    "fct,parameters",
+    [
+        (fl.functions.Constant, {}),
+        (fl.functions.Linear, {}),
+        (fl.functions.BSplinesFunction, {"knots": 7}),
+    ],
+)
+def test_functions_grad_coeffs(data, request, benchmark, fct, parameters):
+    fun = fct(**parameters).fit(data)
+    fun_vals = benchmark(fun.grad_coeffs, data)
+
+    assert fun_vals.shape == (data.shape[0], fun.size)

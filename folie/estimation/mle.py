@@ -116,6 +116,7 @@ class LikelihoodEstimator(Estimator):
         if len(init_val) >= 2 and use_jac:
             res = minimizer(self._log_likelihood_negative_with_jac, coefficients0, args=(data,), jac=True, method="L-BFGS-B")
         else:
+            self.transition.use_jac = False
             res = minimizer(self._log_likelihood_negative, coefficients0, args=(data,), method="L-BFGS-B", callback=callback)
         coefficients = res.x
 

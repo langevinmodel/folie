@@ -23,7 +23,7 @@ class OverdampedHidden(OverdampedFunctions):
     def __init__(self, force, friction, diffusion, dim=1, dim_h=0, **kwargs):
         self.dim_h = dim_h
         self.dim_x = dim
-        self.dim = self.dim_x + self.dim_h
+        self._dim = self.dim_x + self.dim_h
         self._force = force.resize((self.dim,))
         if diffusion is None:
             self._diffusion = force.copy().resize((self.dim, self.dim))

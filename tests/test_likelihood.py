@@ -38,7 +38,7 @@ def test_likelihood_bf(data, request, transitioncls):
 )
 def testlikelihood_derivative(data, request, transitioncls):
     fun_lin = fl.functions.Linear().fit(data)
-    model = fl.models.OverdampedFunctions(fun_lin)
+    model = fl.models.OverdampedFunctions(fun_lin, dim=1)
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])
     loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
@@ -54,12 +54,12 @@ def testlikelihood_derivative(data, request, transitioncls):
 @pytest.mark.parametrize(
     "transitioncls",
     [
-        fl.EulerHiddenDensity,
+        fl.EulerDensity,
     ],
 )
 def testlikelihoodND_derivative(data, request, transitioncls):
-    fun_lin = fl.functions.Linear().fit(data)
-    model = fl.models.OverdampedFunctions(fun_lin, dim=1)
+    fun_lin = fl.functions.BSplinesFunction(knots=3).fit(data)
+    model = fl.models.OverdampedFunctions(fun_lin)
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])
     loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
@@ -75,15 +75,15 @@ def testlikelihoodND_derivative(data, request, transitioncls):
 @pytest.mark.parametrize(
     "transitioncls",
     [
-        fl.EulerHiddenDensity,
+        fl.EulerDensity,
     ],
 )
-@pytest.mark.parametrize("dim_h", [1])
+@pytest.mark.parametrize("dim_h", [1, 2])
 def testcorrection_hiddenND_derivative(data, request, transitioncls, dim_h):
     fun_lin = fl.functions.Linear().fit(data)
     fun_cst = fl.functions.Constant().fit(data)
     model = fl.models.OverdampedHidden(fun_lin, fun_cst.copy(), fun_cst, dim=1, dim_h=dim_h)
-    A = np.block([[1, -0.5 * np.ones(dim_h)], [-0.7 * np.ones(dim_h), 2 * np.eye(dim_h)]])
+    A = np.block([[np.eye(1), -0.5 * np.ones(dim_h)], [-0.7 * np.ones(dim_h).reshape(-1, 1), 2 * np.eye(dim_h)]])
     model.coefficients_diffusion = A @ A.T
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])

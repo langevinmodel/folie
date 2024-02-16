@@ -178,6 +178,13 @@ class FunctionFromBasis(Function):
         grad_coeffs = np.eye(self.size).reshape(self.n_basis_features_, *self.output_shape_, self.size)
         return np.tensordot(x, grad_coeffs, axes=1)
 
+    def gram(self, x):
+        """
+        Compute gram matrix on points x
+        """
+        basis_vals = self.basis(x)
+        return np.dot(basis_vals.T, basis_vals)
+
     @property
     def is_linear(self) -> bool:
         """Return True is the model is linear in its parameters"""

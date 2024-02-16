@@ -18,7 +18,7 @@ class ModelOverdamped(Model):
         dX(t) = mu(X,t)dt + sigma(X,t)dW_t
 
         """
-        self.dim = dim
+        self._dim = dim
         self._coefficients: Optional[np.ndarray] = None
         self.h = 1e-05
 
@@ -44,6 +44,23 @@ class ModelOverdamped(Model):
     def has_exact_density(self) -> bool:
         """Return true if model has an exact density implemented"""
         return self._has_exact_density
+
+    @property
+    def dim(self):
+        """
+        Dimensionnality of the model
+        """
+        return self._dim
+
+    @dim.setter
+    def dim(self, dim):
+        """
+        Dimensionnality of the model
+        """
+        if dim == 0:
+            dim = 1
+        if dim != self._dim:
+            raise ValueError("Dimension did not match dimension of the model. Change model or review dimension of your data")
 
     def exact_density(self, x0: float, xt: float, t0: float, dt: float = 0.0) -> float:
         """
@@ -142,7 +159,7 @@ class ModelOverdamped(Model):
 
 class BrownianMotion(ModelOverdamped):
     """
-    Model for (forceed) Brownian Motion
+    Model for (forced) Brownian Motion
     Parameters:  [mu, sigma]
 
     dX(t) = mu(X,t)dt + sigma(X,t)dW_t
@@ -152,12 +169,12 @@ class BrownianMotion(ModelOverdamped):
         sigma(X,t) = sqrt(sigma)   (constant, >0)
     """
 
-    dim = 1
+    _dim = 1
     _n_coeffs_force = 1
     _has_exact_density = True
 
     def __init__(self, **kwargs):
-        super().__init__()
+        super().__init__(dim=self._dim)
         self.coefficients = np.array([0.0, 1.0])
 
     def force(self, x, t: float = 0.0):
@@ -221,7 +238,7 @@ class OrnsteinUhlenbeck(ModelOverdamped):
     _n_coeffs_force = 2
 
     def __init__(self, **kwargs):
-        super().__init__(has_exact_density=True)
+        super().__init__(has_exact_density=True, dim=self._dim)
         self.coefficients = np.array([0.0, 1.0, 1.0])
 
     def force(self, x, t: float = 0.0):
@@ -281,6 +298,17 @@ class OverdampedBF(ModelOverdamped):
         self._n_coeffs_force = self.basis.n_output_features_
         self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_force)))
 
+    @property
+    def dim(self):
+        """
+        Dimensionnality of the model
+        """
+        return self._dim
+
+    @dim.setter
+    def dim(self, dim):
+        self._dim = dim
+
     def force(self, x, t: float = 0.0):
         return np.dot(self.basis(x), self.coefficients_force).reshape(-1, 1)
 
@@ -327,8 +355,8 @@ class OverdampedFunctions(ModelOverdamped):
     """
 
     def __init__(self, force, diffusion=None, dim=0, **kwargs):
-        super().__init__()
-        if dim >= 1:
+        super().__init__(dim=dim)
+        if dim > 1:
             force_shape = (dim,)
             diffusion_shape = (dim, dim)
         else:
@@ -343,6 +371,25 @@ class OverdampedFunctions(ModelOverdamped):
         self._n_coeffs_diffusion = self._diffusion.size
         self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion)))
         # Il faudrait réassigner alors le big array aux functions pour qu'on aie un seul espace mémoire
+
+    @property
+    def dim(self):
+        """
+        Dimensionnality of the model
+        """
+        return self._dim
+
+    @dim.setter
+    def dim(self, dim):
+        if dim > 1:
+            force_shape = (dim,)
+            diffusion_shape = (dim, dim)
+        else:
+            force_shape = ()
+            diffusion_shape = ()
+        self._force = self._force.resize(force_shape)
+        self._diffusion = self._diffusion.resize(diffusion_shape)
+        self._dim = dim
 
     def force(self, x, t: float = 0.0):
         return self._force(x)

@@ -9,7 +9,10 @@ import scipy.optimize
     [
         (fl.functions.Constant, {}),
         (fl.functions.Linear, {}),
+        (fl.functions.Polynomial, {"deg": 3}),
+        (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
         (fl.functions.BSplinesFunction, {"knots": 7}),
+        (fl.functions.Fourier, {"order": 3}),
     ],
 )
 def test_functions(fct, parameters):
@@ -38,7 +41,10 @@ def test_functions(fct, parameters):
     [
         (fl.functions.Constant, {}),
         (fl.functions.Linear, {}),
+        (fl.functions.Polynomial, {"deg": 3}),
+        (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
         (fl.functions.BSplinesFunction, {"knots": 7}),
+        (fl.functions.Fourier, {"order": 3}),
     ],
 )
 def test_functions_ND(fct, parameters):
@@ -60,7 +66,10 @@ def test_functions_ND(fct, parameters):
     [
         (fl.functions.Constant, {}),
         (fl.functions.Linear, {}),
+        (fl.functions.Polynomial, {"deg": 3}),
+        (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
         (fl.functions.BSplinesFunction, {"knots": 7}),
+        (fl.functions.Fourier, {"order": 3}),
     ],
 )
 def test_functions_ND_various_dim(fct, parameters):
@@ -79,7 +88,10 @@ def test_functions_ND_various_dim(fct, parameters):
     [
         (fl.functions.Constant, {}),
         (fl.functions.Linear, {}),
+        (fl.functions.Polynomial, {"deg": 3}),
+        (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
         (fl.functions.BSplinesFunction, {"knots": 7}),
+        (fl.functions.Fourier, {"order": 3}),
     ],
 )
 def test_matrix_functions_ND(fct, parameters):

@@ -41,25 +41,14 @@ class ExactDensity(TransitionDensity):
 
 
 class EulerDensity(TransitionDensity):
+    use_jac = True
+
     def __init__(self, model):
         """
         Class which represents the Euler approximation transition density for a model
         :param model: the SDE model, referenced during calls to the transition density
         """
         super().__init__(model)
-
-    def preprocess_traj(self, trj, **kwargs):
-        """
-        Equivalent to no preprocessing
-        """
-        trj["xt"] = trj["x"][1:]
-        trj["x"] = trj["x"][:-1]
-        if hasattr(self._model, "dim_h"):
-            if self._model.dim_h > 0:
-                trj["sig_h"] = np.zeros((trj["x"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
-                trj["x"] = np.concatenate((trj["x"], np.zeros((trj["x"].shape[0], self._model.dim_h))), axis=1)
-                trj["xt"] = np.concatenate((trj["xt"], np.zeros((trj["xt"].shape[0], self._model.dim_h))), axis=1)
-        return trj
 
     def __call__(self, weight, trj, coefficients):
         """
@@ -69,7 +58,7 @@ class EulerDensity(TransitionDensity):
         like, jac = self._logdensity(x0=trj["x"], xt=trj["xt"], t0=0.0, dt=trj["dt"])
         return (-np.sum(np.maximum(self._min_prob, like)) / weight, -np.sum(jac, axis=0) / weight)
 
-    def _logdensity(self, x0, xt, t0, dt: float):
+    def _logdensity1D(self, x0, xt, t0, dt: float):
         """
         The transition density obtained via Euler expansion
         :param x0: float or array, the current value
@@ -78,37 +67,20 @@ class EulerDensity(TransitionDensity):
         :param dt: float, the time step between x0 and xt
         :return: probability (same dimension as x0 and xt)
         """
-        sig2t = (self._model.diffusion(x0, t0).ravel()) * 2 * dt
+        sig2t = (self._model.diffusion(x0, t0)).ravel() * 2 * dt
+        # print(x0.shape, self._model.meandispl(x0, t0).shape)
         mut = x0.ravel() + self._model.meandispl(x0, t0).ravel() * dt
-        jacV = (self._model.diffusion_jac_coeffs(x0.ravel(), t0)) * 2 * dt
+        ll = -((xt.ravel() - mut) ** 2) / sig2t - 0.5 * np.log(np.pi * sig2t)
+        if not self.use_jac:
+            return ll, np.zeros(2)
 
-        l_jac_mu = 2 * ((xt.ravel() - mut) / sig2t)[:, None] * self._model.meandispl_jac_coeffs(x0.ravel(), t0) * dt
+        jacV = (self._model.diffusion_jac_coeffs(x0, t0)) * 2 * dt
+        l_jac_mu = 2 * ((xt.ravel() - mut) / sig2t)[:, None] * self._model.meandispl_jac_coeffs(x0, t0) * dt
         l_jac_V = (((xt.ravel() - mut) ** 2) / sig2t ** 2)[:, None] * jacV - 0.5 * jacV / sig2t[:, None]
 
-        return -((xt.ravel() - mut) ** 2) / sig2t - 0.5 * np.log(np.pi * sig2t), np.hstack((l_jac_mu, l_jac_V))
+        return ll, np.hstack((l_jac_mu, l_jac_V))
 
-    def run_step(self, x, dt, dW, t=0.0):
-        sig_sq_dt = np.sqrt(self._model.diffusion(x, t) * dt)
-        return x + self._model.meandispl(x, t) * dt + sig_sq_dt * dW
-
-
-class EulerHiddenDensity(EulerDensity):
-    def __init__(self, model):
-        """
-        Class which represents the Euler approximation transition density for a model
-        :param model: the SDE model, referenced during calls to the transition density
-        """
-        super().__init__(model)
-
-    def __call__(self, weight, trj, coefficients):
-        """
-        Compute Likelihood of one trajectory
-        """
-        self._model.coefficients = coefficients
-        like, jac = self._logdensity(x0=trj["x"], xt=trj["xt"], t0=0.0, dt=trj["dt"])
-        return (-np.sum(np.maximum(self._min_prob, like)) / weight, -np.sum(jac, axis=0) / weight)
-
-    def _logdensity(self, x0, xt, t0, dt):
+    def _logdensityND(self, x0, xt, t0, dt):
         """
         The transition density evaluated at these arguments
         :param x0: float or array, the current value
@@ -121,12 +93,20 @@ class EulerHiddenDensity(EulerDensity):
         # TODO: Add correction terms
         E = x0 + self._model.meandispl(x0, t0) * dt
         V = (self._model.diffusion(x0, t0)) * dt
-        invV = np.linalg.inv(V)
+        invV = np.linalg.inv(V)  # TODO: Use linalg.solve instead of inv ?
+        ll = -0.5 * np.einsum("ti,tij,tj-> t", xt - E, invV, xt - E) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V))
+
+        if not self.use_jac:
+            return ll, np.zeros(2)
 
         jacV = (self._model.diffusion_jac_coeffs(x0, t0)) * dt
         l_jac_E = np.einsum("ti,tij,tjc-> tc", xt - E, invV, self._model.meandispl_jac_coeffs(x0, t0) * dt)
         l_jac_V = 0.5 * np.einsum("ti,tijc,tj-> tc", xt - E, np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV), xt - E) - 0.5 * np.einsum("tijc,tji->tc", jacV, invV)
-        return -0.5 * np.einsum("ti,tij,tj-> t", xt - E, invV, xt - E) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V)), np.hstack((l_jac_E, l_jac_V))
+        return ll, np.hstack((l_jac_E, l_jac_V))
+
+    def run_step(self, x, dt, dW, t=0.0):
+        sig_sq_dt = np.sqrt(self._model.diffusion(x, t) * dt)
+        return x + self._model.meandispl(x, t) * dt + sig_sq_dt * dW
 
     def _hiddenvariance(self, x0, xt, sigh, t0, dt):
         """
@@ -176,10 +156,6 @@ class EulerHiddenDensity(EulerDensity):
         like, jac = self._hiddenvariance(x0=trj["x"], xt=trj["xt"], sigh=trj["sig_h"], t0=0.0, dt=trj["dt"])
         return like.sum() / weight, -np.hstack((np.zeros(self._model._n_coeffs_force), jac.sum(axis=0) / weight))
 
-    def run_step(self, x, dt, dW, t=0.0):
-        sig_sq_dt = np.sqrt(self._model.diffusion(x, t) * dt)
-        return x + self._model.meandispl(x, t) * dt + sig_sq_dt * dW
-
     def e_step(self, weight, trj, coefficients, mu0, sig0):
         """
         In presence of hidden variables, reconstruct then using a Kalman Filter.
@@ -209,7 +185,7 @@ class OzakiDensity(TransitionDensity):
         """
         super().__init__(model)
 
-    def _logdensity(self, x0, xt, t0, dt: float):
+    def _logdensity1D(self, x0, xt, t0, dt: float):
         """
         The transition density obtained via Ozaki expansion
         :param x0: float or array, the current value
@@ -238,7 +214,7 @@ class ShojiOzakiDensity(TransitionDensity):
         """
         super().__init__(model)
 
-    def _logdensity(self, x0, xt, t0, dt: float):
+    def _logdensity1D(self, x0, xt, t0, dt: float):
         """
         The transition density obtained via Shoji-Ozaki expansion
         :param x0: float or array, the current value
@@ -265,6 +241,8 @@ class ShojiOzakiDensity(TransitionDensity):
 
 
 class ElerianDensity(EulerDensity):
+    use_jac = False
+
     def __init__(self, model):
         """
         Class which represents the Elerian (Milstein) approximation transition density for a model
@@ -272,7 +250,7 @@ class ElerianDensity(EulerDensity):
         """
         super().__init__(model)
 
-    def _logdensity(self, x0, xt, t0, dt: float):
+    def _logdensity1D(self, x0, xt, t0, dt: float):
         """
         The transition density obtained via Milstein Expansion (Elarian density).
         When d(sigma)/dx = 0, reduces to Euler
@@ -284,7 +262,7 @@ class ElerianDensity(EulerDensity):
         """
         sig_x = self._model.diffusion_x(x0, t0).ravel()
         if isinstance(x0, np.ndarray) and (sig_x == 0).any:
-            return super()._logdensity(x0=x0, xt=xt, t0=t0, dt=dt)[0]
+            return super()._logdensity1D(x0=x0, xt=xt, t0=t0, dt=dt)[0]
 
         sig = self._model.diffusion(x0, t0).ravel()
         mu = self._model.meandispl(x0, t0).ravel()
@@ -315,7 +293,7 @@ class KesslerDensity(TransitionDensity):
         """
         super().__init__(model)
 
-    def _logdensity(self, x0, xt, t0, dt: float):
+    def _logdensity1D(self, x0, xt, t0, dt: float):
         """
         The transition density obtained via Kessler expansion
         :param x0: float or array, the current value
@@ -346,7 +324,7 @@ class DrozdovDensity(TransitionDensity):
         """
         super().__init__(model)
 
-    def _logdensity(self, x0, xt, t0, dt: float):
+    def _logdensity1D(self, x0, xt, t0, dt: float):
         """
         The transition density obtained via Drozdov expansion
         :param x0: float or array, the current value

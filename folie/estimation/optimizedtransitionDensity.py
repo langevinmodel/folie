@@ -12,18 +12,19 @@ class EulerNumbaOptimizedDensity(EulerDensity):
         :param model: the SDE model, referenced during calls to the transition density
         """
         super().__init__(model)
+        if self._model.dim > 1:
+            raise ValueError("Model should be 1D.")
 
     def preprocess_traj(self, trj, **kwargs):
         """
         Preprocess trajectories data
         """
-        trj["pre"] = self.model.preprocess_traj(trj["x"], **kwargs)
+        trj["pre"] = self.model.preprocess_traj(trj["x"].ravel(), **kwargs)
         return trj
 
     def __call__(self, weight, trj, coefficients):
         """
         The exact transition density (when applicable)
-        Note: this will raise exception if the model does not implement exact_density
         :param x0: float or array, the current value
         :param xt: float or array, the value to transition to  (must be same dimension as x0)
         :param t0: float, the time of at which to evalate the coefficients. Irrelevant For time inhomogenous models

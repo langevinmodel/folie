@@ -20,8 +20,8 @@ data = fl.Trajectories(dt=trj[1, 0] - trj[0, 0])
 for i in range(1, trj.shape[1]):
     data.append(trj[:, i : i + 1])
 
-bf = fl.function_basis.Linear().fit(data)
-model = fl.models.OverdampedBF(bf)
+fun = fl.functions.Linear().fit(data)
+model = fl.models.OverdampedFunctions(fun)
 estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
 model = estimator.fit_fetch(data, coefficients0=[1.0, 1.0])
 

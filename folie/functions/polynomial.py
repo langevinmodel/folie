@@ -20,7 +20,7 @@ class Constant(FunctionFromBasis):
 
     def differentiate(self):
         fun = self.copy()  # Inclure extra dim pour la differentiation
-        fun._coefficients = np.zeros_like(self._coefficients)
+        fun._coefficients = np.zeros_like(self._coefficients)  # Il faut aussi freeze les coefficients
         return fun
 
     def transform(self, x, **kwargs):
@@ -64,7 +64,7 @@ class Linear(FunctionFromBasis):
 
     def hessian_x(self, x, **kwargs):
         len, dim = x.shape
-        x_grad = np.ones((len, 1, 1)) * np.eye(dim)[None, :, :]
+        x_grad = np.zeros((len, 1, 1)) * np.eye(dim)[None, :, :]
         return np.einsum("nbd,bs->nsd", x_grad, self._coefficients).reshape(-1, *self.output_shape_, dim)
 
     def grad_coeffs(self, x, **kwargs):
@@ -88,6 +88,16 @@ class Polynomial(FunctionFromBasis):
         self.n_basis_features_ = self.input_dim_ * self.degree
         self.coefficients = np.ones((self.n_basis_features_, self.output_size_))
         return self
+
+    def basis(self, X):
+        nsamples, dim = X.shape
+
+        features = np.zeros((nsamples, dim * self.degree))
+        for n in range(0, self.degree):
+            istart = n * dim
+            iend = (n + 1) * dim
+            features[:, istart:iend] = self.polynom.basis(n)(X)
+        return features
 
     def transform(self, x, **kwargs):
         return x @ self._coefficients

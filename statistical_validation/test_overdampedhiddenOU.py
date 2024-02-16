@@ -15,14 +15,14 @@ fig, axs = plt.subplots(1, len(model_simu.coefficients))
 for name, transitioncls in zip(
     ["Euler"],
     [
-        fl.EulerHiddenDensity,
+        fl.EulerDensity,
     ],
 ):
     fun_lin = fl.functions.Linear().fit(data_dts[0])
     fun_frct = fl.functions.Constant().fit(data_dts[0])
     fun_cst = fl.functions.Constant().fit(data_dts[0])
     model = fl.models.OverdampedHidden(fun_lin, fun_frct, fun_cst, dim=1, dim_h=2)
-    estimator = fl.EMEstimator(fl.EulerHiddenDensity(model), max_iter=15, verbose=2, verbose_interval=1)
+    estimator = fl.EMEstimator(transitioncls(model), max_iter=15, verbose=2, verbose_interval=1)
     coeffs_vals = np.empty((len(data_dts), len(model.coefficients)))
     for n, data in enumerate(data_dts):
         res = estimator.fit_fetch(

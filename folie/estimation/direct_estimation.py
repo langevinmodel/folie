@@ -40,8 +40,9 @@ class KramersMoyalEstimator(Estimator):
 
         force_coeff, gram_f = self._loop_over_trajs(self._compute_force, data.weights, data, self.model)
         self.model.coefficients_force = np.linalg.inv(gram_f) @ force_coeff
-
+        print(gram_f.shape, force_coeff.shape)
         diffusion_coeff, gram_d = self._loop_over_trajs(self._compute_diffusion, data.weights, data, self.model)
+        print(gram_d.shape, diffusion_coeff.shape)
         self.model.coefficients_diffusion = np.linalg.inv(gram_d) @ diffusion_coeff
 
         self.model.fitted_ = True
@@ -55,8 +56,9 @@ class KramersMoyalEstimator(Estimator):
         """
         x = trj["x"][:-1]
         dx = trj["x"][1:] - trj["x"][:-1]
-
+        print("Fdx", dx.shape)
         force_basis = model.force_jac_coeffs(x)
+        print(force_basis.shape)
         return np.dot(force_basis.T, dx) / trj["dt"], np.dot(force_basis.T, force_basis)
 
     @staticmethod
@@ -66,8 +68,9 @@ class KramersMoyalEstimator(Estimator):
         """
         x = trj["x"][:-1]
         dx = trj["x"][1:] - trj["x"][:-1] - model.force(x) * trj["dt"]
-
+        print("Ddx", dx.shape, model.force(x).shape)
         diffusion_basis = model.diffusion_jac_coeffs(x)
+        print(diffusion_basis.shape, dx.shape)
         return np.dot(diffusion_basis.T, dx ** 2) / trj["dt"], np.dot(diffusion_basis.T, diffusion_basis)
 
 

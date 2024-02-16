@@ -4,8 +4,6 @@ from .overdamped import OverdampedFunctions
 
 
 class UnderdampedFunctions(OverdampedFunctions):
-    dim = 1
-
     def __init__(self, force, friction, diffusion, dim=1, **kwargs):
         """
         Base model for underdamped Langevin equations, defined by
@@ -16,8 +14,28 @@ class UnderdampedFunctions(OverdampedFunctions):
 
         """
         super().__init__(force, diffusion, dim=dim)
-        self._friction = friction.resize((self.dim, self.dim))
+        self._friction = friction.resize((self.dim, self.dim))  # TODO: A changer pour gérer le cas 1D
         self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion), np.ones(self._n_coeffs_friction)))
+
+    @property
+    def dim(self):
+        """
+        Dimensionnality of the model
+        """
+        return self._dim
+
+    @dim.setter
+    def dim(self, dim):
+        self._dim = dim
+        if dim >= 1:
+            force_shape = (dim,)
+            diffusion_shape = (dim, dim)
+        else:
+            force_shape = ()
+            diffusion_shape = ()
+        self._force = self._force.resize(force_shape)
+        self._diffusion = self._diffusion.resize(diffusion_shape)
+        self._friction = self._friction.resize(diffusion_shape)
 
     def meandispl(self, x, v, t: float = 0.0):
         return self._force(x[:, : self.dim_x]) + np.einsum("tdh,th-> td", self.friction(x[:, : self.dim_x]), v)

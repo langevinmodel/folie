@@ -27,8 +27,10 @@ class OverdampedFreeEnergy(ModelOverdamped):
     TODO: A class that implement a overdamped model with a given free energy
     """
 
+    _dim = 1
+
     def __init__(self, knots, beta, **kwargs):
-        super().__init__()
+        super().__init__(dim=self._dim)
         self.knots = knots.ravel()
         self.beta = beta
         self._n_coeffs_force = len(self.knots)

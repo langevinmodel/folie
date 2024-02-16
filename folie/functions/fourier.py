@@ -21,7 +21,7 @@ class Fourier(FunctionFromBasis):
         return self
 
     def differentiate(self):
-        fun = Constant(self.output_shape)
+        fun = Fourier(self.output_shape)
         fun.coefficients = self.coefficients.copy()
         return fun
 

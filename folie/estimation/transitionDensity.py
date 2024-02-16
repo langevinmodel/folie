@@ -12,6 +12,8 @@ from typing import Union
 
 
 class TransitionDensity(ABC):
+    use_jac = False
+
     def __init__(self, model):
         """
         Class which represents the transition density for a model, and implements a __call__ method to evalute the
@@ -24,6 +26,12 @@ class TransitionDensity(ABC):
         self._model = model
         self._min_prob = np.log(1e-30)  # used to floor probabilities when evaluating the log
 
+        # TODO: Trouver un moyen de set la dimensionalité du système à partir des données
+        if self._model.dim <= 1:
+            self._logdensity = self._logdensity1D
+        else:
+            self._logdensity = self._logdensityND
+
     @property
     def model(self):
         """Access to the underlying model"""
@@ -32,6 +40,11 @@ class TransitionDensity(ABC):
     @model.setter
     def model(self, model):
         self._model = model
+
+    def check_dim(self, dim, **kwargs):
+        """
+        Set correct dimension for latter evaluation
+        """
 
     def preprocess_traj(self, trj, **kwargs):
         """
@@ -43,13 +56,14 @@ class TransitionDensity(ABC):
             if self._model.dim_h > 0:
                 trj["sig_h"] = np.zeros((trj["x"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
                 trj["x"] = np.concatenate((trj["x"], np.zeros((trj["x"].shape[0], self._model.dim_h))), axis=1)
+                trj["xt"] = np.concatenate((trj["xt"], np.zeros((trj["xt"].shape[0], self._model.dim_h))), axis=1)
         return trj
 
     def density(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], t0: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return np.exp(self._logdensity(x0, xt, t0, dt))
 
     @abstractmethod
-    def _logdensity(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], t0: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    def _logdensity1D(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], t0: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         """
         The transition density evaluated at these arguments
         :param x0: float or array, the current value
