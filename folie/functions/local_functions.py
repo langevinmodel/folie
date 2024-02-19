@@ -1,10 +1,10 @@
-from .base import FunctionFromBasis
+from .base import ParametricFunction
 import numpy as np
 from scipy.interpolate import make_interp_spline, BSpline
 from ..data import stats_from_input_data
 
 
-class BSplinesFunction(FunctionFromBasis):
+class BSplinesFunction(ParametricFunction):
     """
     A function that use a set of B-splines
     """
@@ -28,6 +28,7 @@ class BSplinesFunction(FunctionFromBasis):
             y = np.zeros((nknots, self.input_dim_, self.output_size_))
         elif y.shape[0] != nknots:
             raise ValueError("y should be of length of the number of knots ")
+        # Replace by make_lsq_spline
         self.bspline = make_interp_spline(self.x_spline, y, k=self.k, bc_type=self.bc_type)
         self.n_basis_features_ = self.bspline.c.shape[0]
         return self

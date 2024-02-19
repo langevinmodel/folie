@@ -3,14 +3,14 @@ import abc
 
 
 from sklearn.base import TransformerMixin
+from sklearn import linear_model
 
 from ..base import _BaseMethodsMixin
 
 
 class Function(_BaseMethodsMixin, TransformerMixin):
-    r"""Base class of all functions. A function allows for the expression of f(x,coefficients)
-    Coefficients are hold by the class and should be given a priori.
-    This is mainly a overlay to get a common interface to different python librairies.
+    r"""
+    Base class of all functions that hold spatial dependance of the parameters of the model
     """
 
     def __init__(self, output_shape=(), **kwargs):
@@ -18,7 +18,6 @@ class Function(_BaseMethodsMixin, TransformerMixin):
             output_shape = ()
         self.output_shape_ = np.asarray(output_shape, dtype=int)
         self.output_size_ = np.prod(self.output_shape_)
-        self._coefficients = None
 
     def resize(self, new_shape):
         """
@@ -28,15 +27,9 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         ----------
             new_shape : tuple, array-like
                 The new output shape of the function
-            force_reshape : bool, defaut=False
-                Whatever to force reshape if current shape of coefficients is incompatible with new shape
-                If True new zeros coefficients will be added as needed
         """
         self.output_shape_ = np.asarray(new_shape, dtype=int)
         self.output_size_ = np.prod(self.output_shape_)
-        return self
-
-    def fit(self, x, y=None):
         return self
 
     @abc.abstractmethod
@@ -54,6 +47,9 @@ class Function(_BaseMethodsMixin, TransformerMixin):
             The transformed data
         """
 
+    def fit(self, x, y=None):
+        return self
+
     def grad_x(self, x, **kwargs):
         r"""Gradient of the function with respect to input data.
         Implemented by finite difference.
@@ -70,21 +66,6 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         """
         # TODO: A faire avec scipy approx_fprime et prendre en compte le ND
         return (self(x + self.h) - self(x - self.h)) / (2 * self.h)
-
-    @abc.abstractmethod
-    def grad_coeffs(self, x, **kwargs):
-        r"""Gradient of the function with respect to the coefficients.
-
-        Parameters
-        ----------
-        x : array_like
-            Input data.
-
-        Returns
-        -------
-        transformed : array_like
-            The gradient
-        """
 
     def __call__(self, x, *args, **kwargs):
         return self.transform(x, *args, **kwargs).reshape(-1, *self.output_shape_)
@@ -104,29 +85,6 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         """
         raise NotImplementedError
 
-    @property
-    def coefficients(self):
-        """Access the coefficients"""
-        return self._coefficients.ravel()
-
-    @coefficients.setter
-    def coefficients(self, vals):
-        """Set parameters, used by fitter to move through param space"""
-        self._coefficients = vals
-
-    @property
-    def is_linear(self) -> bool:
-        """Return True is the model is linear in its parameters"""
-        return False
-
-    @property
-    def size(self):
-        return np.size(self._coefficients)
-
-    @property
-    def shape(self):
-        return self.output_shape_
-
     def copy(self):
         r"""Makes a deep copy of this function.
 
@@ -140,22 +98,73 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         return copy.deepcopy(self)
 
 
-class FunctionFromBasis(Function):
-    def __init__(self, output_shape=(), basis=None):
-        super().__init__(output_shape)
-        self.basis = basis
+class ParametricFunction(Function):
+    r"""Base class of all parametric functions. A function allows for the expression of f(x,coefficients)
+    Coefficients are hold by the class and should be given a priori.
+    This is mainly a overlay to get a common interface to different python librairies.
+    """
 
-    def fit(self, x, y=None):
-        if self.basis is not None:
-            self.basis.fit(x)
-            self.n_basis_features_ = self.basis.n_output_features_
-        self.coefficients = np.zeros((self.n_basis_features_, self.output_size_))
+    def __init__(self, output_shape=(), **kwargs):
+        super().__init__(output_shape)
+        self._coefficients = np.zeros(output_shape)
+
+    def fit(self, x, y=None, estimator=linear_model.LinearRegression(copy_X=False, fit_intercept=False), **kwargs):
+        """
+        Fit coefficients of the function using linear regression.
+        Use as features the derivative of the function with respect to the coefficients
+
+        Parameters
+        ----------
+
+         X : {array-like} of shape (n_samples, dim)
+            Point of evaluation of the training data
+
+        y : array-like of shape (n_samples,) or (n_samples, n_targets)
+            Target values. Will be cast to X's dtype if necessary.
+
+
+        estimator: sklearn compatible estimator
+            Defaut to sklearn.linear_model.LinearRegression(copy_X=False, fit_intercept=False) but any compatible estimator can be used.
+            Estimator should have a coef_ attibutes after fitting
+
+        """
+        if y is None:
+            y = np.zeros((x.shape[0], self.output_size_))
+        else:
+            y = y.reshape((x.shape[0], -1))
+
+        Fx = self.grad_coeffs(x).reshape((x.shape[0], -1))
+        reg = estimator.fit(Fx, y)
+        self.coefficients = reg.coef_
         return self
+
+    @abc.abstractmethod
+    def grad_coeffs(self, x, **kwargs):
+        r"""Gradient of the function with respect to the coefficients.
+
+        Parameters
+        ----------
+        x : array_like
+            Input data.
+
+        Returns
+        -------
+        transformed : array_like
+            The gradient
+        """
 
     def resize(self, new_shape):
         super().resize(new_shape)
         self._coefficients = np.resize(self._coefficients, (self.n_basis_features_, self.output_size_))
         return self
+
+    @property
+    def size(self):
+        return np.size(self._coefficients)
+
+    @property
+    def shape(self):
+        return self.output_shape_
 
     @property
     def coefficients(self):
@@ -166,6 +175,20 @@ class FunctionFromBasis(Function):
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
         self._coefficients = vals.reshape((self.n_basis_features_, self.output_size_))
+
+
+class FunctionFromBasis(ParametricFunction):
+    def __init__(self, output_shape=(), basis=None):
+        super().__init__(output_shape)
+        self.basis = basis
+
+    def fit(self, x, y=None):
+        if self.basis is not None:
+            self.basis.fit(x, y)
+            self.n_basis_features_ = self.basis.n_output_features_
+        super.fit(x, y)
+        self.coefficients = np.zeros((self.n_basis_features_, self.output_size_))
+        return self
 
     def transform(self, x, **kwargs):
         return self.basis(x) @ self._coefficients
@@ -182,13 +205,8 @@ class FunctionFromBasis(Function):
         """
         Compute gram matrix on points x
         """
-        basis_vals = self.basis(x)
+        basis_vals = self.basis(x).reshape(x.shape[0], -1)
         return np.dot(basis_vals.T, basis_vals)
-
-    @property
-    def is_linear(self) -> bool:
-        """Return True is the model is linear in its parameters"""
-        return True
 
 
 class FunctionSum(Function):
@@ -253,11 +271,6 @@ class FunctionSum(Function):
             curr_size += fu.size
 
     @property
-    def is_linear(self) -> bool:
-        """Return True is the model is linear in its parameters"""
-        return False
-
-    @property
     def size(self):
         return np.sum([fu.size for fu in self.functions_set])
 
@@ -293,7 +306,6 @@ class FunctionComposition(Function):
         self.f.fit(self.g(x), y)
 
         self.n_output_features_ = self.f.n_output_features_
-        self.n_input_dim_ = self.g.n_input_dim_
 
         return self
 

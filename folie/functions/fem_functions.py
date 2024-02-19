@@ -1,9 +1,9 @@
-from .base import FunctionFromBasis
+from .base import ParametricFunction
 import numpy as np
 from ..data import stats_from_input_data
 
 
-class FiniteElement(FunctionFromBasis):
+class FiniteElement(ParametricFunction):
     """
     Build functions from finite elements basis
     """
@@ -14,7 +14,7 @@ class FiniteElement(FunctionFromBasis):
 
     def fit(self, X=None, y=None):
         xstats = stats_from_input_data(X)
-        self.input_dim_ = xstats.dim
+        xstats.dim
         self.n_basis_features_ = self.basis.N
         self.coefficients = np.zeros((self.n_basis_features_, self.output_size_))
         return self
@@ -28,5 +28,6 @@ class FiniteElement(FunctionFromBasis):
         return np.einsum("nbd,bs->nsd", np.ones_like(x), self._coefficients).reshape(-1, *self.output_shape_, dim)
 
     def grad_coeffs(self, x, **kwargs):
+        # TODO: Retourne une matrice sparse
         grad_coeffs = np.eye(self.size).reshape(self.n_basis_features_, *self.output_shape_, self.size)
         return np.tensordot(self.basis.probes(x), grad_coeffs, axes=1)

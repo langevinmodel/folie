@@ -1,9 +1,9 @@
 import numpy as np
-from .base import FunctionFromBasis
+from .base import ParametricFunction
 from ..data import stats_from_input_data
 
 
-class Fourier(FunctionFromBasis):
+class Fourier(ParametricFunction):
     """
     The linear function f(x) = c x
     """
@@ -15,8 +15,7 @@ class Fourier(FunctionFromBasis):
 
     def fit(self, X=None, y=None):
         xstats = stats_from_input_data(X)
-        self.input_dim_ = xstats.dim
-        self.n_basis_features_ = self.input_dim_ * self.order
+        self.n_basis_features_ = xstats.dim * self.order
         self.coefficients = np.ones((self.n_basis_features_, self.output_size_))
         return self
 

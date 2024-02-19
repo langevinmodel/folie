@@ -1,9 +1,9 @@
 import numpy as np
-from .base import FunctionFromBasis
+from .base import ParametricFunction
 from ..data import stats_from_input_data
 
 
-class Constant(FunctionFromBasis):
+class Constant(ParametricFunction):
     """
     A function that return a constant value
     """
@@ -34,7 +34,7 @@ class Constant(FunctionFromBasis):
         return np.tensordot(np.ones_like(x), grad_coeffs, axes=1)
 
 
-class Linear(FunctionFromBasis):
+class Linear(ParametricFunction):
     """
     The linear function f(x) = c x
     """
@@ -72,7 +72,7 @@ class Linear(FunctionFromBasis):
         return np.tensordot(x, grad_coeffs, axes=1)
 
 
-class Polynomial(FunctionFromBasis):
+class Polynomial(ParametricFunction):
     """
     The polynome function
     """

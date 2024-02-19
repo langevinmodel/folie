@@ -1,5 +1,4 @@
 import numpy as np
-import warnings
 
 
 from ..base import Estimator
@@ -17,19 +16,15 @@ class KramersMoyalEstimator(Estimator):
 
     def __init__(self, model):
         super().__init__(model)
-        # Should check is the model is linear in parameters
-        # TODO: Remove warning and is_linear function, since we can always do the fit
-        if not self._model.is_linear:
-            warnings.warn("Cannot fit Kramers Moyal if the model is not linear in its parameters, this would return an approximation")
 
     @staticmethod
     def _preprocess_traj(weight, trj, dim):
         """
         Compute velocity and acceleration
         """
-        if dim <=1:
+        # if dim <=1:
 
-            # Ravel array if we have 1D system
+        # Ravel array if we have 1D system
         if "v" not in list(trj.keys()) and "a" not in list(trj.keys()):
             diffs = trj["x"] - np.roll(trj["x"], 1, axis=0)
             a = np.roll(diffs, -1, axis=0) - diffs
@@ -55,7 +50,7 @@ class KramersMoyalEstimator(Estimator):
             Reference to self.
         """
         self._loop_over_trajs(self._preprocess_traj, data.weights, data, self.model.dim)
-        # Globalement, on doit faire regression sur force=dx/dt
+        # Globalement, on doit faire regression sur force=dx/dt, donc on construit x et v et on demande le fit
 
         force_coeff, gram_f = self._loop_over_trajs(self._compute_force, data.weights, data, self.model)
         self.model.coefficients_force = np.linalg.inv(gram_f) @ force_coeff  # Do it by solve instead of matix inversion
@@ -63,11 +58,21 @@ class KramersMoyalEstimator(Estimator):
         # Puis regression sur diffusion = (dx-force*dt)**2
         diffusion_coeff, gram_d = self._loop_over_trajs(self._compute_diffusion, data.weights, data, self.model)
         print(gram_d.shape, diffusion_coeff.shape)
-        self.model.coefficients_diffusion = np.linalg.inv(gram_d) @ diffusion_coeff
+        self.model.coefficients_diffusion = np.linalg.inv(gram_d) @ diffusion_coeff  # Replace by a solve instead
 
         self.model.fitted_ = True
 
         return self
+
+    @staticmethod
+    def _compute_projection(
+        weight,
+        trj,
+        model,
+    ):
+        """
+        Compute projection on basis
+        """
 
     @staticmethod
     def _compute_force(weight, trj, model):
@@ -91,7 +96,7 @@ class KramersMoyalEstimator(Estimator):
         dx = trj["x"][1:] - trj["x"][:-1] - model.force(x) * trj["dt"]
         diffusion_basis = model.diffusion_jac_coeffs(x)
         print(diffusion_basis.shape, dx.shape)
-        return np.dot(diffusion_basis.T, dx**2) / trj["dt"], np.dot(diffusion_basis.T, diffusion_basis)
+        return np.dot(diffusion_basis.T, dx ** 2) / trj["dt"], np.dot(diffusion_basis.T, diffusion_basis)
 
 
 class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
