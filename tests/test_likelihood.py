@@ -3,6 +3,7 @@ import os
 import numpy as np
 import folie as fl
 import dask.array as da
+import torch
 import scipy.optimize
 
 
@@ -12,6 +13,8 @@ def data(request):
     trj = np.loadtxt(os.path.join(file_dir, "../examples/example_2d.trj"))
     if request.param == "dask":
         trj = da.from_array(trj)
+    elif request.param == "torch":
+        trj = torch.from_numpy(trj)
     trj_list = fl.Trajectories(dt=trj[1, 0] - trj[0, 0])
     trj_list.append(trj[:, 1:2])
     trj_list.stats
@@ -23,6 +26,17 @@ def data(request):
 def test_likelihood_bf(data, request, transitioncls):
     bf = fl.function_basis.Linear().fit(data)
     model = fl.models.OverdampedBF(bf)
+    transition = transitioncls(model)
+    transition.preprocess_traj(data[0])
+    loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
+    assert len(loglikelihood) == 1
+
+
+@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize("transitioncls", [fl.OzakiDensity, fl.ShojiOzakiDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
+def test_likelihood(data, request, transitioncls):
+    fun_lin = fl.functions.Linear().fit(data)
+    model = fl.models.OverdampedFunctions(fun_lin, dim=1)
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])
     loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
@@ -58,11 +72,11 @@ def testlikelihood_derivative(data, request, transitioncls):
     ],
 )
 def testlikelihoodND_derivative(data, request, transitioncls):
-    fun_lin = fl.functions.BSplinesFunction(knots=3).fit(data)
+    fun_lin = fl.functions.BSplinesFunction(knots=5).fit(data)
     model = fl.models.OverdampedFunctions(fun_lin)
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])
-    loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
+    loglikelihood = transition(data.weights[0], data[0], model.coefficients)
     assert len(loglikelihood) == 2
 
     assert loglikelihood[1].shape == (len(model.coefficients),)

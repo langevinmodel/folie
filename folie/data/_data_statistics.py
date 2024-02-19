@@ -17,7 +17,7 @@ def traj_stats(X):
     else:
         nobs = X.shape[0]
         dim = X.shape[1]
-    return DescribeResult(nobs, dim, np.min(X, axis=0), np.max(X, axis=0), np.mean(X, axis=0), np.var(X, axis=0))
+    return DescribeResult(nobs, dim, X.min(axis=0), X.max(axis=0), X.mean(axis=0), X.var(axis=0))
 
 
 def sum_stats(d1, d2):
