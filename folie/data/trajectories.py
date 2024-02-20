@@ -1,6 +1,6 @@
 from collections.abc import MutableSequence, Mapping
 import numpy as np
-from ._data_statistics import traj_stats, sum_stats
+from ._data_statistics import traj_stats, sum_stats, domain, representative_array
 
 
 def Trajectory(x, dt):
@@ -56,6 +56,12 @@ class Trajectories(MutableSequence):
 
     def __str__(self):
         return "".join(["Trajectory of length {} and dimension {}.\n".format(len(trj["x"]), self.dim) for trj in self.trajectories_data])
+
+    def domain(self, Npoints=75):
+        return domain(self.stats, Npoints)
+
+    def representative_array(self, Npoints=75):
+        return representative_array(self.stats, Npoints)
 
     @property
     def stats(self):

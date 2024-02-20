@@ -1,5 +1,6 @@
 from collections import namedtuple
 import numpy as np
+import scipy.stats
 
 DescribeResult = namedtuple("DescribeResult", ("nobs", "dim", "min", "max", "mean", "variance"))
 
@@ -24,7 +25,31 @@ def sum_stats(d1, d2):
     return DescribeResult(d1.nobs + d2.nobs, d1.dim, np.minimum(d1.min, d2.min), np.maximum(d1.max, d2.max), (d1.mean * d1.nobs + d2.mean * d2.nobs) / (d1.nobs + d2.nobs), d1.variance)
 
 
-# Il faudrait faire un calcul de descripteurs avec accumulation sur les trajs ?
+def domain(stats, Npoints=75):
+    """
+    Build an array that is representative of the domain of the data points
+    """
+
+    return np.linspace(stats.min, stats.max, Npoints)
+
+
+def representative_array(stats, Npoints=75):
+    """
+    Build an array with the same statistics than stats with Npoints.
+    This is an helper function to fit functions with a reduced number of points
+    """
+
+    uniform = np.linspace(stats.min, stats.max, Npoints)
+    rep_array = np.empty_like(uniform)
+    scale = stats.max - stats.min
+    for d in range(stats.dim):
+        m = stats.mean[d]
+        v = stats.variance[d]
+        a = m * (m * (1 - m) / v - 1)
+        b = (1 - m)(m * (1 - m) / v - 1)
+        rep_array[:, d] = scipy.stats.beta.ppf(uniform[:, d], a, b, loc=stats.min[d], scale=scale[d])
+        # Il faudrait ensuite optimiser a et b pour avoir les bonnes moyennes et variances
+    return rep_array
 
 
 # TODO: Add some function that allow to take a list of keywords arguments and make a describe from it, so we can deal with various type of input into the fit function

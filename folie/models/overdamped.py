@@ -442,9 +442,6 @@ class OverdampedFunctions(ModelOverdamped):
     def diffusion_xx(self, x, t: float = 0.0):
         return self._diffusion.hessian_x(x)
 
-    def is_linear(self):
-        return self._force.is_linear and self._diffusion.is_linear
-
     def force_jac_coeffs(self, x, t: float = 0.0):
         """
         Jacobian of the force with respect to coefficients

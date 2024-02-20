@@ -8,15 +8,15 @@ class FiniteElement(ParametricFunction):
     Build functions from finite elements basis
     """
 
-    def __init__(self, basis, output_shape=()):
-        super().__init__(output_shape)
+    def __init__(self, basis, output_shape=(), coefficients=None):
+        super().__init__(output_shape, coefficients)
         self.basis = basis
 
     def fit(self, X=None, y=None):
         xstats = stats_from_input_data(X)
         xstats.dim
-        self.n_basis_features_ = self.basis.N
-        self.coefficients = np.zeros((self.n_basis_features_, self.output_size_))
+        self.n_functions_features_ = self.basis.N
+        self.coefficients = np.zeros((self.n_functions_features_, self.output_size_))
         return self
 
     def transform(self, x, **kwargs):
@@ -29,5 +29,5 @@ class FiniteElement(ParametricFunction):
 
     def grad_coeffs(self, x, **kwargs):
         # TODO: Retourne une matrice sparse
-        grad_coeffs = np.eye(self.size).reshape(self.n_basis_features_, *self.output_shape_, self.size)
+        grad_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
         return np.tensordot(self.basis.probes(x), grad_coeffs, axes=1)

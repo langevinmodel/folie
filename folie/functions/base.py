@@ -6,6 +6,7 @@ from sklearn.base import TransformerMixin
 from sklearn import linear_model
 
 from ..base import _BaseMethodsMixin
+from .numdifference import approx_fprime
 
 
 class Function(_BaseMethodsMixin, TransformerMixin):
@@ -64,8 +65,7 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         transformed : array_like
             The gradient
         """
-        # TODO: A faire avec scipy approx_fprime et prendre en compte le ND
-        return (self(x + self.h) - self(x - self.h)) / (2 * self.h)
+        return approx_fprime(x, self.__call__, self.output_shape_)
 
     def __call__(self, x, *args, **kwargs):
         return self.transform(x, *args, **kwargs).reshape(-1, *self.output_shape_)
@@ -104,9 +104,14 @@ class ParametricFunction(Function):
     This is mainly a overlay to get a common interface to different python librairies.
     """
 
-    def __init__(self, output_shape=(), **kwargs):
+    def __init__(self, output_shape=(), coefficients=None, **kwargs):
         super().__init__(output_shape)
-        self._coefficients = np.zeros(output_shape)
+        if coefficients is None:
+            self._coefficients = np.zeros(output_shape)
+            self.n_functions_features_ = 1
+        else:
+            self.n_functions_features_ = coefficients.shape[0]
+            self.coefficients = coefficients
 
     def fit(self, x, y=None, estimator=linear_model.LinearRegression(copy_X=False, fit_intercept=False), **kwargs):
         """
@@ -129,12 +134,12 @@ class ParametricFunction(Function):
 
         """
         if y is None:
-            y = np.zeros((x.shape[0], self.output_size_))
+            y = np.zeros((x.shape[0] * self.output_size_))
         else:
-            y = y.reshape((x.shape[0], -1))
+            y = y.ravel()
 
-        Fx = self.grad_coeffs(x).reshape((x.shape[0], -1))
-        reg = estimator.fit(Fx, y)
+        Fx = self.grad_coeffs(x)
+        reg = estimator.fit(Fx.reshape((x.shape[0] * self.output_size_, -1)), y)
         self.coefficients = reg.coef_
         return self
 
@@ -155,12 +160,12 @@ class ParametricFunction(Function):
 
     def resize(self, new_shape):
         super().resize(new_shape)
-        self._coefficients = np.resize(self._coefficients, (self.n_basis_features_, self.output_size_))
+        self._coefficients = np.resize(self._coefficients, (self.n_functions_features_, self.output_size_))
         return self
 
     @property
     def size(self):
-        return np.size(self._coefficients)
+        return self.n_functions_features_ * self.output_size_
 
     @property
     def shape(self):
@@ -174,10 +179,14 @@ class ParametricFunction(Function):
     @coefficients.setter
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
-        self._coefficients = vals.reshape((self.n_basis_features_, self.output_size_))
+        self._coefficients = vals.reshape((self.n_functions_features_, self.output_size_))
 
 
 class FunctionFromBasis(ParametricFunction):
+    """
+    Encaspulate function basis from VolterraBasis
+    """
+
     def __init__(self, output_shape=(), basis=None):
         super().__init__(output_shape)
         self.basis = basis
@@ -185,9 +194,9 @@ class FunctionFromBasis(ParametricFunction):
     def fit(self, x, y=None):
         if self.basis is not None:
             self.basis.fit(x, y)
-            self.n_basis_features_ = self.basis.n_output_features_
+            self.n_functions_features_ = self.basis.n_output_features_
         super.fit(x, y)
-        self.coefficients = np.zeros((self.n_basis_features_, self.output_size_))
+        self.coefficients = np.zeros((self.n_functions_features_, self.output_size_))
         return self
 
     def transform(self, x, **kwargs):
@@ -198,7 +207,7 @@ class FunctionFromBasis(ParametricFunction):
         return np.einsum("nbd,bs->nsd", self.basis.deriv(x), self._coefficients).reshape(-1, *self.output_shape_, dim)
 
     def grad_coeffs(self, x, **kwargs):
-        grad_coeffs = np.eye(self.size).reshape(self.n_basis_features_, *self.output_shape_, self.size)
+        grad_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
         return np.tensordot(x, grad_coeffs, axes=1)
 
     def gram(self, x):
@@ -373,7 +382,7 @@ class FunctionTensored(Function):
 
         input_dims : tuple
             The decomposition of the dimension of X into (x,y,z,..).
-            By default, it is assumed to be tensord product over one dimensionnal function
+            By default, it is assumed to be tensor product over one dimensionnal function
 
         """
         self.functions_set = functions

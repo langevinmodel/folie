@@ -9,7 +9,9 @@ class sklearnWrapper(Function):
     Wraps sklearn predictor as functions. Allow to use non parametric estimator for fit.
     """
 
-    def __init__(self, estimator):
+    def __init__(self, estimator, output_shape=()):
+        super().__init__(output_shape)
+        # TODO: add possibility to expose some of the hyperparameters for MLE optimisation
         self.estimator = estimator
 
     def fit(self, x, y=None, **kwargs):
@@ -25,7 +27,8 @@ class sklearnWrapper(Function):
 
 
 class KernelFunction(Function):
-    def __init__(self, kernel="rbf", gamma=None):
+    def __init__(self, gamma, kernel="rbf", output_shape=()):
+        super().__init__(output_shape)
         self.kernel = kernel
         self.gamma = gamma
 
@@ -49,8 +52,7 @@ class KernelFunction(Function):
             y = np.zeros((x.shape[0], self.output_size_))
         else:
             y = y.reshape((x.shape[0], -1))
-        X, y = check_X_y(x, y, accept_sparse=True)
-        self.ref_X = x
+        self.ref_X = check_array(x, accept_sparse=True)
         self.ref_f = y
         self.is_fitted_ = True
         if hasattr(self.gamma, "__iter__"):
@@ -75,9 +77,7 @@ class KernelFunction(Function):
         X = check_array(X, accept_sparse=True)
         check_is_fitted(self, "is_fitted_")
         K = pairwise_kernels(self.ref_X, X, metric=self.kernel, gamma=self.gamma)
-        norm = K.sum(axis=0)
-        self.z = -np.log(norm) / self.gamma  # Storing result of z computation for output
-        s = (K * self.ref_f[..., None]).sum(axis=0) / norm
+        s = (K[..., None] * self.ref_f[:, None, ...]).sum(axis=0) / K.sum(axis=0)[:, None]
         return s
 
     def _optimize_gamma(self, gamma_values):
