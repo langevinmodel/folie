@@ -17,21 +17,6 @@ class KramersMoyalEstimator(Estimator):
     def __init__(self, model):
         super().__init__(model)
 
-    @staticmethod
-    def _preprocess_traj(weight, trj, dim):
-        """
-        Compute velocity and acceleration
-        """
-        # if dim <=1:
-
-        # Ravel array if we have 1D system
-        if "v" not in list(trj.keys()) and "a" not in list(trj.keys()):
-            diffs = trj["x"] - np.roll(trj["x"], 1, axis=0)
-            a = np.roll(diffs, -1, axis=0) - diffs
-            trj["v"] = (0.5 / trj["dt"]) * (np.roll(diffs, -1, axis=0) + diffs)[1:-1]
-            trj["a"] = a[1:-1] / (trj["dt"] ** 2)
-        return (0,)
-
     def fit(self, data, **kwargs):
         r"""Fits data to the estimator's internal :class:`Model` and overwrites it. This way, every call to
         :meth:`fetch_model` yields an autonomous model instance. Sometimes a :code:`partial_fit` method is available,
@@ -49,54 +34,22 @@ class KramersMoyalEstimator(Estimator):
         self : Estimator
             Reference to self.
         """
-        self._loop_over_trajs(self._preprocess_traj, data.weights, data, self.model.dim)
-        # Globalement, on doit faire regression sur force=dx/dt, donc on construit x et v et on demande le fit
+        X = np.concatenate([trj["x"][:-1] for trj in data], axis=0)
+        dim = X.shape[1]
+        dx = np.concatenate([trj["x"][1:] - trj["x"][:-1] for trj in data], axis=0)
+        if dim <= 1:
+            dx = dx.ravel()
+        self.model._force.fit(X, dx)  # TODO: Change access to force
+        print(X.shape, dx.shape)
+        dx -= self.model.force(X) * data[0]["dt"]
+        if dim <= 1:
+            dx_sq = dx**2
+        else:
+            dx_sq = dx[..., None] * dx[:, None, ...]
 
-        force_coeff, gram_f = self._loop_over_trajs(self._compute_force, data.weights, data, self.model)
-        self.model.coefficients_force = np.linalg.inv(gram_f) @ force_coeff  # Do it by solve instead of matix inversion
-        print(gram_f.shape, force_coeff.shape)
-        # Puis regression sur diffusion = (dx-force*dt)**2
-        diffusion_coeff, gram_d = self._loop_over_trajs(self._compute_diffusion, data.weights, data, self.model)
-        print(gram_d.shape, diffusion_coeff.shape)
-        self.model.coefficients_diffusion = np.linalg.inv(gram_d) @ diffusion_coeff  # Replace by a solve instead
-
+        self.model._diffusion.fit(X, dx_sq)
         self.model.fitted_ = True
-
         return self
-
-    @staticmethod
-    def _compute_projection(
-        weight,
-        trj,
-        model,
-    ):
-        """
-        Compute projection on basis
-        """
-
-    @staticmethod
-    def _compute_force(weight, trj, model):
-        """
-        Force estimation over one trajectory
-        """
-        x = trj["x"][:-1]
-        dx = trj["x"][1:] - trj["x"][:-1]
-        print("Fdx", dx.shape)
-        force_basis = model.force_jac_coeffs(x)
-        print(force_basis.shape)
-        return np.dot(force_basis.T, dx) / trj["dt"], np.dot(force_basis.T, force_basis)
-
-    @staticmethod
-    def _compute_diffusion(weight, trj, model):
-        """
-        Force estimation over one trajectory
-        """
-        x = trj["x"][:-1]
-        print("Ddx", x.shape, model.force(x).shape)
-        dx = trj["x"][1:] - trj["x"][:-1] - model.force(x) * trj["dt"]
-        diffusion_basis = model.diffusion_jac_coeffs(x)
-        print(diffusion_basis.shape, dx.shape)
-        return np.dot(diffusion_basis.T, dx ** 2) / trj["dt"], np.dot(diffusion_basis.T, diffusion_basis)
 
 
 class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
@@ -111,9 +64,6 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
 
     def __init__(self, model):
         super().__init__(model)
-        # Should check is the model is linear in parameters
-        if not self._model.is_linear:
-            raise ValueError("Cannot fit Kramers Moyal if the model is not linear in its parameters")
 
     def fit(self, data, **kwargs):
         r"""Fits data to the estimator's internal :class:`Model` and overwrites it. This way, every call to
@@ -189,10 +139,3 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
 
         diffusion_basis = model.diffusion_jac_coeffs(trj["x"])
         return np.dot(diffusion_basis.T, trj["a"] ** 2) * 0.75 * trj["dt"], np.dot(diffusion_basis.T, diffusion_basis)
-
-    @staticmethod
-    def _compute_Ito_correction(weight, trj, model, D_coeffs):
-        """
-        Force estimation over one trajectory
-        TODO: Adapter underdamped
-        """

@@ -1,7 +1,7 @@
 from .base import Function
 import numpy as np
 from sklearn.metrics.pairwise import pairwise_kernels
-from sklearn.utils.validation import check_X_y, check_is_fitted, check_array
+from sklearn.utils.validation import check_is_fitted, check_array
 
 
 class sklearnWrapper(Function):

@@ -1,6 +1,6 @@
 import os, sys
 
-from .base import Function, ParametricFunction, FunctionFromBasis
+from .base import Function, ParametricFunction, FunctionFromBasis, sklearnTransformer
 from .base import FunctionSum, FunctionComposition, FunctionTensored
 
 dir_path = os.path.dirname(os.path.abspath(__file__))

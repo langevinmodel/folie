@@ -38,18 +38,14 @@ def representative_array(stats, Npoints=75):
     Build an array with the same statistics than stats with Npoints.
     This is an helper function to fit functions with a reduced number of points
     """
-
-    uniform = np.linspace(stats.min, stats.max, Npoints)
+    uniform = np.linspace(np.zeros_like(stats.min), np.ones_like(stats.max), Npoints)
     rep_array = np.empty_like(uniform)
     scale = stats.max - stats.min
     for d in range(stats.dim):
-        m = stats.mean[d]
-        v = stats.variance[d]
-        a = m * (m * (1 - m) / v - 1)
-        b = (1 - m)(m * (1 - m) / v - 1)
+        m = (stats.mean[d] - stats.min[d]) / scale[d]
+        v = stats.variance[d] / scale[d] ** 2
+        a = m * (m * (1 - m) / v - 1.0)
+        b = (1 - m) * (m * (1 - m) / v - 1.0)
         rep_array[:, d] = scipy.stats.beta.ppf(uniform[:, d], a, b, loc=stats.min[d], scale=scale[d])
         # Il faudrait ensuite optimiser a et b pour avoir les bonnes moyennes et variances
     return rep_array
-
-
-# TODO: Add some function that allow to take a list of keywords arguments and make a describe from it, so we can deal with various type of input into the fit function

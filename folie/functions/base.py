@@ -218,6 +218,29 @@ class FunctionFromBasis(ParametricFunction):
         return np.dot(basis_vals.T, basis_vals)
 
 
+class sklearnTransformer(ParametricFunction):
+    """
+    take any sklearn transformer and build a fonction from it
+    """
+
+    def __init__(self, transformer, output_shape=(), coefficients=None):
+        super().__init__(output_shape, coefficients)
+        self.transformer = transformer
+
+    def fit(self, X, y=None, **kwargs):
+        self.transformer = self.transformer.fit(X)
+        self.n_functions_features_ = self.transformer.transform(X[:5, :]).shape[1]
+        super().fit(X, y, **kwargs)
+        return self
+
+    def transform(self, x, **kwargs):
+        return self.transformer.transform(x) @ self._coefficients
+
+    def grad_coeffs(self, x, **kwargs):
+        grad_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
+        return np.tensordot(self.transformer.transform(x), grad_coeffs, axes=1)
+
+
 class FunctionSum(Function):
     """
     Return the sum of function

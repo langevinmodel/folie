@@ -144,11 +144,6 @@ class Model(_BaseMethodsMixin):
         """Set parameters, used by fitter to move through param space"""
         self._coefficients = vals
 
-    @property
-    def is_linear(self) -> bool:
-        """Return True is the model is linear in its parameters"""
-        return False
-
 
 class Estimator(_BaseMethodsMixin):
     r"""Base class of all estimators

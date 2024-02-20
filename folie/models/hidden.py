@@ -97,9 +97,6 @@ class OverdampedHidden(OverdampedFunctions):
     def coefficients_friction(self, vals):
         self._friction.coefficients = vals
 
-    def is_linear(self):
-        return self._force.is_linear and self.friction.is_linear and self.diffusion.is_linear
-
 
 class UnderdampedHidden(UnderdampedFunctions):
     """

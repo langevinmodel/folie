@@ -36,28 +36,46 @@ def data2d(request):
 
 
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
-def test_direct_estimator_bf(data, request):
-    bf = fl.function_basis.Linear().fit(data)
-    model = fl.models.OverdampedBF(bf)
+@pytest.mark.parametrize(
+    "fct,parameters",
+    [
+        (fl.functions.Constant, {}),
+        (fl.functions.Linear, {}),
+        (fl.functions.Polynomial, {"deg": 3}),
+        (fl.functions.BSplinesFunction, {"knots": 7}),
+        (fl.functions.Fourier, {"order": 3}),
+    ],
+)
+def test_direct_estimator(data, request, fct, parameters):
+    model = fl.models.OverdampedFunctions(fct(**parameters))
     estimator = fl.KramersMoyalEstimator(model)
     model = estimator.fit_fetch(data)
     assert model.fitted_
 
 
-@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
-def test_direct_estimator(data, request):
-    fun_lin = fl.functions.Linear().fit(data)
-    model = fl.models.OverdampedFunctions(fun_lin, dim=1)
+@pytest.mark.parametrize("data2d", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize(
+    "fct,parameters",
+    [
+        (fl.functions.Constant, {}),
+        (fl.functions.Linear, {}),
+        (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
+        (fl.functions.BSplinesFunction, {"knots": 7}),
+        (fl.functions.Fourier, {"order": 3}),
+    ],
+)
+def test_direct_estimator2d(data2d, request, fct, parameters):
+    model = fl.models.OverdampedFunctions(fct(**parameters), dim=2)
     estimator = fl.KramersMoyalEstimator(model)
-    model = estimator.fit_fetch(data)
+    model = estimator.fit_fetch(data2d)
     assert model.fitted_
 
 
 @pytest.mark.skip(reason="Not implemented yet")
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 def test_direct_estimator_underdamped(data, request):
-    fun_lin = fl.functions.Linear().fit(data)
-    fun_cst = fl.functions.Constant().fit(data)
+    fun_lin = fl.functions.Linear()
+    fun_cst = fl.functions.Constant()
     model = fl.models.UnderdampedFunctions(fun_lin, fun_lin.copy(), fun_cst)
     estimator = fl.UnderdampedKramersMoyalEstimator(model)
     model = estimator.fit_fetch(data)
@@ -66,7 +84,7 @@ def test_direct_estimator_underdamped(data, request):
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_likelihood_estimator(data, request):
-    fun_lin = fl.functions.Linear().fit(data)
+    fun_lin = fl.functions.Linear()
     model = fl.models.OverdampedFunctions(fun_lin, dim=1)
     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
     model = estimator.fit_fetch(data, coefficients0=[1.0, 1.0])

@@ -3,6 +3,7 @@ import os
 import numpy as np
 import folie as fl
 import dask.array as da
+from sklearn.preprocessing import PolynomialFeatures
 
 
 @pytest.fixture
@@ -20,7 +21,12 @@ def data(request):
     [
         (fl.functions.Constant, {}),
         (fl.functions.Linear, {}),
+        (fl.functions.Polynomial, {"deg": 3}),
+        (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
         (fl.functions.BSplinesFunction, {"knots": 7}),
+        (fl.functions.sklearnBSplines, {"knots": 7}),
+        (fl.functions.sklearnTransformer, {"transformer": PolynomialFeatures(degree=3)}),
+        (fl.functions.Fourier, {"order": 3}),
     ],
 )
 def test_functions(data, request, benchmark, fct, parameters):
@@ -35,7 +41,12 @@ def test_functions(data, request, benchmark, fct, parameters):
     [
         (fl.functions.Constant, {}),
         (fl.functions.Linear, {}),
+        (fl.functions.Polynomial, {"deg": 3}),
+        (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
         (fl.functions.BSplinesFunction, {"knots": 7}),
+        (fl.functions.sklearnBSplines, {"knots": 7}),
+        (fl.functions.sklearnTransformer, {"transformer": PolynomialFeatures(degree=3)}),
+        (fl.functions.Fourier, {"order": 3}),
     ],
 )
 def test_functions_gradx(data, request, benchmark, fct, parameters):
@@ -51,7 +62,12 @@ def test_functions_gradx(data, request, benchmark, fct, parameters):
     [
         (fl.functions.Constant, {}),
         (fl.functions.Linear, {}),
+        (fl.functions.Polynomial, {"deg": 3}),
+        (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
         (fl.functions.BSplinesFunction, {"knots": 7}),
+        (fl.functions.sklearnBSplines, {"knots": 7}),
+        (fl.functions.sklearnTransformer, {"transformer": PolynomialFeatures(degree=3)}),
+        (fl.functions.Fourier, {"order": 3}),
     ],
 )
 def test_functions_grad_coeffs(data, request, benchmark, fct, parameters):

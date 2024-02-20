@@ -193,9 +193,6 @@ class BrownianMotion(ModelOverdamped):
         sig_sq_dt = np.sqrt(self._coefficients[1] * dt)
         return x + self._coefficients[0] * dt + sig_sq_dt * dZ
 
-    def is_linear(self):
-        return True
-
     def force_jac_coeffs(self, x, t: float = 0.0):
         """
         Jacobian of the force with respect to coefficients
@@ -332,9 +329,6 @@ class OverdampedBF(ModelOverdamped):
 
     def diffusion_xx(self, x, t: float = 0.0):
         return np.dot(self.coefficients_diffusion, self.basis.hessian(x))
-
-    def is_linear(self):
-        return True
 
     def force_jac_coeffs(self, x, t: float = 0.0):
         """

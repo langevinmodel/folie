@@ -105,6 +105,3 @@ class OverdampedFreeEnergy(ModelOverdamped):
 
     def diffusion_xx(self, x, t: float = 0.0):
         return 0.0
-
-    def is_linear(self):
-        return True
