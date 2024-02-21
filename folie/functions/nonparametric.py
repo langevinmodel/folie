@@ -22,7 +22,7 @@ class sklearnWrapper(Function):
         self.estimator = self.estimator.fit(x, y)
         return self
 
-    def transform(self, X):
+    def transform(self, X, *args, **kwargs):
         return self.estimator.predict(X)
 
 
@@ -59,7 +59,7 @@ class KernelFunction(Function):
             self.gamma = self._optimize_gamma(self.gamma)
         return self  # `fit` should always return `self`
 
-    def transform(self, X):
+    def transform(self, X, *args, **kwargs):
         """A reference implementation of a predicting function.
 
         Parameters

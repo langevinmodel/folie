@@ -26,7 +26,7 @@ def data(request):
 def test_likelihood(data, request, transitioncls):
     print(data.representative_array())
     fun_lin = fl.functions.Linear().fit(data.representative_array())
-    model = fl.models.OverdampedFunctions(fun_lin, dim=1)
+    model = fl.models.Overdamped(fun_lin, dim=1)
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])
     loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
@@ -42,7 +42,7 @@ def test_likelihood(data, request, transitioncls):
 )
 def testlikelihood_derivative(data, request, transitioncls):
     fun_lin = fl.functions.Linear().fit(data.representative_array())
-    model = fl.models.OverdampedFunctions(fun_lin, dim=1)
+    model = fl.models.Overdamped(fun_lin, dim=1)
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])
     loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
@@ -63,7 +63,7 @@ def testlikelihood_derivative(data, request, transitioncls):
 )
 def testlikelihoodND_derivative(data, request, transitioncls):
     fun_lin = fl.functions.BSplinesFunction(knots=5).fit(data.representative_array())
-    model = fl.models.OverdampedFunctions(fun_lin)
+    model = fl.models.Overdamped(fun_lin)
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])
     loglikelihood = transition(data.weights[0], data[0], model.coefficients)

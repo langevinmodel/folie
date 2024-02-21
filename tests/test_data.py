@@ -54,3 +54,24 @@ def test_statistics(data, request):
     np.testing.assert_allclose(stats.min, rep_array.min(axis=0))
 
     np.testing.assert_allclose(stats.max, rep_array.max(axis=0))
+
+
+@pytest.mark.parametrize("data2d", ["numpy", "dask", "torch"], indirect=True)
+def test_statistics2d(data2d, request):
+    stats = data2d.stats
+
+    assert stats.nobs == 600000
+
+    assert data2d.domain(75).shape == (75, 1)
+
+    rep_array = data2d.representative_array(75)
+
+    assert rep_array.shape == (75, 1)
+
+    np.testing.assert_allclose(stats.mean, rep_array.mean(), atol=1.0 / rep_array.shape[0])
+
+    np.testing.assert_allclose(stats.variance, rep_array.var(), atol=1 / rep_array.shape[0])
+
+    np.testing.assert_allclose(stats.min, rep_array.min(axis=0))
+
+    np.testing.assert_allclose(stats.max, rep_array.max(axis=0))

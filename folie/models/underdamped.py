@@ -1,9 +1,9 @@
 import numpy as np
 
-from .overdamped import OverdampedFunctions
+from .overdamped import Overdamped
 
 
-class UnderdampedFunctions(OverdampedFunctions):
+class Underdamped(Overdamped):
     def __init__(self, force, friction, diffusion, dim=1, **kwargs):
         """
         Base model for underdamped Langevin equations, defined by

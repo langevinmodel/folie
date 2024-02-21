@@ -35,15 +35,17 @@ class KramersMoyalEstimator(Estimator):
             Reference to self.
         """
         X = np.concatenate([trj["x"][:-1] for trj in data], axis=0)
+        # Take weight into account as well
         dim = X.shape[1]
         dx = np.concatenate([trj["x"][1:] - trj["x"][:-1] for trj in data], axis=0)
         if dim <= 1:
             dx = dx.ravel()
-        self.model._force.fit(X, dx)  # TODO: Change access to force
+        weights = np.concatenate(data.weights, axis=0)  # TODO: implment correctly the weights
+        self.model._force.fit(X, dx, sample_weight=None)  # TODO: Change access to force
         print(X.shape, dx.shape)
         dx -= self.model.force(X) * data[0]["dt"]
         if dim <= 1:
-            dx_sq = dx**2
+            dx_sq = dx ** 2
         else:
             dx_sq = dx[..., None] * dx[:, None, ...]
 

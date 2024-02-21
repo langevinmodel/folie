@@ -1,7 +1,7 @@
 import os, sys
 
-from .base import Function, ParametricFunction, FunctionFromBasis, sklearnTransformer
-from .base import FunctionSum, FunctionComposition, FunctionTensored
+from .base import Function, ParametricFunction
+from .base import FunctionSum, FunctionComposition, FunctionTensored, FunctionOffset
 
 dir_path = os.path.dirname(os.path.abspath(__file__))
 files_in_dir = [f[:-3] for f in os.listdir(dir_path) if f.endswith(".py") and f != "__init__.py" and f != "base.py"]

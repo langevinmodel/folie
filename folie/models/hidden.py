@@ -1,9 +1,9 @@
-from .overdamped import OverdampedFunctions
-from .underdamped import UnderdampedFunctions
+from .overdamped import Overdamped
+from .underdamped import Underdamped
 import numpy as np
 
 
-class OverdampedHidden(OverdampedFunctions):
+class OverdampedHidden(Overdamped):
     """
     TODO: A class that implement an overdamped model with some extras hidden variables linearly correlated with visible ones
 
@@ -98,7 +98,7 @@ class OverdampedHidden(OverdampedFunctions):
         self._friction.coefficients = vals
 
 
-class UnderdampedHidden(UnderdampedFunctions):
+class UnderdampedHidden(Underdamped):
     """
     TODO: A class that implement an underdamped model with some extras hidden variables linearly correlated with visible ones
     """

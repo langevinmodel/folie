@@ -11,7 +11,7 @@ from sklearn.exceptions import ConvergenceWarning
 
 from ..base import Estimator
 from .direct_estimation import KramersMoyalEstimator, UnderdampedKramersMoyalEstimator
-from ..models import ModelOverdamped
+from ..models import BaseModelOverdamped
 
 
 class EstimatedResult(object):
@@ -107,7 +107,7 @@ class LikelihoodEstimator(Estimator):
             self.transition.preprocess_traj(trj)
         if coefficients0 is None:
             # TODO, use exact optimisation to provide first set of parameters
-            if isinstance(self.model, ModelOverdamped):
+            if isinstance(self.model, BaseModelOverdamped):
                 KramersMoyalEstimator(self.model).fit(data)
             coefficients0 = self.model.coefficients
         if minimizer is None:

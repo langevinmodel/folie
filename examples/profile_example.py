@@ -23,7 +23,7 @@ for i in range(1, trj.shape[1]):
     data.append(trj[:, i : i + 1])
 
 fun = fl.functions.BSplinesFunction(knots=5)
-model = fl.models.OverdampedFunctions(fun)
+model = fl.models.Overdamped(fun)
 prof.enable()
 estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
 model = estimator.fit_fetch(data)

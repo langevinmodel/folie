@@ -25,7 +25,7 @@ class Fourier(ParametricFunction):
         fun.coefficients = self.coefficients.copy()
         return fun
 
-    def transform(self, x, **kwargs):
+    def transform(self, x, *args, **kwargs):
         _, dim = x.shape
         res = 0.0
         for n in range(self.start_order, self.order):
@@ -41,7 +41,7 @@ class Fourier(ParametricFunction):
                 res += np.sin((n + 1) / 2 * x * self.freq) / np.sqrt(np.pi) @ self._coefficients[istart:iend, :]
         return res
 
-    def grad_x(self, x, **kwargs):
+    def grad_x(self, x, *args, **kwargs):
         _, dim = x.shape
         res = 0.0
         for n in range(self.start_order, self.order):  # First value is zero anyway
@@ -55,7 +55,7 @@ class Fourier(ParametricFunction):
             res += np.einsum("nbd,bs->nsd", grad, self._coefficients[istart:iend, :]).reshape(-1, *self.output_shape_, dim)
         return res
 
-    def grad_coeffs(self, x, **kwargs):
+    def grad_coeffs(self, x, *args, **kwargs):
         _, dim = x.shape
         grad_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
         res = 0.0

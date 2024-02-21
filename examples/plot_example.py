@@ -21,7 +21,7 @@ for i in range(1, trj.shape[1]):
     data.append(trj[:, i : i + 1])
 
 fun = fl.functions.Linear()
-model = fl.models.OverdampedFunctions(fun)
+model = fl.models.Overdamped(fun)
 estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
 model = estimator.fit_fetch(data)
 

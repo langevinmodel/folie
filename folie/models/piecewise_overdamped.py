@@ -1,4 +1,4 @@
-from .overdamped import ModelOverdamped
+from .overdamped import BaseModelOverdamped
 import numpy as np
 import numba as nb
 
@@ -22,7 +22,7 @@ def linear_interpolation_with_gradient(idx, h, knots, fp):
     return val_f, val_g, grad
 
 
-class OverdampedFreeEnergy(ModelOverdamped):
+class OverdampedFreeEnergy(BaseModelOverdamped):
     """
     TODO: A class that implement a overdamped model with a given free energy
     """

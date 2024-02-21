@@ -108,9 +108,10 @@ def test_matrix_functions_ND(fct, parameters):
 
 def test_functions_sum():
     data = np.linspace(-1, 1, 25).reshape(-1, 1)
+
     fun1 = fl.functions.Linear(output_shape=(1,)).fit(data)
 
-    fun2 = fl.functions.Linear(output_shape=(1,)).fit(data)
+    fun2 = fl.functions.Polynomial(deg=3, output_shape=(1,)).fit(data)
 
     fun_sum = fun1 + fun2
 
@@ -118,7 +119,23 @@ def test_functions_sum():
 
     assert fun_sum.grad_x(data).shape == (25, 1, 1)
 
-    assert fun_sum.grad_coeffs(data).shape == (25, 1, 2)
+    assert fun_sum.grad_coeffs(data).shape == (25, 1, 5)
+
+
+def test_functions_offset():
+    data = np.linspace(-1, 1, 25).reshape(-1, 1)
+    data_bias = np.linspace(-1, 1, 25).reshape(-1, 1)
+    fun1 = fl.functions.Linear(output_shape=(1,))
+    fun2 = fl.functions.Polynomial(deg=3, output_shape=(1, 1)).fit(data)
+
+    fun_off = fl.functions.FunctionOffset(fun1, fun2)
+    fun_off.fit(data, data_bias)
+
+    assert fun_off(data, data_bias).shape == (25, 1)
+
+    assert fun_off.grad_x(data, data_bias).shape == (25, 1, 1)
+
+    assert fun_off.grad_coeffs(data, data_bias).shape == (25, 1, 1)
 
 
 @pytest.mark.skip(reason="Not implemented yet")
@@ -162,7 +179,7 @@ def test_functions_composition():
 )
 def test_nonparametricfunctions(fct, parameters):
     data = np.linspace(-1, 1, 25).reshape(-1, 1)
-    y = data**2
+    y = data ** 2
     fun = fct(**parameters).fit(data, y)
 
     assert fun(data).shape == (25,)
@@ -195,7 +212,7 @@ def test_nonparametricfunctions_ND(fct, parameters):
 
 def test_numerical_difference():
     X = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun = fl.functions.BSplinesFunction(knots=7).fit(X, X**2)
+    fun = fl.functions.BSplinesFunction(knots=7).fit(X, X ** 2)
     #  fun = fl.functions.BSplinesFunction(knots=7, output_shape=(2,)).fit(X, X**2)
 
     finite_diff = fl.functions.approx_fprime(X, fun, fun.output_shape_)

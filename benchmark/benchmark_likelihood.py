@@ -21,7 +21,7 @@ def data(request):
 @pytest.mark.parametrize("transitioncls", [fl.EulerDensity, fl.OzakiDensity, fl.ShojiOzakiDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
 def test_likelihood_functions(data, request, benchmark, transitioncls):
     fun = fl.functions.Linear().fit(data)
-    model = fl.models.OverdampedFunctions(fun, fun.copy())
+    model = fl.models.Overdamped(fun, fun.copy())
     transition = transitioncls(model)
     for i, trj in enumerate(data):
         transition.preprocess_traj(trj)
