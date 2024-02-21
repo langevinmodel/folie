@@ -57,10 +57,6 @@ class BSplinesFunction(ParametricFunction):
         return self
 
     @property
-    def size(self):
-        return np.size(self._coefficients)
-
-    @property
     def coefficients(self):
         """Access the coefficients"""
         return self.bspline.c.ravel()

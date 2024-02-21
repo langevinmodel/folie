@@ -23,17 +23,6 @@ def data(request):
 
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 @pytest.mark.parametrize("transitioncls", [fl.OzakiDensity, fl.ShojiOzakiDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
-def test_likelihood_bf(data, request, transitioncls):
-    bf = fl.function_basis.Linear().fit(data)
-    model = fl.models.OverdampedBF(bf)
-    transition = transitioncls(model)
-    transition.preprocess_traj(data[0])
-    loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
-    assert len(loglikelihood) == 1
-
-
-@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
-@pytest.mark.parametrize("transitioncls", [fl.OzakiDensity, fl.ShojiOzakiDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
 def test_likelihood(data, request, transitioncls):
     print(data.representative_array())
     fun_lin = fl.functions.Linear().fit(data.representative_array())

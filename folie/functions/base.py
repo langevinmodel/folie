@@ -558,3 +558,50 @@ class FreezeCoefficients(Function):
         transformed : array_like
             The transformed data
         """
+
+
+class FreezedConstant(Function):
+    """
+    A function that return a constant value without optimising coefficients
+    """
+
+    def __init__(self, output_shape=(), coefficients=None):
+        super().__init__(output_shape, coefficients)
+
+    def fit(self, X, y=None, **kwargs):
+        xstats = stats_from_input_data(X)
+        self.n_functions_features_ = xstats.dim
+        return self
+
+    def transform(self, x, **kwargs):
+        return self._coefficients.reshape(1, *self.output_shape_)
+
+    def grad_x(self, x, **kwargs):
+        return np.zeros((1, *self.output_shape_, x.shape[1]))
+
+
+class abx(ParametricFunction):
+    """
+    A composition function for returning f(x)+g(x)*y
+    """
+
+    def __init__(self, f, g=None, output_shape=(), **kwargs):
+        super().__init__(output_shape)
+        self.f = f
+        # Check if g is a Function or a constant
+
+    def fit(self, X, y=None):
+        # First fit sub function with representative array then fit the global one
+        pass
+
+    def transform(self, x, v):
+        return self.f(x) + np.einsum("tdh,th-> td", self.g(x), v)
+
+    def grad_x(self, x, v):
+        return self.f.grad_x(x) + np.einsum("tdhe,th-> tde", self.g.grad_x(x), v)
+
+    def grad_coeffs(self, x, v, t: float = 0.0):
+        """
+        Jacobian of the force with respect to coefficients
+        """
+        return np.concatenate((self._force.grad_coeffs(x[:, : self.dim_x]), np.einsum("tdhc,th-> tdc", self._friction.grad_coeffs(x[:, : self.dim_x]), v)), axis=-1)
