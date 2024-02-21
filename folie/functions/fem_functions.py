@@ -22,12 +22,12 @@ class FiniteElement(ParametricFunction):
     def transform(self, x, *args, **kwargs):
         return self.basis.probes(x) @ self._coefficients
 
-    def grad_x(self, x, *args, **kwargs):
+    def transform_x(self, x, *args, **kwargs):
         _, dim = x.shape
         # Reprendre le code de basis.probes et l'adapter pour avoir la dérivée
         return np.einsum("nbd,bs->nsd", np.ones_like(x), self._coefficients).reshape(-1, *self.output_shape_, dim)
 
-    def grad_coeffs(self, x, *args, **kwargs):
+    def transform_coeffs(self, x, *args, **kwargs):
         # TODO: Retourne une matrice sparse
-        grad_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
-        return np.tensordot(self.basis.probes(x), grad_coeffs, axes=1)
+        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
+        return np.tensordot(self.basis.probes(x), transform_coeffs, axes=1)

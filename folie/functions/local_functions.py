@@ -74,7 +74,7 @@ class BSplinesFunction(ParametricFunction):
         nsamples, dim = x.shape
         return np.trace(self.bspline(x), axis1=1, axis2=2)
 
-    def grad_x(self, x, *args, **kwargs):
+    def transform_x(self, x, *args, **kwargs):
         nsamples, dim = x.shape
         return np.diagonal(self.bspline.derivative()(x), axis1=1, axis2=2).reshape(nsamples, *self.output_shape_, dim)
 
@@ -82,10 +82,10 @@ class BSplinesFunction(ParametricFunction):
         nsamples, dim = x.shape
         return np.diagonal(self.bspline.derivative(2)(x), axis1=1, axis2=2).reshape(nsamples, *self.output_shape_, dim, dim)
 
-    def grad_coeffs(self, x, *args, **kwargs):
+    def transform_coeffs(self, x, *args, **kwargs):
         nsamples, dim = x.shape
-        grad_coeffs = np.eye(self.size).reshape(self.n_functions_features_, self.input_dim_, *self.output_shape_, self.size)
-        return np.trace(BSpline(self.bspline.t, grad_coeffs, self.bspline.k)(x), axis1=1, axis2=2)
+        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, self.input_dim_, *self.output_shape_, self.size)
+        return np.trace(BSpline(self.bspline.t, transform_coeffs, self.bspline.k)(x), axis1=1, axis2=2)
 
 
 class sklearnBSplines(ParametricFunction):
@@ -108,11 +108,11 @@ class sklearnBSplines(ParametricFunction):
     def transform(self, x, *args, **kwargs):
         return self.bspline.transform(x) @ self._coefficients
 
-    def grad_x(self, x, *args, **kwargs):
+    def transform_x(self, x, *args, **kwargs):
         len, dim = x.shape
         x_grad = np.ones((len, 1, 1)) * np.eye(dim)[None, :, :]
-        return np.einsum("nbd,bs->nsd", x_grad, self._coefficients).reshape(-1, *self.output_shape_, dim)
+        return np.einsum("nbd,bs->nsd", x_grad, self._coefficients)  # .reshape(-1, *self.output_shape_, dim)
 
-    def grad_coeffs(self, x, *args, **kwargs):
-        grad_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
-        return np.tensordot(self.bspline.transform(x), grad_coeffs, axes=1)
+    def transform_coeffs(self, x, *args, **kwargs):
+        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
+        return np.tensordot(self.bspline.transform(x), transform_coeffs, axes=1)

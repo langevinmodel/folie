@@ -113,7 +113,7 @@ class GaussianTransitionDensity(TransitionDensity):
     def compute_noise(self, trj, coefficients):
         """
         Allow to estimate the noise from a trajectories and a fitted model
-        TODO: En vrai, c'est globalement ce qui est calculé dans chaque log density (qd elle sont gaussinnes), es-ce qu'on peut le réutiliser?
+        TODO: En vrai, c'est globalement ce qui est calculé dans chaque log density (qd elle sont gaussiennes), es-ce qu'on peut le réutiliser?
         """
         E = self._mean(trj["x"], 0, trj["dt"])
         V = self._variance(trj["x"], 0, trj["dt"])

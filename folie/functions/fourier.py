@@ -41,7 +41,7 @@ class Fourier(ParametricFunction):
                 res += np.sin((n + 1) / 2 * x * self.freq) / np.sqrt(np.pi) @ self._coefficients[istart:iend, :]
         return res
 
-    def grad_x(self, x, *args, **kwargs):
+    def transform_x(self, x, *args, **kwargs):
         _, dim = x.shape
         res = 0.0
         for n in range(self.start_order, self.order):  # First value is zero anyway
@@ -52,12 +52,12 @@ class Fourier(ParametricFunction):
                 grad = (-n / 2 * self.freq * np.sin(n / 2 * self.freq * x) / np.sqrt(np.pi))[..., None] * np.eye(dim)[None, :, :]
             else:
                 grad = ((n + 1) / 2 * self.freq * np.cos((n + 1) / 2 * self.freq * x) / np.sqrt(np.pi))[..., None] * np.eye(dim)[None, :, :]
-            res += np.einsum("nbd,bs->nsd", grad, self._coefficients[istart:iend, :]).reshape(-1, *self.output_shape_, dim)
+            res += np.einsum("nbd,bs->nsd", grad, self._coefficients[istart:iend, :])  # .reshape(-1, *self.output_shape_, dim)
         return res
 
-    def grad_coeffs(self, x, *args, **kwargs):
+    def transform_coeffs(self, x, *args, **kwargs):
         _, dim = x.shape
-        grad_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
+        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
         res = 0.0
         for n in range(self.start_order, self.order):
             istart = (n - self.start_order) * dim
@@ -69,5 +69,5 @@ class Fourier(ParametricFunction):
             else:
                 basis = np.sin((n + 1) / 2 * x * self.freq) / np.sqrt(np.pi)
 
-            res += np.tensordot(basis, grad_coeffs[istart:iend, :], axes=1)
+            res += np.tensordot(basis, transform_coeffs[istart:iend, :], axes=1)
         return res

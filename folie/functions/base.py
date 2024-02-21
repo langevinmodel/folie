@@ -13,13 +13,15 @@ class Function(_BaseMethodsMixin, TransformerMixin):
     r"""
     Base class of all functions that hold spatial dependance of the parameters of the model
     """
+
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, output_shape=(), **kwargs):
+    def __init__(self, output_shape=(), dim_x=None, **kwargs):
         if output_shape is None:
             output_shape = ()
         self.output_shape_ = np.asarray(output_shape, dtype=int)
         self.output_size_ = np.prod(self.output_shape_)
+        self.dim_x = dim_x
 
     def resize(self, new_shape):
         """
@@ -50,14 +52,17 @@ class Function(_BaseMethodsMixin, TransformerMixin):
     def fit(self, x, y=None, **kwargs):
         return self
 
-    def grad_x(self, x, **kwargs):
+    def transform_x(self, x, **kwargs):
         r"""Gradient of the function with respect to input data.
         Implemented by finite difference.
         """
         return approx_fprime(x, self.__call__, self.output_shape_)
 
     def __call__(self, x, *args, **kwargs):
-        return self.transform(x, *args, **kwargs).reshape(-1, *self.output_shape_)
+        return self.transform(x[:, : self.dim_x], *args, **kwargs).reshape(-1, *self.output_shape_)
+
+    def grad_x(self, x, *args, **kwargs):
+        return self.transform_x(x[:, : self.dim_x], *args, **kwargs).reshape(-1, *self.output_shape_, len(x[0, : self.dim_x]))
 
     def __add__(self, other):
         return FunctionSum([self, other])
@@ -94,11 +99,10 @@ class FunctionSum(Function):
 
     def __init__(self, functions):
         self.functions_set = functions
-        self.output_shape_ = self.functions_set[0].output_shape_
+        super().__init__(output_shape=self.functions_set[0].output_shape_)
         for fu in self.functions_set:
             if fu.output_shape_ != self.output_shape_:
                 raise ValueError("Cannot sum function with different output shape")
-        self.output_size_ = np.prod(self.output_shape_)
         # Do some samity check on the output of each functions
 
     def resize(self, new_shape):
@@ -415,6 +419,9 @@ class ParametricFunction(Function):
         return self
 
     @abc.abstractmethod
+    def transform_coeffs(self, x, *args, **kwargs):
+        pass  # TODO: Implement finite difference with scipy?
+
     def grad_coeffs(self, x, *args, **kwargs):
         r"""Gradient of the function with respect to the coefficients.
 
@@ -428,6 +435,7 @@ class ParametricFunction(Function):
         transformed : array_like
             The gradient
         """
+        return self.transform_coeffs(x[:, : self.dim_x], *args, **kwargs).reshape(-1, *self.output_shape_, self.size)
 
     def resize(self, new_shape):
         super().resize(new_shape)

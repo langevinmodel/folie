@@ -23,13 +23,13 @@ class FunctionFromBasis(ParametricFunction):
     def transform(self, x, *args, **kwargs):
         return self.basis(x) @ self._coefficients
 
-    def grad_x(self, x, **kwargs):
+    def transform_x(self, x, **kwargs):
         _, dim = x.shape
         return np.einsum("nbd,bs->nsd", self.basis.deriv(x), self._coefficients).reshape(-1, *self.output_shape_, dim)
 
-    def grad_coeffs(self, x, **kwargs):
-        grad_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
-        return np.tensordot(x, grad_coeffs, axes=1)
+    def transform_coeffs(self, x, **kwargs):
+        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
+        return np.tensordot(x, transform_coeffs, axes=1)
 
     def gram(self, x):
         """
@@ -57,9 +57,9 @@ class sklearnTransformer(ParametricFunction):
     def transform(self, x, *args, **kwargs):
         return self.transformer.transform(x) @ self._coefficients
 
-    def grad_coeffs(self, x, **kwargs):
-        grad_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
-        return np.tensordot(self.transformer.transform(x), grad_coeffs, axes=1)
+    def transform_coeffs(self, x, **kwargs):
+        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
+        return np.tensordot(self.transformer.transform(x), transform_coeffs, axes=1)
 
 
 class FreezeCoefficients(ParametricFunction):
@@ -79,10 +79,10 @@ class FreezeCoefficients(ParametricFunction):
         r"""Transforms the input data."""
         return self.f.transform(x)
 
-    def grad_x(self, x, **kwargs):
+    def transform_x(self, x, **kwargs):
         r"""Gradient of the function with respect to input data"""
 
-        return self.f.grad_x(x)
+        return self.f.transform_x(x)
 
     def hessian_x(self, x, **kwargs):
         """
@@ -90,7 +90,7 @@ class FreezeCoefficients(ParametricFunction):
         """
         return self.f.hessian_x(x)
 
-    def grad_coeffs(self, x, **kwargs):
+    def transform_coeffs(self, x, **kwargs):
         r"""Transforms the input data."""
 
 
@@ -112,11 +112,11 @@ class FunctionOffsetWithCoefficient(ParametricFunction):
     def transform(self, x, v):
         return self.f(x) + np.einsum("t...h,th-> t...", self.g(x), v)
 
-    def grad_x(self, x, v):
-        return self.f.grad_x(x) + np.einsum("t...he,th-> t...e", self.g.grad_x(x), v)
+    def transform_x(self, x, v):
+        return self.f.transform_x(x) + np.einsum("t...he,th-> t...e", self.g.transform_x(x), v)
 
-    def grad_coeffs(self, x, v, t: float = 0.0):
+    def transform_coeffs(self, x, v, t: float = 0.0):
         """
         Jacobian of the force with respect to coefficients
         """
-        return np.concatenate((self._force.grad_coeffs(x), np.einsum("t...hc,th-> t...c", self._friction.grad_coeffs(x[:, : self.dim_x]), v)), axis=-1)
+        return np.concatenate((self._force.transform_coeffs(x), np.einsum("t...hc,th-> t...c", self._friction.transform_coeffs(x[:, : self.dim_x]), v)), axis=-1)

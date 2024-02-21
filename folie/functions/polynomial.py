@@ -25,12 +25,12 @@ class Constant(ParametricFunction):
     def transform(self, x, *args, **kwargs):
         return np.dot(np.ones_like(x), self._coefficients)
 
-    def grad_x(self, x, *args, **kwargs):
-        return np.zeros((x.shape[0], *self.output_shape_, x.shape[1]))
+    def transform_x(self, x, *args, **kwargs):
+        return np.zeros((x.shape[0], self.output_size_, x.shape[1]))
 
-    def grad_coeffs(self, x, *args, **kwargs):
-        grad_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
-        return np.tensordot(np.ones_like(x), grad_coeffs, axes=1)
+    def transform_coeffs(self, x, *args, **kwargs):
+        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
+        return np.tensordot(np.ones_like(x), transform_coeffs, axes=1)
 
 
 class Linear(ParametricFunction):
@@ -55,19 +55,19 @@ class Linear(ParametricFunction):
     def transform(self, x, *args, **kwargs):
         return x @ self._coefficients
 
-    def grad_x(self, x, *args, **kwargs):
+    def transform_x(self, x, *args, **kwargs):
         len, dim = x.shape
         x_grad = np.ones((len, 1, 1)) * np.eye(dim)[None, :, :]
-        return np.einsum("nbd,bs->nsd", x_grad, self._coefficients).reshape(-1, *self.output_shape_, dim)
+        return np.einsum("nbd,bs->nsd", x_grad, self._coefficients)  # .reshape(-1, *self.output_shape_, dim)
 
     def hessian_x(self, x, *args, **kwargs):
         len, dim = x.shape
         x_grad = np.zeros((len, 1, 1)) * np.eye(dim)[None, :, :]
-        return np.einsum("nbd,bs->nsd", x_grad, self._coefficients).reshape(-1, *self.output_shape_, dim)
+        return np.einsum("nbd,bs->nsd", x_grad, self._coefficients)  # .reshape(-1, *self.output_shape_, dim)
 
-    def grad_coeffs(self, x, *args, **kwargs):
-        grad_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
-        return np.tensordot(x, grad_coeffs, axes=1)
+    def transform_coeffs(self, x, *args, **kwargs):
+        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
+        return np.tensordot(x, transform_coeffs, axes=1)
 
 
 class Polynomial(ParametricFunction):
@@ -97,22 +97,22 @@ class Polynomial(ParametricFunction):
             res += self.polynom.basis(n)(x) @ self._coefficients[istart:iend, :]
         return res
 
-    def grad_x(self, x, *args, **kwargs):
+    def transform_x(self, x, *args, **kwargs):
         _, dim = x.shape
         res = 0.0
         for n in range(1, self.degree):  # First value is zero anyway
             istart = n * dim
             iend = (n + 1) * dim
             grad = self.polynom.basis(n).deriv(1)(x)[..., None] * np.eye(dim)[None, :, :]
-            res += np.einsum("nbd,bs->nsd", grad, self._coefficients[istart:iend, :]).reshape(-1, *self.output_shape_, dim)
+            res += np.einsum("nbd,bs->nsd", grad, self._coefficients[istart:iend, :])  # .reshape(-1, *self.output_shape_, dim)
         return res
 
-    def grad_coeffs(self, x, *args, **kwargs):
+    def transform_coeffs(self, x, *args, **kwargs):
         _, dim = x.shape
-        grad_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
+        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
         res = 0.0
         for n in range(self.degree):
             istart = n * dim
             iend = (n + 1) * dim
-            res += np.tensordot(self.polynom.basis(n)(x), grad_coeffs[istart:iend, :], axes=1)
+            res += np.tensordot(self.polynom.basis(n)(x), transform_coeffs[istart:iend, :], axes=1)
         return res

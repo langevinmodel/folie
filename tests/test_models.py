@@ -38,6 +38,15 @@ def test_overdamped_w_exactdensity(model):
     assert model.exact_step(0.0, 1e-3, 0.1) != 0.0
 
 
+@pytest.mark.parametrize("model", [fl.models.OverdampedSplines1D()])
+def test_overdamped_easyacess(model):
+    x = np.linspace(-1, 1, 15).reshape(-1, 1)
+
+    assert model.force(x).shape == (15,)
+
+    assert model.diffusion(x).shape == (15,)
+
+
 @pytest.mark.parametrize(
     "fct,parameters,expected",
     [

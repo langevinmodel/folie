@@ -4,7 +4,7 @@ import numpy as np
 from scipy.stats import norm
 
 from ..base import Model
-from ..functions import Constant, Polynomial, FunctionOffset, FunctionOffsetWithCoefficient, ParametricFunction
+from ..functions import Constant, Polynomial, BSplinesFunction, FunctionOffset, FunctionOffsetWithCoefficient, ParametricFunction
 
 
 # TODO: Implement multidimensionnal version
@@ -249,4 +249,5 @@ class OrnsteinUhlenbeck(Overdamped):
         return mu * dt + np.sqrt(var * dt) * dZ
 
 
-# TODO: Add an OverdampedSplines1D for defaut model
+def OverdampedSplines1D(knots=5):
+    return Overdamped(BSplinesFunction(knots=knots), dim=0)
