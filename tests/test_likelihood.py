@@ -104,6 +104,8 @@ def testcorrection_hiddenND_derivative(data, request, transitioncls, dim_h):
     finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition.hiddencorrection(data.weights[0], data[0], p)[0])
     np.testing.assert_allclose(correction[1], finite_diff_jac, rtol=1e-06, atol=1e-6)
 
+    # TODO: assert also the plain likelihood part of the transitionDensity
+
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_numba_optimized(data, request):

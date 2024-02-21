@@ -100,22 +100,23 @@ class FunctionOffsetWithCoefficient(ParametricFunction):
     """
 
     def __init__(self, f, g=None, output_shape=(), **kwargs):
-        super().__init__(output_shape)
         self.f = f
+        self.g = g
         # Check if g is a Function or a constant
+        super().__init__(self.f.output_shape_)
 
     def fit(self, X, y=None, **kwargs):
         # First fit sub function with representative array then fit the global one
         pass
 
     def transform(self, x, v):
-        return self.f(x) + np.einsum("t...dh,th-> t...d", self.g(x), v)
+        return self.f(x) + np.einsum("t...h,th-> t...", self.g(x), v)
 
     def grad_x(self, x, v):
-        return self.f.grad_x(x) + np.einsum("t...dhe,th-> t...de", self.g.grad_x(x), v)
+        return self.f.grad_x(x) + np.einsum("t...he,th-> t...e", self.g.grad_x(x), v)
 
     def grad_coeffs(self, x, v, t: float = 0.0):
         """
         Jacobian of the force with respect to coefficients
         """
-        return np.concatenate((self._force.grad_coeffs(x[:, : self.dim_x]), np.einsum("t...dhc,th-> tdc", self._friction.grad_coeffs(x[:, : self.dim_x]), v)), axis=-1)
+        return np.concatenate((self._force.grad_coeffs(x), np.einsum("t...hc,th-> t...c", self._friction.grad_coeffs(x[:, : self.dim_x]), v)), axis=-1)

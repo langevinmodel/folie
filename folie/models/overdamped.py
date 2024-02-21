@@ -24,20 +24,6 @@ class BaseModelOverdamped(Model):
         self._coefficients: Optional[np.ndarray] = None
         self.h = 1e-05
 
-    def meandispl(self, x, t=0.0):
-        """The mean displacement term of the model"""
-        return self.force(x, t)
-
-    @abstractmethod
-    def force(self, x, t=0.0):
-        """The force term of the model"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def diffusion(self, x, t=0.0):
-        """The diffusion term of the model"""
-        raise NotImplementedError
-
     # ==============================
     # Exact Transition Density and Simulation Step, override when available
     # ==============================
@@ -104,60 +90,6 @@ class BaseModelOverdamped(Model):
         """Set parameters, used by fitter to move through param space"""
         self._coefficients[self._n_coeffs_force :] = vals.ravel()
 
-    def meandispl_jac_coeffs(self, x, t: float = 0.0):
-        """
-        Jacobian of the force with respect to coefficients
-        """
-        return self.force_jac_coeffs(x, t)
-
-    def force_jac_coeffs(self, x, t: float = 0.0):
-        """
-        Jacobian of the force with respect to coefficients
-        """
-        raise NotImplementedError
-
-    def diffusion_jac_coeffs(self, x, t: float = 0.0):
-        """
-        Jacobian of the diffusion with respect to coefficients
-        """
-        raise NotImplementedError
-
-    # ==============================
-    # Derivatives (Numerical By Default)
-    # ==============================
-
-    def meandispl_x(self, x, t: float = 0.0):
-        """Calculate first spatial derivative of force, dmu/dx"""
-        return self.force_x(x, t)
-
-    def meandispl_t(self, x, t: float = 0.0):
-        """Calculate first time derivative of force, dmu/dt"""
-        return self.force_t(x, t)
-
-    def meandispl_xx(self, x, t: float = 0.0):
-        """Calculate second spatial derivative of force, d^2mu/dx^2"""
-        return self.force_x(x, t)
-
-    def force_x(self, x, t: float = 0.0):
-        """Calculate first spatial derivative of force, dmu/dx"""
-        return (self.force(x + self.h, t) - self.force(x - self.h, t)) / (2 * self.h)
-
-    def force_t(self, x, t: float = 0.0):
-        """Calculate first time derivative of force, dmu/dt"""
-        return (self.force(x, t + self.h) - self.force(x, t)) / self.h
-
-    def force_xx(self, x, t: float = 0.0):
-        """Calculate second spatial derivative of force, d^2mu/dx^2"""
-        return (self.force(x + self.h, t) - 2 * self.force(x, t) + self.force(x - self.h, t)) / (self.h * self.h)
-
-    def diffusion_x(self, x, t: float = 0.0):
-        """Calculate first spatial derivative of diffusion term, dsigma/dx"""
-        return (self.diffusion(x + self.h, t) - self.diffusion(x - self.h, t)) / (2 * self.h)
-
-    def diffusion_xx(self, x, t: float = 0.0):
-        """Calculate second spatial derivative of diffusion term, d^2sigma/dx^2"""
-        return (self.diffusion(x + self.h, t) - 2 * self.diffusion(x, t) + self.diffusion(x - self.h, t)) / (self.h * self.h)
-
 
 class Overdamped(BaseModelOverdamped):
     """
@@ -188,19 +120,20 @@ class Overdamped(BaseModelOverdamped):
         else:
             force_shape = ()
             diffusion_shape = ()
-        self._force = force.resize(force_shape)
+        self.force = force.resize(force_shape)
         if diffusion is None:
-            self._diffusion = force.copy().resize(diffusion_shape)
+            self.diffusion = force.copy().resize(diffusion_shape)
         else:
-            self._diffusion = diffusion.resize(diffusion_shape)
+            self.diffusion = diffusion.resize(diffusion_shape)
         if has_bias is not None:
             if isinstance(has_bias, bool) and has_bias:
-                self._force = FunctionOffset(self._force, self._diffusion)
+                self.force = FunctionOffset(self.force, self.diffusion)
             elif isinstance(has_bias, ParametricFunction):
-                self._force = FunctionOffsetWithCoefficient(self._force, has_bias)
-        self._n_coeffs_force = self._force.size
-        self._n_coeffs_diffusion = self._diffusion.size
+                self.force = FunctionOffsetWithCoefficient(self.force, has_bias)
+        self._n_coeffs_force = self.force.size
+        self._n_coeffs_diffusion = self.diffusion.size
         self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion)))
+        self.meandispl = self.force
         # Il faudrait réassigner alors le big array aux functions pour qu'on aie un seul espace mémoire
 
     @property
@@ -218,72 +151,36 @@ class Overdamped(BaseModelOverdamped):
         else:
             force_shape = ()
             diffusion_shape = ()
-        self._force = self._force.resize(force_shape)
-        self._diffusion = self._diffusion.resize(diffusion_shape)
+        self.force = self.force.resize(force_shape)
+        self.diffusion = self.diffusion.resize(diffusion_shape)
         self._dim = dim
-
-    def force(self, x, t: float = 0.0):
-        return self._force(x)
-
-    def diffusion(self, x, t: float = 0.0):
-        return self._diffusion(x)
 
     @property
     def coefficients(self):
         """Access the coefficients"""
-        return np.concatenate((self._force.coefficients.ravel(), self._diffusion.coefficients.ravel()))
+        return np.concatenate((self.force.coefficients.ravel(), self.diffusion.coefficients.ravel()))
 
     @coefficients.setter
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
-        self._force.coefficients = vals.ravel()[: self._n_coeffs_force]
-        self._diffusion.coefficients = vals.ravel()[self._n_coeffs_force : self._n_coeffs_force + self._n_coeffs_diffusion]
+        self.force.coefficients = vals.ravel()[: self._n_coeffs_force]
+        self.diffusion.coefficients = vals.ravel()[self._n_coeffs_force : self._n_coeffs_force + self._n_coeffs_diffusion]
 
     @property
     def coefficients_force(self):
-        return self._force.coefficients
+        return self.force.coefficients
 
     @coefficients_force.setter
     def coefficients_force(self, vals):
-        self._force.coefficients = vals
+        self.force.coefficients = vals
 
     @property
     def coefficients_diffusion(self):
-        return self._diffusion.coefficients
+        return self.diffusion.coefficients
 
     @coefficients_diffusion.setter
     def coefficients_diffusion(self, vals):
-        self._diffusion.coefficients = vals
-
-    def force_t(self, x, t: float = 0.0):
-        return 0.0
-
-    def force_x(self, x, t: float = 0.0):
-        return self._force.grad_x(x)
-
-    def force_xx(self, x, t: float = 0.0):
-        return self._force.hessian_x(x)
-
-    def diffusion_t(self, x, t: float = 0.0):
-        return 0.0
-
-    def diffusion_x(self, x, t: float = 0.0):
-        return self._diffusion.grad_x(x)
-
-    def diffusion_xx(self, x, t: float = 0.0):
-        return self._diffusion.hessian_x(x)
-
-    def force_jac_coeffs(self, x, t: float = 0.0):
-        """
-        Jacobian of the force with respect to coefficients
-        """
-        return self._force.grad_coeffs(x)
-
-    def diffusion_jac_coeffs(self, x, t: float = 0.0):
-        """
-        Jacobian of the diffusion with respect to coefficients
-        """
-        return self._diffusion.grad_coeffs(x)
+        self.diffusion.coefficients = vals
 
 
 #  Set of quick interface to more common models
@@ -350,3 +247,6 @@ class OrnsteinUhlenbeck(Overdamped):
         mu = theta + (x - theta) * np.exp(-kappa * dt)
         var = (1 - np.exp(-2 * kappa * dt)) * (sigma / (2 * kappa))
         return mu * dt + np.sqrt(var * dt) * dZ
+
+
+# TODO: Add an OverdampedSplines1D for defaut model
