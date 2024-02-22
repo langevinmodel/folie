@@ -10,7 +10,7 @@ import torch
 @pytest.fixture
 def data(request):
     file_dir = os.path.dirname(os.path.realpath(__file__))
-    trj = np.loadtxt(os.path.join(file_dir, "../examples/example_2d.trj"))
+    trj = np.loadtxt(os.path.join(file_dir, "../examples/datasets/example_2d.trj"))
     if request.param == "dask":
         trj = da.from_array(trj)
     elif request.param == "torch":
@@ -25,7 +25,7 @@ def data(request):
 @pytest.fixture
 def data2d(request):
     file_dir = os.path.dirname(os.path.realpath(__file__))
-    trj = np.loadtxt(os.path.join(file_dir, "../examples/example_2d.trj"))
+    trj = np.loadtxt(os.path.join(file_dir, "../examples/datasets/example_2d.trj"))
     if request.param == "dask":
         trj = da.from_array(trj)
     elif request.param == "torch":
@@ -39,7 +39,7 @@ def data2d(request):
 @pytest.fixture
 def data_biased(request):
     file_dir = os.path.dirname(os.path.realpath(__file__))
-    trj = np.loadtxt(os.path.join(file_dir, "../examples/example_biased.trj"))
+    trj = np.loadtxt(os.path.join(file_dir, "../examples/example_biased_umbrella.trj"))
     if request.param == "dask":
         trj = da.from_array(trj)
     elif request.param == "torch":

@@ -8,7 +8,7 @@ import dask.array as da
 @pytest.fixture
 def data(request):
     file_dir = os.path.dirname(os.path.realpath(__file__))
-    trj = np.loadtxt(os.path.join(file_dir, "../examples/example_2d.trj"))
+    trj = np.loadtxt(os.path.join(file_dir, "../examples/datasets/example_2d.trj"))
     if request.param == "dask":
         trj = da.from_array(trj)
     trj_list = fl.Trajectories(dt=trj[1, 0] - trj[0, 0])
