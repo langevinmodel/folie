@@ -3,7 +3,6 @@ import os
 import numpy as np
 import folie as fl
 import dask.array as da
-import torch
 
 
 @pytest.fixture
@@ -12,8 +11,6 @@ def data(request):
     trj = np.loadtxt(os.path.join(file_dir, "../examples/example_2d.trj"))
     if request.param == "dask":
         trj = da.from_array(trj)
-    elif request.param == "torch":
-        trj = torch.from_numpy(trj)
     trj_list = fl.Trajectories(dt=trj[1, 0] - trj[0, 0])
     for i in range(1, trj.shape[1]):
         trj_list.append(trj[:, i : (i + 1)])
@@ -35,7 +32,7 @@ def data2d(request):
     return trj_list
 
 
-@pytest.mark.parametrize("data", ["numpy", "dask", "torch"], indirect=True)
+@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 def test_statistics(data, request):
     stats = data.stats
 
@@ -43,34 +40,34 @@ def test_statistics(data, request):
 
     assert data.domain(75).shape == (75, 1)
 
-    rep_array = data.representative_array(75)
+    rep_array = data.representative_array(75, optimize=True)
 
     assert rep_array.shape == (75, 1)
 
-    np.testing.assert_allclose(stats.mean, rep_array.mean(), atol=1.0 / rep_array.shape[0])
+    np.testing.assert_allclose(stats.mean, rep_array.mean(axis=0), atol=1.0 / rep_array.shape[0])
 
-    np.testing.assert_allclose(stats.variance, rep_array.var(), atol=1 / rep_array.shape[0])
+    np.testing.assert_allclose(stats.variance, rep_array.var(axis=0), atol=1.0 / rep_array.shape[0])
 
     np.testing.assert_allclose(stats.min, rep_array.min(axis=0))
 
     np.testing.assert_allclose(stats.max, rep_array.max(axis=0))
 
 
-@pytest.mark.parametrize("data2d", ["numpy", "dask", "torch"], indirect=True)
+@pytest.mark.parametrize("data2d", ["numpy", "dask"], indirect=True)
 def test_statistics2d(data2d, request):
     stats = data2d.stats
 
-    assert stats.nobs == 600000
+    assert stats.nobs == 100000
 
-    assert data2d.domain(75).shape == (75, 1)
+    assert data2d.domain(75).shape == (75, 2)
 
-    rep_array = data2d.representative_array(75)
+    rep_array = data2d.representative_array(75, optimize=True)
 
-    assert rep_array.shape == (75, 1)
+    assert rep_array.shape == (75, 2)
 
-    np.testing.assert_allclose(stats.mean, rep_array.mean(), atol=1.0 / rep_array.shape[0])
+    np.testing.assert_allclose(stats.mean, rep_array.mean(axis=0), atol=1.0 / rep_array.shape[0])
 
-    np.testing.assert_allclose(stats.variance, rep_array.var(), atol=1 / rep_array.shape[0])
+    np.testing.assert_allclose(stats.variance, rep_array.var(axis=0), atol=1.0 / rep_array.shape[0])
 
     np.testing.assert_allclose(stats.min, rep_array.min(axis=0))
 

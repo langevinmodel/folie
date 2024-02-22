@@ -6,10 +6,6 @@ from abc import ABC, abstractmethod
 import numpy as np
 from typing import Union
 
-# TODO: A faire, la réduction de la somme sur les pas de temps doit se faire dans la classe et si on construire des versions efficace on les appelle juste d'un nom différents comme CachedEulerDensity
-# Les classes doivent aussi avoir une manière de rajouter des covariances sur les variables
-# Ecrire tout ça en version ND et généraliser à l'underdamped
-
 
 class TransitionDensity(ABC):
     use_jac = False

@@ -62,11 +62,11 @@ class Trajectories(MutableSequence):
     def __str__(self):
         return "".join(["Trajectory of length {} and dimension {}.\n".format(len(trj["x"]), self.dim) for trj in self.trajectories_data])
 
-    def domain(self, Npoints=75):
-        return domain(self.stats, Npoints)
+    def domain(self, Npoints=75, **kwargs):
+        return domain(self.stats, Npoints, **kwargs)
 
-    def representative_array(self, Npoints=75):
-        return representative_array(self.stats, Npoints)
+    def representative_array(self, Npoints=75, **kwargs):
+        return representative_array(self.stats, Npoints, **kwargs)
 
     @property
     def stats(self):

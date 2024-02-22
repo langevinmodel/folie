@@ -10,6 +10,9 @@ from ..functions import Constant, Polynomial, BSplinesFunction, FunctionOffset, 
 # TODO: Implement multidimensionnal version
 
 
+# TODO: Implement interface to force and diffusion from a model
+
+
 class BaseModelOverdamped(Model):
     _has_exact_density = False
 
@@ -130,9 +133,7 @@ class Overdamped(BaseModelOverdamped):
                 self.force = FunctionOffset(self.force, self.diffusion)
             elif isinstance(has_bias, ParametricFunction):
                 self.force = FunctionOffsetWithCoefficient(self.force, has_bias)
-        self._n_coeffs_force = self.force.size
-        self._n_coeffs_diffusion = self.diffusion.size
-        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion)))
+        self.coefficients = np.concatenate((np.zeros(self.force.size), np.ones(self.diffusion.size)))
         self.meandispl = self.force
         # Il faudrait réassigner alors le big array aux functions pour qu'on aie un seul espace mémoire
 
@@ -163,8 +164,8 @@ class Overdamped(BaseModelOverdamped):
     @coefficients.setter
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
-        self.force.coefficients = vals.ravel()[: self._n_coeffs_force]
-        self.diffusion.coefficients = vals.ravel()[self._n_coeffs_force : self._n_coeffs_force + self._n_coeffs_diffusion]
+        self.force.coefficients = vals.ravel()[: self.force.size]
+        self.diffusion.coefficients = vals.ravel()[self.force.size : self.force.size + self.diffusion.size]
 
     @property
     def coefficients_force(self):

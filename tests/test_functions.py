@@ -179,7 +179,7 @@ def test_functions_composition():
 )
 def test_nonparametricfunctions(fct, parameters):
     data = np.linspace(-1, 1, 25).reshape(-1, 1)
-    y = data ** 2
+    y = data**2
     fun = fct(**parameters).fit(data, y)
 
     assert fun(data).shape == (25,)
@@ -212,7 +212,7 @@ def test_nonparametricfunctions_ND(fct, parameters):
 
 def test_numerical_difference():
     X = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun = fl.functions.BSplinesFunction(knots=7).fit(X, X ** 2)
+    fun = fl.functions.BSplinesFunction(knots=7).fit(X, X**2)
     #  fun = fl.functions.BSplinesFunction(knots=7, output_shape=(2,)).fit(X, X**2)
 
     finite_diff = fl.functions.approx_fprime(X, fun, fun.output_shape_)

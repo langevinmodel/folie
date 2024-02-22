@@ -1,7 +1,7 @@
 import torch
 
 
-def pytorch_minimize(func, x0, method="Adam", max_iter=1000, tol=1e-6, lr=0.01, **kwargs):
+def pytorch_minimize(func, x0, method="Adam", max_iter=1000, tol=1e-6, lr=0.01, **kwargs):  # TODO: Add arguments for data
     """
     Interface for using PyTorch optimizers similar to scipy.optimize.minimize.
 
@@ -23,7 +23,7 @@ def pytorch_minimize(func, x0, method="Adam", max_iter=1000, tol=1e-6, lr=0.01, 
     if optimizer_cls is None:
         raise ValueError(f"Unrecognized optimization method: {method}")
 
-    optimizer = optimizer_cls([x], lr=lr, **kwargs)
+    optimizer = optimizer_cls([x], lr=lr, **kwargs)  # TODO: Changer ici pour mettre les coefficients du modèle
 
     prev_loss = float("inf")
     for i in range(max_iter):
@@ -36,3 +36,6 @@ def pytorch_minimize(func, x0, method="Adam", max_iter=1000, tol=1e-6, lr=0.01, 
         prev_loss = loss.item()
 
     return x.detach().numpy()
+
+
+# TODO: La même function mais avec du mini batch sur les données

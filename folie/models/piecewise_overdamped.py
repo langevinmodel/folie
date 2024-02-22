@@ -22,6 +22,9 @@ def linear_interpolation_with_gradient(idx, h, knots, fp):
     return val_f, val_g, grad
 
 
+# TODO: Implement interface to force and diffusion from a model
+
+
 class OverdampedFreeEnergy(BaseModelOverdamped):
     """
     TODO: A class that implement a overdamped model with a given free energy

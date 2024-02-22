@@ -459,3 +459,12 @@ class ParametricFunction(Function):
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
         self._coefficients = vals.reshape((self.n_functions_features_, self.output_size_))
+
+
+# TODO: ModelOverlay
+
+
+class ModelOverlay(ParametricFunction):
+    """
+    A class that allow to use part of a model as function
+    """

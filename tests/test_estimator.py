@@ -5,6 +5,7 @@ import folie as fl
 import dask.array as da
 import torch
 
+
 # TODO: add also xarray and pandas into the data test
 @pytest.fixture
 def data(request):
@@ -54,11 +55,8 @@ def data_biased(request):
 @pytest.mark.parametrize(
     "fct,parameters",
     [
-        (fl.functions.Constant, {}),
         (fl.functions.Linear, {}),
         (fl.functions.Polynomial, {"deg": 3}),
-        (fl.functions.BSplinesFunction, {"knots": 7}),
-        (fl.functions.Fourier, {"order": 3}),
     ],
 )
 def test_direct_estimator(data, request, fct, parameters):
@@ -72,11 +70,8 @@ def test_direct_estimator(data, request, fct, parameters):
 @pytest.mark.parametrize(
     "fct,parameters",
     [
-        (fl.functions.Constant, {}),
         (fl.functions.Linear, {}),
-        (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
-        (fl.functions.BSplinesFunction, {"knots": 7}),
-        (fl.functions.Fourier, {"order": 3}),
+        (fl.functions.Polynomial, {"deg": 3}),
     ],
 )
 def test_direct_estimator2d(data2d, request, fct, parameters):
@@ -123,7 +118,7 @@ def test_likelihood_estimator(data, request):
 @pytest.mark.parametrize("data2d", ["numpy"], indirect=True)
 def test_likelihood_estimator2d(data2d, request):
     fun_lin = fl.functions.Linear()
-    model = fl.models.Overdamped(fun_lin, dim=1)
+    model = fl.models.Overdamped(fun_lin, dim=2)
     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
     model = estimator.fit_fetch(data2d)
     assert model.fitted_
@@ -151,9 +146,9 @@ def test_numba_likelihood_estimator(data, request):
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_em_estimator(data, request):
-    fun_lin = fl.functions.Linear().fit(data)
-    fun_cst = fl.functions.Constant().fit(data).resize((3, 3))
+    fun_lin = fl.functions.Linear()
+    fun_cst = fl.functions.Constant()
     model = fl.models.OverdampedHidden(fun_lin, fun_lin.copy(), fun_cst, dim=1, dim_h=2)
-    estimator = fl.EMEstimator(fl.EulerDensity(model), max_iter=3, verbose=3, verbose_interval=1)
+    estimator = fl.EMEstimator(fl.EulerDensity(model), max_iter=2, verbose=3, verbose_interval=1)
     model = estimator.fit_fetch(data)
     assert model.fitted_

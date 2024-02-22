@@ -15,7 +15,7 @@ class Underdamped(Overdamped):
         """
         super().__init__(force, diffusion, dim=dim)
         self._friction = friction.resize((self.dim, self.dim))  # TODO: A changer pour gérer le cas 1D
-        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion), np.ones(self._n_coeffs_friction)))
+        self.coefficients = np.concatenate((np.zeros(self.force.size), np.ones(self.diffusion.size), np.ones(self.friction.size)))
 
     @property
     def dim(self):
@@ -63,9 +63,9 @@ class Underdamped(Overdamped):
     @coefficients.setter
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
-        self._force.coefficients = vals.ravel()[: self._n_coeffs_force]
-        self._diffusion.coefficients = vals.ravel()[self._n_coeffs_force : self._n_coeffs_force + self._n_coeffs_diffusion]
-        self._friction.coefficients = vals.ravel()[self._n_coeffs_force + self._n_coeffs_diffusion :]
+        self._force.coefficients = vals.ravel()[: self.force.size]
+        self._diffusion.coefficients = vals.ravel()[self.force.size : self.force.size + self.diffusion.size]
+        self._friction.coefficients = vals.ravel()[self.force.size + self.diffusion.size :]
 
     @property
     def coefficients_friction(self):
