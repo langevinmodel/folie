@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import folie as fl
 
 # Trouver comment on rentre les données
-trj = np.loadtxt("example_2d.trj")
+trj = np.loadtxt("datasets/example_2d.trj")
 data = fl.Trajectories(dt=trj[1, 0] - trj[0, 0])
 data.append(trj[:, 1:2])
 

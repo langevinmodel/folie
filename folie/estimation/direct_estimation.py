@@ -40,9 +40,9 @@ class KramersMoyalEstimator(Estimator):
         dx = np.concatenate([trj["x"][1:] - trj["x"][:-1] for trj in data], axis=0)
         if dim <= 1:
             dx = dx.ravel()
-        # weights = np.concatenate(data.weights, axis=0)  # TODO: implment correctly the weights
+        # weights = np.concatenate(data.weights, axis=0)  # TODO: implement correctly the weights
         self.model.force.fit(X, dx, sample_weight=None)
-        print(X.shape, dx.shape)
+
         dx -= self.model.force(X) * data[0]["dt"]
         if dim <= 1:
             dx_sq = dx**2

@@ -8,11 +8,11 @@ def Trajectory(dt, x, v=None, bias=None):
     Create dict_like object that encaspulate the trajectory data
     TODO: Use xarray DataSet?
     """
-    trj = {"x": x, "dt": dt}
+    trj = {"x": np.atleast_2d(x), "dt": dt}
     if v is not None:
-        trj["v"] = v
+        trj["v"] = np.atleast_2d(v)
     if bias is not None:
-        trj["bias"] = bias
+        trj["bias"] = np.atleast_2d(bias)
     return trj
 
 

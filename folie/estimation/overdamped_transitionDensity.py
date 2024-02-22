@@ -66,7 +66,6 @@ class EulerDensity(TransitionDensity):
         :return: probability (same dimension as x0 and xt)
         """
         sig2t = (self._model.diffusion(x0)).ravel() * 2 * dt
-        # print(x0.shape, self._model.meandispl(x0).shape)
         mut = x0.ravel() + self._model.meandispl(x0).ravel() * dt
         ll = -((xt.ravel() - mut) ** 2) / sig2t - 0.5 * np.log(np.pi * sig2t)
         if not self.use_jac:
