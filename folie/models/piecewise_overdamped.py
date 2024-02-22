@@ -1,4 +1,4 @@
-from .overdamped import ModelOverdamped
+from .overdamped import BaseModelOverdamped
 import numpy as np
 import numba as nb
 
@@ -22,7 +22,10 @@ def linear_interpolation_with_gradient(idx, h, knots, fp):
     return val_f, val_g, grad
 
 
-class OverdampedFreeEnergy(ModelOverdamped):
+# TODO: Implement interface to force and diffusion from a model
+
+
+class OverdampedFreeEnergy(BaseModelOverdamped):
     """
     TODO: A class that implement a overdamped model with a given free energy
     """
@@ -105,6 +108,3 @@ class OverdampedFreeEnergy(ModelOverdamped):
 
     def diffusion_xx(self, x, t: float = 0.0):
         return 0.0
-
-    def is_linear(self):
-        return True

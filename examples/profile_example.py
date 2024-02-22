@@ -22,8 +22,8 @@ data = fl.Trajectories(dt=trj[1, 0] - trj[0, 0])
 for i in range(1, trj.shape[1]):
     data.append(trj[:, i : i + 1])
 
-fun = fl.functions.BSplinesFunction(knots=5).fit(data)
-model = fl.models.OverdampedFunctions(fun)
+fun = fl.functions.BSplinesFunction(knots=5)
+model = fl.models.Overdamped(fun)
 prof.enable()
 estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
 model = estimator.fit_fetch(data)

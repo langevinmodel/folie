@@ -1,14 +1,19 @@
 from collections.abc import MutableSequence, Mapping
 import numpy as np
-from ._data_statistics import traj_stats, sum_stats
+from ._data_statistics import traj_stats, sum_stats, domain, representative_array
 
 
-def Trajectory(x, dt):
+def Trajectory(dt, x, v=None, bias=None):
     """
     Create dict_like object that encaspulate the trajectory data
     TODO: Use xarray DataSet?
     """
-    return {"x": x, "dt": dt}
+    trj = {"x": x, "dt": dt}
+    if v is not None:
+        trj["v"] = v
+    if bias is not None:
+        trj["bias"] = bias
+    return trj
 
 
 class Trajectories(MutableSequence):
@@ -25,7 +30,7 @@ class Trajectories(MutableSequence):
     def _check_data(self, v):
         """ """
         if not isinstance(v, Mapping):
-            v = Trajectory(v, self.dt)
+            v = Trajectory(self.dt, v)
         if len(v["x"].shape) == 1:
             dim_x = 1
             v["x"] = v["x"].reshape(-1, 1)
@@ -56,6 +61,12 @@ class Trajectories(MutableSequence):
 
     def __str__(self):
         return "".join(["Trajectory of length {} and dimension {}.\n".format(len(trj["x"]), self.dim) for trj in self.trajectories_data])
+
+    def domain(self, Npoints=75, **kwargs):
+        return domain(self.stats, Npoints, **kwargs)
+
+    def representative_array(self, Npoints=75, **kwargs):
+        return representative_array(self.stats, Npoints, **kwargs)
 
     @property
     def stats(self):

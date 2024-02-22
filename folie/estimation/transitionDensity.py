@@ -6,10 +6,6 @@ from abc import ABC, abstractmethod
 import numpy as np
 from typing import Union
 
-# TODO: A faire, la réduction de la somme sur les pas de temps doit se faire dans la classe et si on construire des versions efficace on les appelle juste d'un nom différents comme CachedEulerDensity
-# Les classes doivent aussi avoir une manière de rajouter des covariances sur les variables
-# Ecrire tout ça en version ND et généraliser à l'underdamped
-
 
 class TransitionDensity(ABC):
     use_jac = False
@@ -59,16 +55,15 @@ class TransitionDensity(ABC):
                 trj["xt"] = np.concatenate((trj["xt"], np.zeros((trj["xt"].shape[0], self._model.dim_h))), axis=1)
         return trj
 
-    def density(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], t0: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-        return np.exp(self._logdensity(x0, xt, t0, dt))
+    def density(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        return np.exp(self._logdensity(x0, xt, dt))
 
     @abstractmethod
-    def _logdensity1D(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], t0: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    def _logdensity1D(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         """
         The transition density evaluated at these arguments
         :param x0: float or array, the current value
         :param xt: float or array, the value to transition to  (must be same dimension as x0)
-        :param t0: float, the time of at which to evalate the coefficients. Irrelevant For time inhomogenous models
         :param dt: float, the time step between x0 and xt
         :return: probability (same dimension as x0 and xt)
         """
@@ -79,7 +74,7 @@ class TransitionDensity(ABC):
         Compute Likelihood of one trajectory
         """
         self._model.coefficients = coefficients
-        return (-np.sum(np.maximum(self._min_prob, self._logdensity(x0=trj["x"], xt=trj["xt"], t0=0.0, dt=trj["dt"]))) / weight,)
+        return (-np.sum(np.maximum(self._min_prob, self._logdensity(x0=trj["x"], xt=trj["xt"], dt=trj["dt"]))) / weight,)
 
 
 class GaussianTransitionDensity(TransitionDensity):
@@ -87,36 +82,34 @@ class GaussianTransitionDensity(TransitionDensity):
     Class that represent Gaussian transition density
     """
 
-    def _logdensity1D(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], t0: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    def _logdensity1D(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         """
         The transition density evaluated at these arguments
         :param x0: float or array, the current value
         :param xt: float or array, the value to transition to  (must be same dimension as x0)
-        :param t0: float, the time of at which to evalate the coefficients. Irrelevant For time inhomogenous models
         :param dt: float, the time step between x0 and xt
         :return: probability (same dimension as x0 and xt)
         """
-        E = self._mean(x0, t0, dt).ravel()
-        V = self._variance(x0, t0, dt).ravel()
+        E = self._mean(x0, dt).ravel()
+        V = self._variance(x0, dt).ravel()
         return -0.5 * ((xt.ravel() - E) ** 2 / V) - 0.5 * np.log(np.sqrt(2 * np.pi) * V)
 
-    def _logdensityND(self, x0, xt, t0, dt):
+    def _logdensityND(self, x0, xt, dt):
         """
         The transition density evaluated at these arguments
         :param x0: float or array, the current value
         :param xt: float or array, the value to transition to  (must be same dimension as x0)
-        :param t0: float, the time of at which to evalate the coefficients. Irrelevant For time inhomogenous models
         :param dt: float, the time step between x0 and xt
         :return: probability (same dimension as x0 and xt)
         """
-        E = self._mean(x0, t0, dt)
-        V = self._variance(x0, t0, dt)
+        E = self._mean(x0, dt)
+        V = self._variance(x0, dt)
         return -0.5 * np.dot(np.dot(xt - E, np.linalg.inv(V)), xt - E) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V))
 
     def compute_noise(self, trj, coefficients):
         """
         Allow to estimate the noise from a trajectories and a fitted model
-        TODO: En vrai, c'est globalement ce qui est calculé dans chaque log density (qd elle sont gaussinnes), es-ce qu'on peut le réutiliser?
+        TODO: En vrai, c'est globalement ce qui est calculé dans chaque log density (qd elle sont gaussiennes), es-ce qu'on peut le réutiliser?
         """
         E = self._mean(trj["x"], 0, trj["dt"])
         V = self._variance(trj["x"], 0, trj["dt"])

@@ -1,9 +1,9 @@
 import numpy as np
 
-from .overdamped import OverdampedFunctions
+from .overdamped import Overdamped
 
 
-class UnderdampedFunctions(OverdampedFunctions):
+class Underdamped(Overdamped):
     def __init__(self, force, friction, diffusion, dim=1, **kwargs):
         """
         Base model for underdamped Langevin equations, defined by
@@ -15,7 +15,7 @@ class UnderdampedFunctions(OverdampedFunctions):
         """
         super().__init__(force, diffusion, dim=dim)
         self._friction = friction.resize((self.dim, self.dim))  # TODO: A changer pour gérer le cas 1D
-        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_diffusion), np.ones(self._n_coeffs_friction)))
+        self.coefficients = np.concatenate((np.zeros(self.force.size), np.ones(self.diffusion.size), np.ones(self.friction.size)))
 
     @property
     def dim(self):
@@ -63,9 +63,9 @@ class UnderdampedFunctions(OverdampedFunctions):
     @coefficients.setter
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
-        self._force.coefficients = vals.ravel()[: self._n_coeffs_force]
-        self._diffusion.coefficients = vals.ravel()[self._n_coeffs_force : self._n_coeffs_force + self._n_coeffs_diffusion]
-        self._friction.coefficients = vals.ravel()[self._n_coeffs_force + self._n_coeffs_diffusion :]
+        self._force.coefficients = vals.ravel()[: self.force.size]
+        self._diffusion.coefficients = vals.ravel()[self.force.size : self.force.size + self.diffusion.size]
+        self._friction.coefficients = vals.ravel()[self.force.size + self.diffusion.size :]
 
     @property
     def coefficients_friction(self):
@@ -74,6 +74,3 @@ class UnderdampedFunctions(OverdampedFunctions):
     @coefficients_friction.setter
     def coefficients_friction(self, vals):
         self._friction.coefficients = vals
-
-    def is_linear(self):
-        return self._force.is_linear and self.friction.is_linear and self.diffusion.is_linear

@@ -3,22 +3,25 @@ import abc
 
 
 from sklearn.base import TransformerMixin
+from sklearn import linear_model
 
 from ..base import _BaseMethodsMixin
+from .numdifference import approx_fprime
 
 
 class Function(_BaseMethodsMixin, TransformerMixin):
-    r"""Base class of all functions. A function allows for the expression of f(x,coefficients)
-    Coefficients are hold by the class and should be given a priori.
-    This is mainly a overlay to get a common interface to different python librairies.
+    r"""
+    Base class of all functions that hold spatial dependance of the parameters of the model
     """
 
-    def __init__(self, output_shape=(), **kwargs):
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, output_shape=(), dim_x=None, **kwargs):
         if output_shape is None:
             output_shape = ()
         self.output_shape_ = np.asarray(output_shape, dtype=int)
         self.output_size_ = np.prod(self.output_shape_)
-        self._coefficients = None
+        self.dim_x = dim_x
 
     def resize(self, new_shape):
         """
@@ -28,66 +31,38 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         ----------
             new_shape : tuple, array-like
                 The new output shape of the function
-            force_reshape : bool, defaut=False
-                Whatever to force reshape if current shape of coefficients is incompatible with new shape
-                If True new zeros coefficients will be added as needed
         """
         self.output_shape_ = np.asarray(new_shape, dtype=int)
         self.output_size_ = np.prod(self.output_shape_)
         return self
 
-    def fit(self, x, y=None):
+    @classmethod
+    def __subclasshook__(cls, C):  # Define required minimal interface for duck-typing
+        required = ["__call__", "grad_x", "fit", "resize"]
+        rtn = True
+        for r in required:
+            if not any(r in B.__dict__ for B in C.__mro__):
+                rtn = NotImplemented
+        return rtn
+
+    @abc.abstractmethod
+    def transform(self, x, *args, **kwargs):
+        r"""Transforms the input data."""
+
+    def fit(self, x, y=None, **kwargs):
         return self
 
-    @abc.abstractmethod
-    def transform(self, x, **kwargs):
-        r"""Transforms the input data.
-
-        Parameters
-        ----------
-        x : array_like
-            Input data.
-
-        Returns
-        -------
-        transformed : array_like
-            The transformed data
-        """
-
-    def grad_x(self, x, **kwargs):
+    def transform_x(self, x, **kwargs):
         r"""Gradient of the function with respect to input data.
         Implemented by finite difference.
-
-        Parameters
-        ----------
-        x : array_like
-            Input data.
-
-        Returns
-        -------
-        transformed : array_like
-            The gradient
         """
-        # TODO: A faire avec scipy approx_fprime et prendre en compte le ND
-        return (self(x + self.h) - self(x - self.h)) / (2 * self.h)
-
-    @abc.abstractmethod
-    def grad_coeffs(self, x, **kwargs):
-        r"""Gradient of the function with respect to the coefficients.
-
-        Parameters
-        ----------
-        x : array_like
-            Input data.
-
-        Returns
-        -------
-        transformed : array_like
-            The gradient
-        """
+        return approx_fprime(x, self.__call__, self.output_shape_)
 
     def __call__(self, x, *args, **kwargs):
-        return self.transform(x, *args, **kwargs).reshape(-1, *self.output_shape_)
+        return self.transform(x[:, : self.dim_x], *args, **kwargs).reshape(-1, *self.output_shape_)
+
+    def grad_x(self, x, *args, **kwargs):
+        return self.transform_x(x[:, : self.dim_x], *args, **kwargs).reshape(-1, *self.output_shape_, len(x[0, : self.dim_x]))
 
     def __add__(self, other):
         return FunctionSum([self, other])
@@ -104,29 +79,6 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         """
         raise NotImplementedError
 
-    @property
-    def coefficients(self):
-        """Access the coefficients"""
-        return self._coefficients.ravel()
-
-    @coefficients.setter
-    def coefficients(self, vals):
-        """Set parameters, used by fitter to move through param space"""
-        self._coefficients = vals
-
-    @property
-    def is_linear(self) -> bool:
-        """Return True is the model is linear in its parameters"""
-        return False
-
-    @property
-    def size(self):
-        return np.size(self._coefficients)
-
-    @property
-    def shape(self):
-        return self.output_shape_
-
     def copy(self):
         r"""Makes a deep copy of this function.
 
@@ -140,57 +92,6 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         return copy.deepcopy(self)
 
 
-class FunctionFromBasis(Function):
-    def __init__(self, output_shape=(), basis=None):
-        super().__init__(output_shape)
-        self.basis = basis
-
-    def fit(self, x, y=None):
-        if self.basis is not None:
-            self.basis.fit(x)
-            self.n_basis_features_ = self.basis.n_output_features_
-        self.coefficients = np.zeros((self.n_basis_features_, self.output_size_))
-        return self
-
-    def resize(self, new_shape):
-        super().resize(new_shape)
-        self._coefficients = np.resize(self._coefficients, (self.n_basis_features_, self.output_size_))
-        return self
-
-    @property
-    def coefficients(self):
-        """Access the coefficients"""
-        return self._coefficients.ravel()
-
-    @coefficients.setter
-    def coefficients(self, vals):
-        """Set parameters, used by fitter to move through param space"""
-        self._coefficients = vals.reshape((self.n_basis_features_, self.output_size_))
-
-    def transform(self, x, **kwargs):
-        return self.basis(x) @ self._coefficients
-
-    def grad_x(self, x, **kwargs):
-        _, dim = x.shape
-        return np.einsum("nbd,bs->nsd", self.basis.deriv(x), self._coefficients).reshape(-1, *self.output_shape_, dim)
-
-    def grad_coeffs(self, x, **kwargs):
-        grad_coeffs = np.eye(self.size).reshape(self.n_basis_features_, *self.output_shape_, self.size)
-        return np.tensordot(x, grad_coeffs, axes=1)
-
-    def gram(self, x):
-        """
-        Compute gram matrix on points x
-        """
-        basis_vals = self.basis(x)
-        return np.dot(basis_vals.T, basis_vals)
-
-    @property
-    def is_linear(self) -> bool:
-        """Return True is the model is linear in its parameters"""
-        return True
-
-
 class FunctionSum(Function):
     """
     Return the sum of function
@@ -198,11 +99,10 @@ class FunctionSum(Function):
 
     def __init__(self, functions):
         self.functions_set = functions
-        self.output_shape_ = self.functions_set[0].output_shape_
+        super().__init__(output_shape=self.functions_set[0].output_shape_)
         for fu in self.functions_set:
             if fu.output_shape_ != self.output_shape_:
                 raise ValueError("Cannot sum function with different output shape")
-        self.output_size_ = np.prod(self.output_shape_)
         # Do some samity check on the output of each functions
 
     def resize(self, new_shape):
@@ -223,14 +123,14 @@ class FunctionSum(Function):
     def differentiate(self):
         return FunctionSum([fu.differentiate() for fu in self.functions_set])
 
-    def fit(self, data):
+    def fit(self, data, **kwargs):
         for fu in self.functions_set:
-            fu.fit(data)
+            fu.fit(data, **kwargs)
         self.n_output_features_ = np.sum([fu.n_output_features_ for fu in self.functions_set])
         self.dim_out_basis = 1
         return self
 
-    def transform(self, X, **kwargs):
+    def transform(self, X, *args, **kwargs):
         return np.add.reduce([fu.transform(X) for fu in self.functions_set])
 
     def grad_x(self, X, **kwargs):
@@ -253,11 +153,6 @@ class FunctionSum(Function):
             curr_size += fu.size
 
     @property
-    def is_linear(self) -> bool:
-        """Return True is the model is linear in its parameters"""
-        return False
-
-    @property
     def size(self):
         return np.sum([fu.size for fu in self.functions_set])
 
@@ -276,7 +171,7 @@ class FunctionComposition(Function):
         self.f = f
         self.g = g
 
-    def fit(self, x, y=None):
+    def fit(self, x, y=None, **kwargs):
         """
         Compute number of output features.
 
@@ -289,15 +184,14 @@ class FunctionComposition(Function):
         -------
         self : instance
         """
-        self.g.fit(x, y)
-        self.f.fit(self.g(x), y)
+        self.g.fit(x, y, **kwargs)  # TODO: Ne marche pas, il faudrait faire f^-1(y)
+        self.f.fit(self.g(x), y, **kwargs)
 
         self.n_output_features_ = self.f.n_output_features_
-        self.n_input_dim_ = self.g.n_input_dim_
 
         return self
 
-    def transform(self, x, **kwargs):
+    def transform(self, x, *args, **kwargs):
         r"""Transforms the input data.
 
         Parameters
@@ -361,7 +255,7 @@ class FunctionTensored(Function):
 
         input_dims : tuple
             The decomposition of the dimension of X into (x,y,z,..).
-            By default, it is assumed to be tensord product over one dimensionnal function
+            By default, it is assumed to be tensor product over one dimensionnal function
 
         """
         self.functions_set = functions
@@ -372,7 +266,7 @@ class FunctionTensored(Function):
         bounds = np.insert(np.cumsum(input_dims), 0, 0)
         self.input_dims_slice = [slice(int(bounds[n]), int(bounds[n + 1])) for n in range(len(self.functions_set))]
 
-    def fit(self, x, y=None):
+    def fit(self, x, y=None, **kwargs):
         """
         Compute number of output features.
 
@@ -402,7 +296,7 @@ class FunctionTensored(Function):
 
         return self
 
-    def transform(self, x, **kwargs):
+    def transform(self, x, *args, **kwargs):
         r"""Transforms the input data.
 
         Parameters
@@ -430,42 +324,106 @@ class FunctionTensored(Function):
         transformed : array_like
             The transformed data
         """
+        raise NotImplementedError
 
     def hessian_x(self, x, **kwargs):
         """
         Hessien of the function with respect to input data
         """
+        raise NotImplementedError
 
     def grad_coeffs(self, x, **kwargs):
-        r"""Transforms the input data.
-
-        Parameters
-        ----------
-        x : array_like
-            Input data.
-
-        Returns
-        -------
-        transformed : array_like
-            The transformed data
-        """
+        r"""Transforms the input data."""
+        raise NotImplementedError
 
 
-class FreezeCoefficients(Function):
-    r"""
-    Function that only expose a subset of the coefficients of the underlying function
+class FunctionOffset(Function):
+    """
+    A composition Function to represent f(x)+g(x)v where
     """
 
-    def __init__(self, f, freezed_coefficients):
+    def __init__(self, f, g):
         self.f = f
+        self.g = g
 
-    def fit(self, x, y=None):
-        self.f.fit(x, y)
-
+    def fit(self, x, v, y=None, **kwargs):
+        gv = np.einsum("t...h,th-> t...", self.g(x), v)
+        if y is None:
+            y = gv
+        self.f = self.f.fit(x, y - gv)
+        # TODO: Check if g have correct shape
         return self
 
-    def transform(self, x, **kwargs):
-        r"""Transforms the input data.
+    def transform(self, x, v, *args, **kwargs):
+        return self.f(x, *args, **kwargs) + np.einsum("t...h,th-> t...", self.g(x), v)
+
+    def grad_x(self, x, v):
+        return self.f.grad_x(x) + np.einsum("t...he,th-> t...e", self.g.grad_x(x), v)
+
+    def __getattr__(self, item):  # Anything else should be passed to f
+        return getattr(self.f, item)
+
+
+class ParametricFunction(Function):
+    r"""Base class of all parametric functions. A function allows for the expression of f(x,coefficients)
+    Coefficients are hold by the class and should be given a priori.
+    This is mainly a overlay to get a common interface to different python librairies.
+    """
+
+    def __init__(self, output_shape=(), coefficients=None, **kwargs):
+        super().__init__(output_shape)
+        if coefficients is None:
+            self._coefficients = np.zeros(output_shape)
+            self.n_functions_features_ = 1
+        else:
+            self.n_functions_features_ = coefficients.shape[0]
+            self.coefficients = coefficients
+
+    @classmethod
+    def __subclasshook__(cls, C):  # Define required minimal interface for duck-typing
+        required = ["__call__", "grad_x", "grad_coeffs", "fit", "coefficients", "resize"]
+        rtn = True
+        for r in required:
+            if not any(r in B.__dict__ for B in C.__mro__):
+                rtn = NotImplemented
+        return rtn
+
+    def fit(self, x, y=None, estimator=linear_model.LinearRegression(copy_X=False, fit_intercept=False), sample_weight=None, **kwargs):
+        """
+        Fit coefficients of the function using linear regression.
+        Use as features the derivative of the function with respect to the coefficients
+
+        Parameters
+        ----------
+
+         X : {array-like} of shape (n_samples, dim)
+            Point of evaluation of the training data
+
+        y : array-like of shape (n_samples,) or (n_samples, n_targets)
+            Target values. Will be cast to X's dtype if necessary.
+
+
+        estimator: sklearn compatible estimator
+            Defaut to sklearn.linear_model.LinearRegression(copy_X=False, fit_intercept=False) but any compatible estimator can be used.
+            Estimator should have a coef_ attibutes after fitting
+
+        """
+        if y is None:
+            y = np.zeros((x.shape[0] * self.output_size_))
+        else:
+            y = y.ravel()
+
+        Fx = self.grad_coeffs(x)
+        reg = estimator.fit(Fx.reshape((x.shape[0] * self.output_size_, -1)), y, sample_weight=sample_weight)
+        self.coefficients = reg.coef_
+        return self
+
+    @abc.abstractmethod
+    def transform_coeffs(self, x, *args, **kwargs):
+        pass  # TODO: Implement finite difference with scipy?
+
+    def grad_coeffs(self, x, *args, **kwargs):
+        r"""Gradient of the function with respect to the coefficients.
 
         Parameters
         ----------
@@ -475,42 +433,38 @@ class FreezeCoefficients(Function):
         Returns
         -------
         transformed : array_like
-            The transformed data
+            The gradient
         """
-        return self.f.transform(x)
+        return self.transform_coeffs(x[:, : self.dim_x], *args, **kwargs).reshape(-1, *self.output_shape_, self.size)
 
-    def grad_x(self, x, **kwargs):
-        r"""Gradient of the function with respect to input data
+    def resize(self, new_shape):
+        super().resize(new_shape)
+        self._coefficients = np.resize(self._coefficients, (self.n_functions_features_, self.output_size_))
+        return self
 
-        Parameters
-        ----------
-        x : array_like
-            Input data.
+    @property
+    def size(self):
+        return self.n_functions_features_ * self.output_size_
 
-        Returns
-        -------
-        transformed : array_like
-            The transformed data
-        """
+    @property
+    def shape(self):
+        return self.output_shape_
 
-        return self.f.grad_x(x)
+    @property
+    def coefficients(self):
+        """Access the coefficients"""
+        return self._coefficients.ravel()
 
-    def hessian_x(self, x, **kwargs):
-        """
-        Hessian of the function with respect to input data
-        """
-        return self.f.hessian_x(x)
+    @coefficients.setter
+    def coefficients(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        self._coefficients = vals.reshape((self.n_functions_features_, self.output_size_))
 
-    def grad_coeffs(self, x, **kwargs):
-        r"""Transforms the input data.
 
-        Parameters
-        ----------
-        x : array_like
-            Input data.
+# TODO: ModelOverlay
 
-        Returns
-        -------
-        transformed : array_like
-            The transformed data
-        """
+
+class ModelOverlay(ParametricFunction):
+    """
+    A class that allow to use part of a model as function
+    """

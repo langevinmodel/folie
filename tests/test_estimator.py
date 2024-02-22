@@ -6,6 +6,7 @@ import dask.array as da
 import torch
 
 
+# TODO: add also xarray and pandas into the data test
 @pytest.fixture
 def data(request):
     file_dir = os.path.dirname(os.path.realpath(__file__))
@@ -35,30 +36,71 @@ def data2d(request):
     return trj_list
 
 
+@pytest.fixture
+def data_biased(request):
+    file_dir = os.path.dirname(os.path.realpath(__file__))
+    trj = np.loadtxt(os.path.join(file_dir, "../examples/example_biased.trj"))
+    if request.param == "dask":
+        trj = da.from_array(trj)
+    elif request.param == "torch":
+        trj = torch.from_numpy(trj)
+    dt = trj[1, 0] - trj[0, 0]
+    trj_list = fl.Trajectories()
+    trj_list.append(fl.Trajectory(dt, trj[:, 1:2], bias=trj[:, 4:5]))
+    trj_list.stats
+    return trj_list
+
+
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
-def test_direct_estimator_bf(data, request):
-    bf = fl.function_basis.Linear().fit(data)
-    model = fl.models.OverdampedBF(bf)
+@pytest.mark.parametrize(
+    "fct,parameters",
+    [
+        (fl.functions.Linear, {}),
+        (fl.functions.Polynomial, {"deg": 3}),
+    ],
+)
+def test_direct_estimator(data, request, fct, parameters):
+    model = fl.models.Overdamped(fct(**parameters))
     estimator = fl.KramersMoyalEstimator(model)
     model = estimator.fit_fetch(data)
     assert model.fitted_
 
 
-@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
-def test_direct_estimator(data, request):
-    fun_lin = fl.functions.Linear().fit(data)
-    model = fl.models.OverdampedFunctions(fun_lin, dim=1)
+@pytest.mark.parametrize("data2d", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize(
+    "fct,parameters",
+    [
+        (fl.functions.Linear, {}),
+        (fl.functions.Polynomial, {"deg": 3}),
+    ],
+)
+def test_direct_estimator2d(data2d, request, fct, parameters):
+    model = fl.models.Overdamped(fct(**parameters), dim=2)
     estimator = fl.KramersMoyalEstimator(model)
-    model = estimator.fit_fetch(data)
+    model = estimator.fit_fetch(data2d)
+    assert model.fitted_
+
+
+@pytest.mark.parametrize("data_biased", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize(
+    "fct,parameters",
+    [
+        (fl.functions.Polynomial, {"deg": 3}),
+    ],
+)
+def test_direct_estimator_biased(data_biased, request, fct, parameters):
+    model = fl.models.Overdamped(fct(**parameters))
+    estimator = fl.KramersMoyalEstimator(model)
+    model = estimator.fit_fetch(data_biased)
     assert model.fitted_
 
 
 @pytest.mark.skip(reason="Not implemented yet")
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 def test_direct_estimator_underdamped(data, request):
-    fun_lin = fl.functions.Linear().fit(data)
-    fun_cst = fl.functions.Constant().fit(data)
-    model = fl.models.UnderdampedFunctions(fun_lin, fun_lin.copy(), fun_cst)
+    fun_lin = fl.functions.Linear()
+    fun_cst = fl.functions.Constant()
+    model = fl.models.Underdamped(fun_lin, fun_lin.copy(), fun_cst)
     estimator = fl.UnderdampedKramersMoyalEstimator(model)
     model = estimator.fit_fetch(data)
     assert model.fitted_
@@ -66,10 +108,28 @@ def test_direct_estimator_underdamped(data, request):
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_likelihood_estimator(data, request):
-    fun_lin = fl.functions.Linear().fit(data)
-    model = fl.models.OverdampedFunctions(fun_lin, dim=1)
+    fun_lin = fl.functions.Linear()
+    model = fl.models.Overdamped(fun_lin, dim=1)
     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
-    model = estimator.fit_fetch(data, coefficients0=[1.0, 1.0])
+    model = estimator.fit_fetch(data)
+    assert model.fitted_
+
+
+@pytest.mark.parametrize("data2d", ["numpy"], indirect=True)
+def test_likelihood_estimator2d(data2d, request):
+    fun_lin = fl.functions.Linear()
+    model = fl.models.Overdamped(fun_lin, dim=2)
+    estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
+    model = estimator.fit_fetch(data2d)
+    assert model.fitted_
+
+
+@pytest.mark.parametrize("data_biased", ["numpy"], indirect=True)
+def test_likelihood_estimator_biased(data_biased, request):
+    fun_lin = fl.functions.Linear()
+    model = fl.models.Overdamped(fun_lin, dim=1)
+    estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
+    model = estimator.fit_fetch(data_biased)
     assert model.fitted_
 
 
@@ -86,9 +146,9 @@ def test_numba_likelihood_estimator(data, request):
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_em_estimator(data, request):
-    fun_lin = fl.functions.Linear().fit(data)
-    fun_cst = fl.functions.Constant().fit(data).resize((3, 3))
+    fun_lin = fl.functions.Linear()
+    fun_cst = fl.functions.Constant()
     model = fl.models.OverdampedHidden(fun_lin, fun_lin.copy(), fun_cst, dim=1, dim_h=2)
-    estimator = fl.EMEstimator(fl.EulerDensity(model), max_iter=3, verbose=3, verbose_interval=1)
+    estimator = fl.EMEstimator(fl.EulerDensity(model), max_iter=2, verbose=3, verbose_interval=1)
     model = estimator.fit_fetch(data)
     assert model.fitted_

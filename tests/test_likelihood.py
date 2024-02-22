@@ -23,20 +23,10 @@ def data(request):
 
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 @pytest.mark.parametrize("transitioncls", [fl.OzakiDensity, fl.ShojiOzakiDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
-def test_likelihood_bf(data, request, transitioncls):
-    bf = fl.function_basis.Linear().fit(data)
-    model = fl.models.OverdampedBF(bf)
-    transition = transitioncls(model)
-    transition.preprocess_traj(data[0])
-    loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
-    assert len(loglikelihood) == 1
-
-
-@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
-@pytest.mark.parametrize("transitioncls", [fl.OzakiDensity, fl.ShojiOzakiDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
 def test_likelihood(data, request, transitioncls):
-    fun_lin = fl.functions.Linear().fit(data)
-    model = fl.models.OverdampedFunctions(fun_lin, dim=1)
+    print(data.representative_array())
+    fun_lin = fl.functions.Linear().fit(data.representative_array())
+    model = fl.models.Overdamped(fun_lin, dim=1)
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])
     loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
@@ -51,8 +41,8 @@ def test_likelihood(data, request, transitioncls):
     ],
 )
 def testlikelihood_derivative(data, request, transitioncls):
-    fun_lin = fl.functions.Linear().fit(data)
-    model = fl.models.OverdampedFunctions(fun_lin, dim=1)
+    fun_lin = fl.functions.Linear().fit(data.representative_array())
+    model = fl.models.Overdamped(fun_lin, dim=1)
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])
     loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
@@ -72,8 +62,8 @@ def testlikelihood_derivative(data, request, transitioncls):
     ],
 )
 def testlikelihoodND_derivative(data, request, transitioncls):
-    fun_lin = fl.functions.BSplinesFunction(knots=5).fit(data)
-    model = fl.models.OverdampedFunctions(fun_lin)
+    fun_lin = fl.functions.BSplinesFunction(knots=5).fit(data.representative_array())
+    model = fl.models.Overdamped(fun_lin)
     transition = transitioncls(model)
     transition.preprocess_traj(data[0])
     loglikelihood = transition(data.weights[0], data[0], model.coefficients)
@@ -94,8 +84,8 @@ def testlikelihoodND_derivative(data, request, transitioncls):
 )
 @pytest.mark.parametrize("dim_h", [1, 2])
 def testcorrection_hiddenND_derivative(data, request, transitioncls, dim_h):
-    fun_lin = fl.functions.Linear().fit(data)
-    fun_cst = fl.functions.Constant().fit(data)
+    fun_lin = fl.functions.Linear().fit(data.representative_array())
+    fun_cst = fl.functions.Constant().fit(data.representative_array())
     model = fl.models.OverdampedHidden(fun_lin, fun_cst.copy(), fun_cst, dim=1, dim_h=dim_h)
     A = np.block([[np.eye(1), -0.5 * np.ones(dim_h)], [-0.7 * np.ones(dim_h).reshape(-1, 1), 2 * np.eye(dim_h)]])
     model.coefficients_diffusion = A @ A.T
@@ -113,6 +103,8 @@ def testcorrection_hiddenND_derivative(data, request, transitioncls, dim_h):
     # Testing for evaluation of the jacobian
     finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition.hiddencorrection(data.weights[0], data[0], p)[0])
     np.testing.assert_allclose(correction[1], finite_diff_jac, rtol=1e-06, atol=1e-6)
+
+    # TODO: assert also the plain likelihood part of the transitionDensity
 
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)

@@ -68,6 +68,6 @@ Available models of Langevin equation
 
    OrnsteinUhlenbeck
 
-   OverdampedBF
+   Overdamped
 
    OverdampedFreeEnergy

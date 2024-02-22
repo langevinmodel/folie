@@ -1,5 +1,5 @@
 from .trajectories import *
-from ._data_statistics import traj_stats, DescribeResult
+from ._data_statistics import traj_stats, DescribeResult, representative_array
 import numpy as np
 
 

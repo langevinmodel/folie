@@ -20,10 +20,10 @@ data = fl.Trajectories(dt=trj[1, 0] - trj[0, 0])
 for i in range(1, trj.shape[1]):
     data.append(trj[:, i : i + 1])
 
-fun = fl.functions.Linear().fit(data)
-model = fl.models.OverdampedFunctions(fun)
+fun = fl.functions.Linear()
+model = fl.models.Overdamped(fun)
 estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
-model = estimator.fit_fetch(data, coefficients0=[1.0, 1.0])
+model = estimator.fit_fetch(data)
 
 # To find a correct parametrization of the space
 bins = np.histogram_bin_edges(data[0]["x"], bins=15)

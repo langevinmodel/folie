@@ -10,6 +10,8 @@ from sklearn.exceptions import ConvergenceWarning
 
 
 from ..base import Estimator
+from .direct_estimation import KramersMoyalEstimator, UnderdampedKramersMoyalEstimator
+from ..models import BaseModelOverdamped
 
 
 class EstimatedResult(object):
@@ -104,12 +106,14 @@ class LikelihoodEstimator(Estimator):
         for trj in data:
             self.transition.preprocess_traj(trj)
         if coefficients0 is None:
+            # TODO, check depending of the order of the model
+            if isinstance(self.model, BaseModelOverdamped):
+                KramersMoyalEstimator(self.model).fit(data)
             coefficients0 = self.model.coefficients
-            # TODO, use exact optimisation to provide first set of parameters
         if minimizer is None:
             coefficients0 = np.asarray(coefficients0)
             minimizer = minimize
-
+        print(coefficients0.shape)
         # Run once, to determine if there is a Jacobian and eventual compilation if needed by numba
         init_val = self._loop_over_trajs(self.transition, data.weights, data, coefficients0, **kwargs)
 

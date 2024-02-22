@@ -19,21 +19,9 @@ def data(request):
 
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 @pytest.mark.parametrize("transitioncls", [fl.EulerDensity, fl.OzakiDensity, fl.ShojiOzakiDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
-def test_likelihood_bf(data, request, benchmark, transitioncls):
-    bf = fl.function_basis.Linear().fit(data)
-    model = fl.models.OverdampedBF(bf)
-    transition = transitioncls(model)
-    for i, trj in enumerate(data):
-        transition.preprocess_traj(trj)
-    loglikelihood = benchmark(transition, data.weights[0], data[0], np.array([1.0, 1.0]))
-    assert len(loglikelihood) == 1
-
-
-@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
-@pytest.mark.parametrize("transitioncls", [fl.EulerDensity, fl.OzakiDensity, fl.ShojiOzakiDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
 def test_likelihood_functions(data, request, benchmark, transitioncls):
     fun = fl.functions.Linear().fit(data)
-    model = fl.models.OverdampedFunctions(fun, fun.copy())
+    model = fl.models.Overdamped(fun, fun.copy())
     transition = transitioncls(model)
     for i, trj in enumerate(data):
         transition.preprocess_traj(trj)

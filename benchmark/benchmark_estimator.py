@@ -21,8 +21,8 @@ def data(request):
 
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 def test_likelihood_optimization(data, request, benchmark):
-    bf = fl.function_basis.Linear().fit(data)
-    model = fl.models.OverdampedBF(bf)
+    bf = fl.functions.Linear()
+    model = fl.models.Overdamped(bf)
     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
     fitted_estimator = benchmark(estimator.fit, data, coefficients0=[1.0, 1.0])
     model = fitted_estimator.fetch_model()

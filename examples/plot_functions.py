@@ -22,11 +22,10 @@ t, c, k = splrep(x_range, x_range**4 - 2 * x_range**2 + 0.5 * x_range)
 
 fun_set = {
     "Linear": ff.Linear(),
-    # "Polynom": ff.Polynomial(3),
-    # "Hermite Polynom": ff.Polynomial(3, np.polynomial.Hermite),
-    # "Fourier": ff.Fourier(order=2, freq=1.0),
+    "Polynom": ff.Polynomial(3),
+    "Hermite Polynom": ff.Polynomial(3, np.polynomial.Hermite),
+    "Fourier": ff.Fourier(order=2, freq=1.0),
     "B Splines": ff.BSplinesFunction(knots=6, k=3),
-    # "Splines Fct": ff.SplineFct(t, c, k),
 }
 for key, fun in fun_set.items():
     fun.fit(x_range)
