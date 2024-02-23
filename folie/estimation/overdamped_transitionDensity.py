@@ -18,6 +18,7 @@ class ExactDensity(TransitionDensity):
     def __init__(self, model):
         """
         Class which represents the exact transition density for a model (when available)
+
         Parameters
         ----------
             model: the SDE model, referenced during calls to the transition density

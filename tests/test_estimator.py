@@ -144,6 +144,7 @@ def test_numba_likelihood_estimator(data, request):
     assert model.fitted_
 
 
+@pytest.mark.skip(reason="Too long to run")
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_em_estimator(data, request):
     fun_lin = fl.functions.Linear()

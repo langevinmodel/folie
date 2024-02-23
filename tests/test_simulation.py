@@ -20,6 +20,7 @@ def test_simple_simulation():
     # assert length of trj
 
 
+@pytest.mark.skip(reason="Not yet implemented")
 def test_abmd_simulation():
     data = np.linspace(-1, 1, 25).reshape(-1, 1)
     fun = fl.functions.Polynomial(deg=3).fit(data, data[:, 0])

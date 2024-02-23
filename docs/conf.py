@@ -85,7 +85,7 @@ intersphinx_mapping = {
 # sphinx-gallery configuration
 sphinx_gallery_conf = {
     "doc_module": "folie",
-    "backreferences_dir": os.path.join("generated"),
+    "backreferences_dir": os.path.join("api/generated"),
     "reference_url": {"folie": None},
     # path to your examples scripts
     "examples_dirs": "../examples",
