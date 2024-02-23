@@ -28,7 +28,22 @@ release = __version__
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.doctest", "sphinx.ext.intersphinx", "sphinx.ext.todo", "sphinx.ext.viewcode", "sphinx.ext.coverage", "numpydoc", "sphinx_gallery.gen_gallery", "sphinx.ext.inheritance_diagram", "sphinx.ext.githubpages"]
+bibtex_bibfiles = ["references.bib"]
+
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.doctest",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.todo",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.coverage",
+    "nbsphinx",
+    "numpydoc",
+    "sphinx_gallery.gen_gallery",
+    "sphinx_gallery.load_style",
+    "sphinx.ext.inheritance_diagram",
+    "sphinx.ext.githubpages",
+]
 
 numpydoc_show_class_members = False
 autoclass_content = "both"
@@ -36,12 +51,18 @@ autodoc_default_flags = ["members", "inherited-members"]
 
 templates_path = ["_templates"]
 
-plot_gallery = False
+plot_gallery = "True"
 master_doc = "index"
 # The suffix of source filenames.
 source_suffix = ".rst"
 
-exclude_patterns = ["_build", "_templates", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "_templates", "auto_examples/*.ipynb", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints", "*.ipynb"]
+
+
+# -- Autosummary settings -----------------------------------------------------
+autosummary_generate = True
+
+autodoc_default_options = {"inherited-members": True, "members": True, "member-order": "groupwise", "special-members": "__call__", "exclude-members": "__init__"}
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -68,9 +89,12 @@ sphinx_gallery_conf = {
     "reference_url": {"folie": None},
     # path to your examples scripts
     "examples_dirs": "../examples",
+    "ignore_pattern": "profile_",
     # path where to save gallery generated examples
     "gallery_dirs": "auto_examples",
 }
+
+nbsphinx_execute = "never"
 
 
 def setup(app):

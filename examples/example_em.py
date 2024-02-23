@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-================================
-Overdamped Langevin Estimation
-================================
+=======================================
+Hidden Overdamped Langevin Estimation
+=======================================
 
 How to run a simple estimation
 """
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import folie as fl
 
 # Trouver comment on rentre les données
-trj = np.loadtxt("example_2d.trj")
+trj = np.loadtxt("datasets/example_2d.trj")
 data = fl.Trajectories(dt=trj[1, 0] - trj[0, 0])
 # for i in range(1, trj.shape[1]):
 data.append(trj[:, 1:2])

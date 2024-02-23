@@ -1,17 +1,8 @@
-####################
-folie API
-####################
+=================
+Estimation
+=================
 
 .. currentmodule:: folie
-
-
-Loading trajectories
-=========================
-.. autosummary::
-   :toctree: generated/
-   :template: function.rst
-
-   Trajectories
 
 
 Direct estimation
@@ -54,20 +45,3 @@ Overdamped Transition density
    KesslerDensity
 
    DrozdovDensity
-
-Available models of Langevin equation
-=======================================
-
-.. autosummary::
-   :toctree: generated/
-   :template: class.rst
-
-   ModelOverdamped
-
-   BrownianMotion
-
-   OrnsteinUhlenbeck
-
-   Overdamped
-
-   OverdampedFreeEnergy

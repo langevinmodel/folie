@@ -22,9 +22,6 @@ def linear_interpolation_with_gradient(idx, h, knots, fp):
     return val_f, val_g, grad
 
 
-# TODO: Implement interface to force and diffusion from a model
-
-
 class OverdampedFreeEnergy(BaseModelOverdamped):
     """
     TODO: A class that implement a overdamped model with a given free energy
@@ -33,11 +30,11 @@ class OverdampedFreeEnergy(BaseModelOverdamped):
     _dim = 1
 
     def __init__(self, knots, beta, **kwargs):
-        super().__init__(dim=self._dim)
         self.knots = knots.ravel()
         self.beta = beta
         self._n_coeffs_force = len(self.knots)
-        self.coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_force)))
+        self._coefficients = np.concatenate((np.zeros(self._n_coeffs_force), np.ones(self._n_coeffs_force)))
+        super().__init__(dim=self._dim)
 
     def preprocess_traj(self, x, use_midpoint=False, **kwargs):
         """Preprocess colvar trajectory with a given grid for faster model optimization
@@ -77,34 +74,32 @@ class OverdampedFreeEnergy(BaseModelOverdamped):
         # Numba prefers typed lists
         return (idx, h, deltaq)
 
-    def force(self, x, t: float = 0.0):
-        idx, h, _ = self.preprocess_traj(x)
+    def _force(self, x, *args, **kwargs):
+        idx = np.searchsorted(self.knots, x.ravel())
+        q0, q1 = self.knots[idx - 1], self.knots[idx]
+        h = (x.ravel() - q0) / (q1 - q0)  # fractional position within the bin
         G, logD, _ = linear_interpolation_with_gradient(idx, h, self.knots, self._coefficients)
         return -self.beta * np.exp(logD) * G
 
-    def diffusion(self, x, t: float = 0.0):
-        idx, h, _ = self.preprocess_traj(x)
+    def _diffusion(self, x, *args, **kwargs):
+        idx = np.searchsorted(self.knots, x.ravel())
+        q0, q1 = self.knots[idx - 1], self.knots[idx]
+        h = (x.ravel() - q0) / (q1 - q0)  # fractional position within the bin
         G, logD, _ = linear_interpolation_with_gradient(idx, h, self.knots, self._coefficients)
         return 2.0 * np.exp(logD)
 
-    def force_t(self, x, t: float = 0.0):
-        return 0.0
-
-    def force_x(self, x, t: float = 0.0):
+    def force_x(self, x, *args, **kwargs):  # TODO: Implement the derivative
         idx, h, _ = self.preprocess_traj(x)
         G, logD, dXdk = linear_interpolation_with_gradient(idx, h, self.knots, self._coefficients)
         return np.dot(self._coefficients[: self._n_coeffs_force], self.basis.derivative(x))
 
-    def force_xx(self, x, t: float = 0.0):
+    def force_xx(self, x, *args, **kwargs):
         return 0.0
 
-    def diffusion_t(self, x, t: float = 0.0):
-        return 0.0
-
-    def diffusion_x(self, x, t: float = 0.0):
+    def diffusion_x(self, x, *args, **kwargs):
         idx, h, _ = self.preprocess_traj(x)
         G, logD, dXdk = linear_interpolation_with_gradient(idx, h, self.knots, self._coefficients)
         return np.dot(self._coefficients[self._n_coeffs_force :], self.basis.derivative(x))
 
-    def diffusion_xx(self, x, t: float = 0.0):
+    def diffusion_xx(self, x, *args, **kwargs):
         return 0.0

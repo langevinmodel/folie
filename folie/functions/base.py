@@ -58,11 +58,20 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         """
         return approx_fprime(x, self.__call__, self.output_shape_)
 
+    def transform_xx(self, x, **kwargs):  # TODO: Check
+        r"""Hessian of the function with respect to input data.
+        Implemented by finite difference.
+        """
+        return approx_fprime(x, self.transform_x, self.output_shape_ + (len(x[0, : self.dim_x]),))
+
     def __call__(self, x, *args, **kwargs):
         return self.transform(x[:, : self.dim_x], *args, **kwargs).reshape(-1, *self.output_shape_)
 
     def grad_x(self, x, *args, **kwargs):
         return self.transform_x(x[:, : self.dim_x], *args, **kwargs).reshape(-1, *self.output_shape_, len(x[0, : self.dim_x]))
+
+    def hessian_x(self, x, *args, **kwargs):
+        return self.transform_xx(x[:, : self.dim_x], *args, **kwargs).reshape(-1, *self.output_shape_, len(x[0, : self.dim_x]), len(x[0, : self.dim_x]))
 
     def __add__(self, other):
         return FunctionSum([self, other])
@@ -357,8 +366,8 @@ class FunctionOffset(Function):
     def transform(self, x, v, *args, **kwargs):
         return self.f(x, *args, **kwargs) + np.einsum("t...h,th-> t...", self.g(x), v)
 
-    def grad_x(self, x, v):
-        return self.f.grad_x(x) + np.einsum("t...he,th-> t...e", self.g.grad_x(x), v)
+    def grad_x(self, x, v, *args, **kwargs):
+        return self.f.grad_x(x, *args, **kwargs) + np.einsum("t...he,th-> t...e", self.g.grad_x(x, *args, **kwargs), v)
 
     def __getattr__(self, item):  # Anything else should be passed to f
         return getattr(self.f, item)
@@ -396,14 +405,14 @@ class ParametricFunction(Function):
         Parameters
         ----------
 
-         X : {array-like} of shape (n_samples, dim)
+            X : {array-like} of shape (n_samples, dim)
             Point of evaluation of the training data
 
-        y : array-like of shape (n_samples,) or (n_samples, n_targets)
+            y : array-like of shape (n_samples,) or (n_samples, n_targets)
             Target values. Will be cast to X's dtype if necessary.
 
 
-        estimator: sklearn compatible estimator
+            estimator: sklearn compatible estimator
             Defaut to sklearn.linear_model.LinearRegression(copy_X=False, fit_intercept=False) but any compatible estimator can be used.
             Estimator should have a coef_ attibutes after fitting
 
@@ -459,12 +468,3 @@ class ParametricFunction(Function):
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
         self._coefficients = vals.reshape((self.n_functions_features_, self.output_size_))
-
-
-# TODO: ModelOverlay
-
-
-class ModelOverlay(ParametricFunction):
-    """
-    A class that allow to use part of a model as function
-    """

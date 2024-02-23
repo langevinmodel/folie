@@ -28,6 +28,9 @@ class Constant(ParametricFunction):
     def transform_x(self, x, *args, **kwargs):
         return np.zeros((x.shape[0], self.output_size_, x.shape[1]))
 
+    def transform_xx(self, x, *args, **kwargs):
+        return np.zeros((x.shape[0], self.output_size_, x.shape[1], x.shape[1]))
+
     def transform_coeffs(self, x, *args, **kwargs):
         transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
         return np.tensordot(np.ones_like(x), transform_coeffs, axes=1)
@@ -59,6 +62,9 @@ class Linear(ParametricFunction):
         len, dim = x.shape
         x_grad = np.ones((len, 1, 1)) * np.eye(dim)[None, :, :]
         return np.einsum("nbd,bs->nsd", x_grad, self._coefficients)  # .reshape(-1, *self.output_shape_, dim)
+
+    def transform_xx(self, x, *args, **kwargs):
+        return np.zeros((x.shape[0], self.output_size_, x.shape[1], x.shape[1]))
 
     def hessian_x(self, x, *args, **kwargs):
         len, dim = x.shape
@@ -104,6 +110,16 @@ class Polynomial(ParametricFunction):
             istart = n * dim
             iend = (n + 1) * dim
             grad = self.polynom.basis(n).deriv(1)(x)[..., None] * np.eye(dim)[None, :, :]
+            res += np.einsum("nbd,bs->nsd", grad, self._coefficients[istart:iend, :])  # .reshape(-1, *self.output_shape_, dim)
+        return res
+
+    def transform_xx(self, x, *args, **kwargs):
+        _, dim = x.shape
+        res = 0.0
+        for n in range(2, self.degree):  # First values are zero anyway
+            istart = n * dim
+            iend = (n + 1) * dim
+            grad = self.polynom.basis(n).deriv(2)(x)[..., None] * np.eye(dim)[None, :, :]
             res += np.einsum("nbd,bs->nsd", grad, self._coefficients[istart:iend, :])  # .reshape(-1, *self.output_shape_, dim)
         return res
 

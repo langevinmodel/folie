@@ -22,6 +22,20 @@ pip install git+https://github.com/langevinmodel/folie.git
 
 Various examples can be found in the `examples` folder on how to perform inference using folie.
 
+
+## Build the documentation
+
+The documention is available on the [Github pages](https://langevinmodel.github.io/folie/). It can also be compiled by first installing the extra dependencies using pip and then compile it.
+
+
+```
+git clone https://github.com/langevinmodel/folie.git
+cd folie
+pip install .[docs]
+cd docs
+make html
+```
+
 ## Help and comments
 
 Please use the github issue of this repository. 

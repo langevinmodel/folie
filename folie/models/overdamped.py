@@ -1,16 +1,9 @@
-from typing import Optional
-from abc import abstractmethod
 import numpy as np
+import warnings
 from scipy.stats import norm
 
 from ..base import Model
-from ..functions import Constant, Polynomial, BSplinesFunction, FunctionOffset, FunctionOffsetWithCoefficient, ParametricFunction
-
-
-# TODO: Implement multidimensionnal version
-
-
-# TODO: Implement interface to force and diffusion from a model
+from ..functions import Constant, Polynomial, BSplinesFunction, FunctionOffset, FunctionOffsetWithCoefficient, ParametricFunction, ModelOverlay
 
 
 class BaseModelOverdamped(Model):
@@ -24,8 +17,14 @@ class BaseModelOverdamped(Model):
 
         """
         self._dim = dim
-        self._coefficients: Optional[np.ndarray] = None
-        self.h = 1e-05
+        self.is_biased = False
+
+        if hasattr(self, "_force") and hasattr(self, "_diffusion"):
+            self.force = ModelOverlay(self, "force")
+            self.meandispl = ModelOverlay(self, "force")
+            self.diffusion = ModelOverlay(self, "diffusion")
+        else:
+            warnings.warn("Cannot setup overlay")
 
     # ==============================
     # Exact Transition Density and Simulation Step, override when available
@@ -129,10 +128,7 @@ class Overdamped(BaseModelOverdamped):
         else:
             self.diffusion = diffusion.resize(diffusion_shape)
         if has_bias is not None:
-            if isinstance(has_bias, bool) and has_bias:
-                self.force = FunctionOffset(self.force, self.diffusion)
-            elif isinstance(has_bias, ParametricFunction):
-                self.force = FunctionOffsetWithCoefficient(self.force, has_bias)
+            self.add_bias(has_bias)
         self.coefficients = np.concatenate((np.zeros(self.force.size), np.ones(self.diffusion.size)))
         self.meandispl = self.force
         # Il faudrait réassigner alors le big array aux functions pour qu'on aie un seul espace mémoire
@@ -182,6 +178,20 @@ class Overdamped(BaseModelOverdamped):
     @coefficients_diffusion.setter
     def coefficients_diffusion(self, vals):
         self.diffusion.coefficients = vals
+
+    def add_bias(self, bias=True):
+        if isinstance(bias, bool) and bias:
+            self.force = FunctionOffset(self.force, self.diffusion)
+        elif isinstance(bias, ParametricFunction):
+            self.force = FunctionOffsetWithCoefficient(self.force, bias)
+        self.is_biased = True
+
+    def remove_bias(self):
+        if self.is_biased:
+            self.force = self.force.f
+            self.is_biased = False
+        else:
+            print("Model is not biased")
 
 
 #  Set of quick interface to more common models
@@ -251,4 +261,14 @@ class OrnsteinUhlenbeck(Overdamped):
 
 
 def OverdampedSplines1D(knots=5):
+    """
+    Generate defaut model for estimation of overdamped Langevin dynamics.
+
+    Parameters
+    -------------
+
+        knots: int of array
+            Either the number of knots to use in the spline or a list of knots.
+            The more knots the more precise the model but it will be more expensive to run and require more data for precise estimation.
+    """
     return Overdamped(BSplinesFunction(knots=knots), dim=0)
