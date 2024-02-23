@@ -16,6 +16,7 @@ Estimation
    - Estimation avec du biais
    - Que faire pour pour des données trop lourdes ou accélérer les calculs
    - Modèles avec mémoires (Hidden et Kernel)
+   - Utilisation de Pytorch
 ..
 
 .. toctree::
