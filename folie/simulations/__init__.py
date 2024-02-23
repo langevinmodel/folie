@@ -14,6 +14,7 @@ class Simulator:
         self.keep_dim = keep_dim
 
     def run(self, nsteps, x0, ntrajs=1, save_every=1, **kwargs):
+        x0 = np.asarray(x0)
         if x0.shape[0] != ntrajs:
             raise ValueError("You must provide as much initial condtion as the wanted number of trajectories.")
         if x0.ndim == 1:
