@@ -28,3 +28,11 @@ Estimation
 
 Analysis
 ------------
+
+
+..
+   Dans cette partie il va falloir avoir:
+    Un calcul de committor et mfpt
+    Un example 2d avec éléments finis
+
+..
