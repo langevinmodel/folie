@@ -4,7 +4,7 @@ For more efficient and longuer simulations, please turn to LangevinIntegrators.j
 """
 
 import numpy as np
-from ..data import Trajectories
+from ..data import Trajectories, Trajectory
 
 
 class Simulator:
@@ -25,7 +25,7 @@ class Simulator:
             keep_dim = dim
         else:
             keep_dim = self.keep_dim % dim
-        x = x0.reshape(-1)
+        x = x0.reshape(1, -1)
         x_val = np.empty((ntrajs, nsteps // save_every, dim))
         dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, nsteps))
         for n in range(nsteps):
@@ -41,6 +41,7 @@ class Simulator:
 class BiasedSimulator(Simulator):
 
     def run(self, nsteps, x0, ntrajs=1, save_every=1, **kwargs):
+        x0 = np.asarray(x0)
         if x0.shape[0] != ntrajs:
             raise ValueError("You must provide as much initial condtion as the wanted number of trajectories.")
         if x0.ndim == 1:
@@ -51,7 +52,7 @@ class BiasedSimulator(Simulator):
             keep_dim = dim
         else:
             keep_dim = self.keep_dim % dim
-        x = x0.reshape(-1)
+        x = x0.reshape(1, -1)
         x_val = np.empty((ntrajs, nsteps // save_every, dim))
         bias_t = np.empty((ntrajs, nsteps // save_every, dim))
         dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, nsteps))
@@ -63,7 +64,7 @@ class BiasedSimulator(Simulator):
                 bias_t[:, n // save_every, 0] = bias
         data = Trajectories(dt=self.dt * save_every)
         for i in range(ntrajs):
-            data.append(x_val[i, :, :keep_dim])  # Add also bias
+            data.append(Trajectory(self.dt, x_val[i, :, :keep_dim], bias=bias_t[i, :, :keep_dim]))  # Add also bias
         return data
 
 

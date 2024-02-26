@@ -39,7 +39,7 @@ def data2d(request):
 @pytest.fixture
 def data_biased(request):
     file_dir = os.path.dirname(os.path.realpath(__file__))
-    trj = np.loadtxt(os.path.join(file_dir, "../examples/example_biased_umbrella.trj"))
+    trj = np.loadtxt(os.path.join(file_dir, "../examples/datasets/example_biased_umbrella.trj"))
     if request.param == "dask":
         trj = da.from_array(trj)
     elif request.param == "torch":
@@ -89,9 +89,10 @@ def test_direct_estimator2d(data2d, request, fct, parameters):
     ],
 )
 def test_direct_estimator_biased(data_biased, request, fct, parameters):
-    model = fl.models.Overdamped(fct(**parameters))
+    model = fl.models.Overdamped(fct(**parameters), has_bias=True)
     estimator = fl.KramersMoyalEstimator(model)
     model = estimator.fit_fetch(data_biased)
+    model.remove_bias()
     assert model.fitted_
 
 
@@ -127,9 +128,10 @@ def test_likelihood_estimator2d(data2d, request):
 @pytest.mark.parametrize("data_biased", ["numpy"], indirect=True)
 def test_likelihood_estimator_biased(data_biased, request):
     fun_lin = fl.functions.Linear()
-    model = fl.models.Overdamped(fun_lin, dim=1)
+    model = fl.models.Overdamped(fun_lin, dim=1, has_bias=True)
     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
     model = estimator.fit_fetch(data_biased)
+    model.remove_bias()
     assert model.fitted_
 
 
