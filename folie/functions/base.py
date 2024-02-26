@@ -45,9 +45,9 @@ class Function(_BaseMethodsMixin, TransformerMixin):
                 rtn = NotImplemented
         return rtn
 
-    @abc.abstractmethod
     def transform(self, x, *args, **kwargs):
         r"""Transforms the input data."""
+        pass
 
     def fit(self, x, y=None, **kwargs):
         return self
@@ -354,20 +354,26 @@ class FunctionOffset(Function):
     def __init__(self, f, g):
         self.f = f
         self.g = g
+        super().__init__(output_shape=self.f.output_shape_)
 
-    def fit(self, x, v, y=None, **kwargs):
-        gv = np.einsum("t...h,th-> t...", self.g(x), v)
+    def fit(self, x, v, y=None, *args, **kwargs):
+        gv = np.einsum("t...h,th-> t...", self.g.transform(x[:, : self.g.dim_x], *args, **kwargs), v)
         if y is None:
             y = gv
         self.f = self.f.fit(x, y - gv)
         # TODO: Check if g have correct shape
         return self
 
+    # TODO: on met le bon reshape sur g avant et après le eisum?
     def transform(self, x, v, *args, **kwargs):
-        return self.f(x, *args, **kwargs) + np.einsum("t...h,th-> t...", self.g(x), v)
+        print(x.shape, v.shape, self.f.transform(x[:, : self.f.dim_x], *args, **kwargs).shape, self.g.transform(x[:, : self.g.dim_x], *args, **kwargs).shape)
+        return self.f.transform(x[:, : self.f.dim_x], *args, **kwargs) + np.einsum("t...h,th-> t...", self.g.transform(x[:, : self.g.dim_x], *args, **kwargs).reshape(???), v)  # Si g n'est pas une matrice c'est la merde ici, mais comme ça retourne un vecteur nécessairement
 
-    def grad_x(self, x, v, *args, **kwargs):
-        return self.f.grad_x(x, *args, **kwargs) + np.einsum("t...he,th-> t...e", self.g.grad_x(x, *args, **kwargs), v)
+    def transform_x(self, x, v, *args, **kwargs):
+        return self.f.transform_x(x[:, : self.f.dim_x], *args, **kwargs) + np.einsum("t...he,th-> t...e", self.g.transform_x(x[:, : self.g.dim_x], *args, **kwargs).reshape(???), v)
+
+    def transform_xx(self, x, v, *args, **kwargs):
+        return self.f.transform_xx(x[:, : self.f.dim_x], *args, **kwargs) + np.einsum("t...hef,th-> t...ef", self.g.transform_xx(x[:, : self.g.dim_x], *args, **kwargs).reshape(???), v)
 
     def __getattr__(self, item):  # Anything else should be passed to f
         return getattr(self.f, item)
