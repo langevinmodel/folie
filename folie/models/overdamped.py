@@ -20,7 +20,7 @@ class BaseModelOverdamped(Model):
         self.is_biased = False
 
         if hasattr(self, "_force") and hasattr(self, "_diffusion"):
-            self.meandispl = ModelOverlay(self, "force")
+            self.force = ModelOverlay(self, "force")
             self.diffusion = ModelOverlay(self, "diffusion")
 
     @property
