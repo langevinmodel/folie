@@ -6,6 +6,30 @@ from ..base import Model
 from ..functions import Constant, Polynomial, BSplinesFunction, FunctionOffset, FunctionOffsetWithCoefficient, ParametricFunction, ModelOverlay
 
 
+class ForceReference:
+    """
+    A composition function for returning f(x)+g(x)*y
+    """
+
+    def __init__(self, model):
+        self.model = model
+
+    def __call__(self, x, *args, **kwargs):
+        return self.model.force(x, *args, **kwargs)
+
+    def grad_x(self, x, *args, **kwargs):
+        return self.model.force.grad_x(x, *args, **kwargs)
+
+    def hessian_x(self, x, *args, **kwargs):
+        return self.model.force.hessian_x(x, *args, **kwargs)
+
+    def grad_coeffs(self, x, *args, **kwargs):
+        """
+        Jacobian of the force with respect to coefficients
+        """
+        return self.model.force.grad_coeffs(x, *args, **kwargs)
+
+
 class BaseModelOverdamped(Model):
     _has_exact_density = False
 
@@ -22,10 +46,11 @@ class BaseModelOverdamped(Model):
         if hasattr(self, "_force") and hasattr(self, "_diffusion"):
             self.force = ModelOverlay(self, "force")
             self.diffusion = ModelOverlay(self, "diffusion")
+        self.meandispl = ForceReference(self)
 
-    @property
-    def meandispl(self):
-        return self.force
+    # def __getattr__(self, item):  # If meandispl is not defined, it return to force
+    #     if item == "meandispl":
+    #         return self.forces
 
     # ==============================
     # Exact Transition Density and Simulation Step, override when available
