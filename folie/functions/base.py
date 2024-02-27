@@ -139,8 +139,8 @@ class FunctionSum(Function):
         self.dim_out_basis = 1
         return self
 
-    def transform(self, X, *args, **kwargs):
-        return np.add.reduce([fu.transform(X) for fu in self.functions_set])
+    def __call__(self, X, *args, **kwargs):
+        return np.add.reduce([fu(X) for fu in self.functions_set])
 
     def grad_x(self, X, **kwargs):
         return np.add.reduce([fu.grad_x(X) for fu in self.functions_set])
@@ -357,23 +357,25 @@ class FunctionOffset(Function):
         super().__init__(output_shape=self.f.output_shape_)
 
     def fit(self, x, v, y=None, *args, **kwargs):
-        gv = np.einsum("t...h,th-> t...", self.g.transform(x[:, : self.g.dim_x], *args, **kwargs), v)
-        if y is None:
-            y = gv
-        self.f = self.f.fit(x, y - gv)
-        # TODO: Check if g have correct shape
+        if y is not None:
+            gv = np.einsum("t...h,th-> t...", self.g(x, *args, **kwargs).reshape((*y.shape, v.shape[1])), v)
+            y -= gv
+        self.f = self.f.fit(x, y)
+        # Mais du coup g n'est pas fit
         return self
 
-    # TODO: on met le bon reshape sur g avant et après le eisum?
-    def transform(self, x, v, *args, **kwargs):
-        print(x.shape, v.shape, self.f.transform(x[:, : self.f.dim_x], *args, **kwargs).shape, self.g.transform(x[:, : self.g.dim_x], *args, **kwargs).shape)
-        return self.f.transform(x[:, : self.f.dim_x], *args, **kwargs) + np.einsum("t...h,th-> t...", self.g.transform(x[:, : self.g.dim_x], *args, **kwargs).reshape(???), v)  # Si g n'est pas une matrice c'est la merde ici, mais comme ça retourne un vecteur nécessairement
+    def __call__(self, x, v, *args, **kwargs):
+        fx = self.f(x, *args, **kwargs)
+        print(v)
+        return fx + np.einsum("t...h,th-> t...", self.g(x, *args, **kwargs).reshape((*fx.shape, v.shape[1])), v)
 
-    def transform_x(self, x, v, *args, **kwargs):
-        return self.f.transform_x(x[:, : self.f.dim_x], *args, **kwargs) + np.einsum("t...he,th-> t...e", self.g.transform_x(x[:, : self.g.dim_x], *args, **kwargs).reshape(???), v)
+    def grad_x(self, x, v, *args, **kwargs):
+        dfx = self.f.grad_x(x, *args, **kwargs)
+        return dfx + np.einsum("t...he,th-> t...e", self.g.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], dfx.shape[-1])), v)
 
-    def transform_xx(self, x, v, *args, **kwargs):
-        return self.f.transform_xx(x[:, : self.f.dim_x], *args, **kwargs) + np.einsum("t...hef,th-> t...ef", self.g.transform_xx(x[:, : self.g.dim_x], *args, **kwargs).reshape(???), v)
+    def hessian_x(self, x, v, *args, **kwargs):
+        ddfx = self.f.hessian_x(x[:, : self.f.dim_x], *args, **kwargs)
+        return ddfx + np.einsum("t...hef,th-> t...ef", self.g.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], v.shape[1], *ddfx.shape[-2:])), v)
 
     def __getattr__(self, item):  # Anything else should be passed to f
         return getattr(self.f, item)
