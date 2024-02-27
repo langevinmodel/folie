@@ -25,10 +25,14 @@ class TransitionDensity(ABC):
         # TODO: Trouver un moyen de set la dimensionalité du système à partir des données
         if self._model.dim <= 1:
             self._logdensity = self._logdensity1D
+            if hasattr(self, "run_step_1D"):
+                self.run_step = self.run_step_1D
         else:
             if not hasattr(self, "_logdensityND"):
                 raise ValueError("This transition density does not support multidimensionnal model.")
             self._logdensity = self._logdensityND
+            if hasattr(self, "run_step_ND"):
+                self.run_step = self.run_step_ND
 
     @property
     def model(self):

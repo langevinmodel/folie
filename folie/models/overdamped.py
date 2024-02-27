@@ -20,9 +20,12 @@ class BaseModelOverdamped(Model):
         self.is_biased = False
 
         if hasattr(self, "_force") and hasattr(self, "_diffusion"):
-            self.force = ModelOverlay(self, "force")
             self.meandispl = ModelOverlay(self, "force")
             self.diffusion = ModelOverlay(self, "diffusion")
+
+    @property
+    def meandispl(self):
+        return self.force
 
     # ==============================
     # Exact Transition Density and Simulation Step, override when available
@@ -128,7 +131,6 @@ class Overdamped(BaseModelOverdamped):
         if has_bias is not None:
             self.add_bias(has_bias)
         self.coefficients = np.concatenate((np.zeros(self.force.size), np.ones(self.diffusion.size)))
-        self.meandispl = self.force
         # Il faudrait réassigner alors le big array aux functions pour qu'on aie un seul espace mémoire
 
     @property

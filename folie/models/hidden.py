@@ -1,32 +1,31 @@
 from .overdamped import Overdamped
 from .underdamped import Underdamped
 import numpy as np
-from ..functions import ParametricFunction
 
 
-# TODO: Either do it as a complete function that deals the parameters or don't inherite from ParametricFunction
-class CombineForceFriction:  # (ParametricFunction):
+class CombineForceFriction:
     """
     A composition function for returning f(x)+g(x)*y
     """
 
-    def __init__(self, f, g, dim_x=1, **kwargs):
-        self.f = f
-        # super().__init__(self.f.output_shape_, dim_x=None)
-        self.g = g  # Check if g has correct output shape
+    def __init__(self, model, dim_x=1, **kwargs):
+        self.model = model
         self._dim_sep = dim_x
 
     def __call__(self, x, *args, **kwargs):
-        return self.f(x, *args, **kwargs) + np.einsum("t...h,th-> t...", self.g(x, *args, **kwargs), x[:, self._dim_sep :])
+        return self.model.force(x, *args, **kwargs) + np.einsum("t...h,th-> t...", self.model.friction(x, *args, **kwargs), x[:, self._dim_sep :])
 
     def grad_x(self, x, *args, **kwargs):
-        return self.f.grad_x(x, *args, **kwargs) + np.einsum("t...he,th-> t...e", self.g.grad_x(x, *args, **kwargs), x[:, self._dim_sep :])
+        return self.model.force.grad_x(x, *args, **kwargs) + np.einsum("t...he,th-> t...e", self.model.friction.grad_x(x, *args, **kwargs), x[:, self._dim_sep :])
+
+    def hessian_x(self, x, *args, **kwargs):
+        return self.model.force.hessian_x(x, *args, **kwargs) + np.einsum("t...hef,th-> t...ef", self.model.friction.hessian_x(x, *args, **kwargs), x[:, self._dim_sep :])
 
     def grad_coeffs(self, x, *args, **kwargs):
         """
         Jacobian of the force with respect to coefficients
         """
-        return np.concatenate((self.f.grad_coeffs(x, *args, **kwargs), np.einsum("t...hc,th-> t...c", self.g.grad_coeffs(x, *args, **kwargs), x[:, self._dim_sep :])), axis=-1)
+        return np.concatenate((self.model.force.grad_coeffs(x, *args, **kwargs), np.einsum("t...hc,th-> t...c", self.model.friction.grad_coeffs(x, *args, **kwargs), x[:, self._dim_sep :])), axis=-1)
 
 
 class OverdampedHidden(Overdamped):
@@ -62,7 +61,7 @@ class OverdampedHidden(Overdamped):
         self._n_coeffs_diffusion = self.diffusion.size
         self._n_coeffs_friction = self.friction.size
         self.coefficients = np.concatenate((np.zeros(self.force.size), np.ones(self.friction.size), np.eye(self.dim).flatten()))  # TODO: Replace by a fit with zeros and ones
-        self.meandispl = CombineForceFriction(self.force, self.friction, self.dim_x)
+        self.meandispl = CombineForceFriction(self, self.dim_x)
 
     @property
     def coefficients(self):

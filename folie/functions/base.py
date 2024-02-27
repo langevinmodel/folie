@@ -346,39 +346,51 @@ class FunctionTensored(Function):
         raise NotImplementedError
 
 
-class FunctionOffset(Function):
+class FunctionOffset:
     """
     A composition Function to represent f(x)+g(x)v where
     """
 
     def __init__(self, f, g):
-        self.f = f
-        self.g = g
-        super().__init__(output_shape=self.f.output_shape_)
+        self._f = f
+        self._g = g
+        # super().__init__(output_shape=self.f.output_shape_)
 
     def fit(self, x, v, y=None, *args, **kwargs):
         if y is not None:
             gv = np.einsum("t...h,th-> t...", self.g(x, *args, **kwargs).reshape((*y.shape, v.shape[1])), v)
             y -= gv
-        self.f = self.f.fit(x, y)
+        self._f = self._f.fit(x, y)
         # Mais du coup g n'est pas fit
         return self
 
     def __call__(self, x, v, *args, **kwargs):
-        fx = self.f(x, *args, **kwargs)
-        print(v)
-        return fx + np.einsum("t...h,th-> t...", self.g(x, *args, **kwargs).reshape((*fx.shape, v.shape[1])), v)
+        fx = self._f(x, *args, **kwargs)
+        return fx + np.einsum("t...h,th-> t...", self._g(x, *args, **kwargs).reshape((*fx.shape, v.shape[1])), v)
 
     def grad_x(self, x, v, *args, **kwargs):
-        dfx = self.f.grad_x(x, *args, **kwargs)
-        return dfx + np.einsum("t...he,th-> t...e", self.g.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], dfx.shape[-1])), v)
+        dfx = self._f.grad_x(x, *args, **kwargs)
+        return dfx + np.einsum("t...he,th-> t...e", self._g.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], dfx.shape[-1])), v)
 
     def hessian_x(self, x, v, *args, **kwargs):
-        ddfx = self.f.hessian_x(x[:, : self.f.dim_x], *args, **kwargs)
-        return ddfx + np.einsum("t...hef,th-> t...ef", self.g.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], v.shape[1], *ddfx.shape[-2:])), v)
+        ddfx = self._f.hessian_x(x[:, : self.f.dim_x], *args, **kwargs)
+        return ddfx + np.einsum("t...hef,th-> t...ef", self._g.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], v.shape[1], *ddfx.shape[-2:])), v)
 
     def __getattr__(self, item):  # Anything else should be passed to f
-        return getattr(self.f, item)
+        if item == "f":
+            return self._f
+        elif item == "g":
+            return self._g
+        else:
+            return getattr(self._f, item)
+
+    def __setattr__(self, item, value):
+        if item.startswith("_"):
+            # If it's a private attribute, handle it normally
+            super().__setattr__(item, value)
+        else:
+            # If it's not a private attribute, delegate the assignment to the inner object
+            setattr(self._f, item, value)
 
 
 class ParametricFunction(Function):

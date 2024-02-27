@@ -101,9 +101,9 @@ class EulerDensity(TransitionDensity):
         l_jac_V = 0.5 * np.einsum("ti,tijc,tj-> tc", xt - E, np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV), xt - E) - 0.5 * np.einsum("tijc,tji->tc", jacV, invV)
         return ll, np.hstack((l_jac_E, l_jac_V))
 
-    def run_step(self, x, dt, dW, bias=0.0):
+    def run_step_1D(self, x, dt, dW, bias=0.0):
         sig_sq_dt = np.sqrt(self._model.diffusion(x) * dt)
-        return x + (self._model.meandispl(x) + bias) * dt + sig_sq_dt * dW
+        return (x.T + (self._model.meandispl(x, bias)) * dt + sig_sq_dt * dW).T  # Weird transpose for broadcasting
 
     def _hiddenvariance(self, x0, xt, sigh, dt):
         """
@@ -255,7 +255,7 @@ class ElerianDensity(EulerDensity):
         """
         sig_x = self._model.diffusion.grad_x(x0).ravel()
         if isinstance(x0, np.ndarray) and (sig_x == 0).any:
-            return super()._logdensity1D(x0=x0, xt=xt, dt=dt)[0]
+            return super()._logdensity1D(x0=x0, xt=xt, dt=dt, bias=bias)[0]
 
         sig = self._model.diffusion(x0).ravel()
         mu = self._model.meandispl(x0, bias).ravel()
@@ -275,7 +275,7 @@ class ElerianDensity(EulerDensity):
         Compute Likelihood of one trajectory
         """
         self._model.coefficients = coefficients
-        return (-np.sum(np.maximum(self._min_prob, self._logdensity(x0=trj["x"], xt=trj["xt"], dt=trj["dt"]))) / weight,)
+        return (-np.sum(np.maximum(self._min_prob, self._logdensity(x0=trj["x"], xt=trj["xt"], dt=trj["dt"], bias=trj["bias"]))) / weight,)
 
 
 class KesslerDensity(TransitionDensity):
