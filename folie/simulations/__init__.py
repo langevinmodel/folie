@@ -25,13 +25,13 @@ class Simulator:
             keep_dim = dim
         else:
             keep_dim = self.keep_dim % dim
-        x = x0.reshape(1, -1)
+        x = x0.reshape(-1, dim)
         x_val = np.empty((ntrajs, nsteps // save_every, dim))
         dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, nsteps))
         for n in range(nsteps):
             x = self.transition.run_step(x, self.dt, dW[:, n])
             if n % save_every == 0:
-                x_val[:, n // save_every, 0] = x
+                x_val[:, n // save_every, :] = x
         data = Trajectories(dt=self.dt * save_every)
         for i in range(ntrajs):
             data.append(x_val[i, :, :keep_dim])
@@ -39,6 +39,9 @@ class Simulator:
 
 
 class BiasedSimulator(Simulator):
+    def __init__(self, transition, dt, k=1, xstop=np.infty, **kwargs):
+        super().__init__(transition, dt, **kwargs)
+        self.transition.model.add_bias()
 
     def run(self, nsteps, x0, ntrajs=1, save_every=1, **kwargs):
         x0 = np.asarray(x0)
@@ -52,7 +55,7 @@ class BiasedSimulator(Simulator):
             keep_dim = dim
         else:
             keep_dim = self.keep_dim % dim
-        x = x0.reshape(1, -1)
+        x = x0.reshape(-1, dim)
         x_val = np.empty((ntrajs, nsteps // save_every, dim))
         bias_t = np.empty((ntrajs, nsteps // save_every, dim))
         dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, nsteps))
@@ -60,11 +63,11 @@ class BiasedSimulator(Simulator):
             bias = self._bias(x)
             x = self.transition.run_step(x, self.dt, dW[:, n], bias=bias)
             if n % save_every == 0:
-                x_val[:, n // save_every, 0] = x
-                bias_t[:, n // save_every, 0] = bias
+                x_val[:, n // save_every, :] = x
+                bias_t[:, n // save_every, :] = bias
         data = Trajectories(dt=self.dt * save_every)
         for i in range(ntrajs):
-            data.append(Trajectory(self.dt, x_val[i, :, :keep_dim], bias=bias_t[i, :, :keep_dim]))  # Add also bias
+            data.append(Trajectory(self.dt, x_val[i, :, :keep_dim], bias=bias_t[i, :, :keep_dim]))
         return data
 
 
@@ -74,12 +77,13 @@ class ABMD_Simulator(BiasedSimulator):
         self.xmax = None
         self.k = k
         self.xstop = xstop
+        self.xmax_hist = []
 
     def _bias(self, xt):
-
         if self.xmax is None:
             self.xmax = np.copy(xt)
         else:
             np.maximum(self.xmax, xt, out=self.xmax)
         np.minimum(self.xmax, self.xstop, out=self.xmax)
+        self.xmax_hist.append(np.copy(self.xmax))
         return self.k * (self.xmax - xt)

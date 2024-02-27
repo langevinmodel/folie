@@ -83,7 +83,7 @@ def filtersmoother(Xtplus, mutilde, frict, diffusion, mu0, sig0):
     # Iterate and compute possible value for h at the same point
     for i in range(1, lenTraj):
         # try:
-        muf[i, :], Sigf[i, :, :], muh[i - 1, :], Sigh[i - 1, :, :] = filter_kalman(muf[i - 1, :], Sigf[i - 1, :, :], Xtplus[i - 1], mutilde[i - 1], frict[i - 1, :, :], diffusion[i - 1, :, :], dim_x, dim_h)
+        muf[i, ...], Sigf[i, ...], muh[i - 1, ...], Sigh[i - 1, ...] = filter_kalman(muf[i - 1, ...], Sigf[i - 1, ...], Xtplus[i - 1], mutilde[i - 1], frict[i - 1, ...], diffusion[i - 1, ...], dim_x, dim_h)
         # except np.linalg.LinAlgError:
         #     print(i, muf[i - 1, :], Sigf[i - 1, :, :], Xtplus[i - 1], mutilde[i - 1], self.friction_coeffs[:, self.dim_x :], self.diffusion_coeffs)
     # The last step comes only from the forward recursion
@@ -92,7 +92,7 @@ def filtersmoother(Xtplus, mutilde, frict, diffusion, mu0, sig0):
     # Backward proba
     for i in range(lenTraj - 2, -1, -1):  # From T-1 to 0
         # try:
-        mus[i, :], Sigs[i, :, :], muh[i, :], Sigh[i, :, :] = smoothing_rauch(muf[i, :], Sigf[i, :, :], mus[i + 1, :], Sigs[i + 1, :, :], Xtplus[i], mutilde[i], frict[i, :, :], diffusion[i, :, :], dim_x, dim_h)
+        mus[i, ...], Sigs[i, ...], muh[i, ...], Sigh[i, ...] = smoothing_rauch(muf[i, ...], Sigf[i, ...], mus[i + 1, ...], Sigs[i + 1, ...], Xtplus[i], mutilde[i], frict[i, ...], diffusion[i, ...], dim_x, dim_h)
         # except np.linalg.LinAlgError as e:
         #     print(i, muf[i, :], Sigf[i, :, :], mus[i + 1, :], Sigs[i + 1, :, :], Xtplus[i], mutilde[i], self.friction_coeffs[:, self.dim_x :], self.diffusion_coeffs)
         #     print(repr(e))

@@ -45,9 +45,9 @@ class Function(_BaseMethodsMixin, TransformerMixin):
                 rtn = NotImplemented
         return rtn
 
-    @abc.abstractmethod
     def transform(self, x, *args, **kwargs):
         r"""Transforms the input data."""
+        pass
 
     def fit(self, x, y=None, **kwargs):
         return self
@@ -139,8 +139,8 @@ class FunctionSum(Function):
         self.dim_out_basis = 1
         return self
 
-    def transform(self, X, *args, **kwargs):
-        return np.add.reduce([fu.transform(X) for fu in self.functions_set])
+    def __call__(self, X, *args, **kwargs):
+        return np.add.reduce([fu(X) for fu in self.functions_set])
 
     def grad_x(self, X, **kwargs):
         return np.add.reduce([fu.grad_x(X) for fu in self.functions_set])
@@ -346,31 +346,51 @@ class FunctionTensored(Function):
         raise NotImplementedError
 
 
-class FunctionOffset(Function):
+class FunctionOffset:
     """
     A composition Function to represent f(x)+g(x)v where
     """
 
     def __init__(self, f, g):
-        self.f = f
-        self.g = g
+        self._f = f
+        self._g = g
+        # super().__init__(output_shape=self.f.output_shape_)
 
-    def fit(self, x, v, y=None, **kwargs):
-        gv = np.einsum("t...h,th-> t...", self.g(x), v)
-        if y is None:
-            y = gv
-        self.f = self.f.fit(x, y - gv)
-        # TODO: Check if g have correct shape
+    def fit(self, x, v, y=None, *args, **kwargs):
+        if y is not None:
+            gv = np.einsum("t...h,th-> t...", self.g(x, *args, **kwargs).reshape((*y.shape, v.shape[1])), v)
+            y -= gv
+        self._f = self._f.fit(x, y)
+        # Mais du coup g n'est pas fit
         return self
 
-    def transform(self, x, v, *args, **kwargs):
-        return self.f(x, *args, **kwargs) + np.einsum("t...h,th-> t...", self.g(x), v)
+    def __call__(self, x, v, *args, **kwargs):
+        fx = self._f(x, *args, **kwargs)
+        return fx + np.einsum("t...h,th-> t...", self._g(x, *args, **kwargs).reshape((*fx.shape, v.shape[1])), v)
 
     def grad_x(self, x, v, *args, **kwargs):
-        return self.f.grad_x(x, *args, **kwargs) + np.einsum("t...he,th-> t...e", self.g.grad_x(x, *args, **kwargs), v)
+        dfx = self._f.grad_x(x, *args, **kwargs)
+        return dfx + np.einsum("t...he,th-> t...e", self._g.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], dfx.shape[-1])), v)
+
+    def hessian_x(self, x, v, *args, **kwargs):
+        ddfx = self._f.hessian_x(x[:, : self.f.dim_x], *args, **kwargs)
+        return ddfx + np.einsum("t...hef,th-> t...ef", self._g.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], v.shape[1], *ddfx.shape[-2:])), v)
 
     def __getattr__(self, item):  # Anything else should be passed to f
-        return getattr(self.f, item)
+        if item == "f":
+            return self._f
+        elif item == "g":
+            return self._g
+        else:
+            return getattr(self._f, item)
+
+    def __setattr__(self, item, value):
+        if item.startswith("_"):
+            # If it's a private attribute, handle it normally
+            super().__setattr__(item, value)
+        else:
+            # If it's not a private attribute, delegate the assignment to the inner object
+            setattr(self._f, item, value)
 
 
 class ParametricFunction(Function):

@@ -51,6 +51,21 @@ def data_biased(request):
     return trj_list
 
 
+@pytest.fixture
+def data_short(request):
+    file_dir = os.path.dirname(os.path.realpath(__file__))
+    trj = np.loadtxt(os.path.join(file_dir, "../examples/datasets/example_2d.trj"))
+    if request.param == "dask":
+        trj = da.from_array(trj)
+    elif request.param == "torch":
+        trj = torch.from_numpy(trj)
+    trj_list = fl.Trajectories(dt=trj[1, 0] - trj[0, 0])
+    for i in range(1, trj.shape[1]):
+        trj_list.append(trj[:50, i : (i + 1)])
+    trj_list.stats
+    return trj_list
+
+
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 @pytest.mark.parametrize(
     "fct,parameters",
@@ -146,12 +161,11 @@ def test_numba_likelihood_estimator(data, request):
     assert model.fitted_
 
 
-@pytest.mark.skip(reason="Too long to run")
-@pytest.mark.parametrize("data", ["numpy"], indirect=True)
-def test_em_estimator(data, request):
+@pytest.mark.parametrize("data_short", ["numpy"], indirect=True)
+def test_em_estimator(data_short, request):
     fun_lin = fl.functions.Linear()
     fun_cst = fl.functions.Constant()
     model = fl.models.OverdampedHidden(fun_lin, fun_lin.copy(), fun_cst, dim=1, dim_h=2)
     estimator = fl.EMEstimator(fl.EulerDensity(model), max_iter=2, verbose=3, verbose_interval=1)
-    model = estimator.fit_fetch(data)
+    model = estimator.fit_fetch(data_short)
     assert model.fitted_

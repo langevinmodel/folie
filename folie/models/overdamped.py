@@ -20,11 +20,12 @@ class BaseModelOverdamped(Model):
         self.is_biased = False
 
         if hasattr(self, "_force") and hasattr(self, "_diffusion"):
-            self.force = ModelOverlay(self, "force")
             self.meandispl = ModelOverlay(self, "force")
             self.diffusion = ModelOverlay(self, "diffusion")
-        else:
-            warnings.warn("Cannot setup overlay")
+
+    @property
+    def meandispl(self):
+        return self.force
 
     # ==============================
     # Exact Transition Density and Simulation Step, override when available
@@ -130,7 +131,6 @@ class Overdamped(BaseModelOverdamped):
         if has_bias is not None:
             self.add_bias(has_bias)
         self.coefficients = np.concatenate((np.zeros(self.force.size), np.ones(self.diffusion.size)))
-        self.meandispl = self.force
         # Il faudrait réassigner alors le big array aux functions pour qu'on aie un seul espace mémoire
 
     @property
@@ -211,9 +211,11 @@ class BrownianMotion(Overdamped):
 
     _has_exact_density = True
 
-    def __init__(self, **kwargs):
+    def __init__(self, mu=0, sigma=1.0, **kwargs):
         X = np.linspace(-1, 1, 5).reshape(-1, 1)
         super().__init__(Constant().fit(X, np.zeros(5)), Constant().fit(X, np.ones(5)), dim=0, **kwargs)
+        self.force.coefficients = np.asarray(mu)
+        self.diffusion.coefficients = np.asarray(sigma)
 
     def exact_density(self, x0, xt, t0: float, dt: float = 0.0) -> float:
         mu, sigma2 = self.coefficients
@@ -234,29 +236,30 @@ class OrnsteinUhlenbeck(Overdamped):
     dX(t) = mu(X,t)*dt + sigma(X,t)*dW_t
 
     where:
-        mu(X,t)    = kappa - theta* X
+        mu(X,t)    = theta - kappa* X
         sigma(X,t) = sqrt(sigma)
     """
 
     dim = 1
     _has_exact_density = True
 
-    def __init__(self, **kwargs):
+    def __init__(self, theta=0, kappa=1.0, sigma=1.0, **kwargs):
         # Init by passing functions to the model
         X = np.linspace(-1, 1, 5).reshape(-1, 1)
-        super().__init__(Polynomial(1).fit(X, np.linspace(-1, 1, 5)), Constant().fit(X, np.ones(5)), dim=0, **kwargs)
+        super().__init__(Polynomial(1).fit(X, -1 * np.linspace(-1, 1, 5)), Constant().fit(X, np.ones(5)), dim=0, **kwargs)
+        self.force.coefficients = np.asarray([theta, -kappa])
+        self.diffusion.coefficients = np.asarray(sigma)
 
     def exact_density(self, x0: float, xt: float, t0: float, dt: float = 0.0) -> float:
-        kappa, theta, sigma = self.coefficients
-        mu = theta + (x0 - theta) * np.exp(-kappa * dt)
-        # mu = X0*np.exp(-kappa*t) + theta*(1 - np.exp(-kappa*t))
-        var = (1 - np.exp(-2 * kappa * dt)) * (sigma / (2 * kappa))
+        theta, kappa, sigma = self.coefficients
+        mu = -theta / kappa + (x0 + theta / kappa) * np.exp(kappa * dt)
+        var = (1 - np.exp(2 * kappa * dt)) * (sigma / (-2 * kappa))
         return norm.pdf(xt.ravel(), loc=mu.ravel(), scale=np.sqrt(var).ravel())
 
     def exact_step(self, x, dt, dZ, t=0.0):
-        kappa, theta, sigma = self.coefficients
-        mu = theta + (x - theta) * np.exp(-kappa * dt)
-        var = (1 - np.exp(-2 * kappa * dt)) * (sigma / (2 * kappa))
+        theta, kappa, sigma = self.coefficients
+        mu = -theta / kappa + (x + theta / kappa) * np.exp(kappa * dt)
+        var = (1 - np.exp(2 * kappa * dt)) * (sigma / (-2 * kappa))
         return mu * dt + np.sqrt(var * dt) * dZ
 
 

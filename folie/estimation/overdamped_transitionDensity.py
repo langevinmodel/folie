@@ -55,10 +55,10 @@ class EulerDensity(TransitionDensity):
         Compute Likelihood of one trajectory
         """
         self._model.coefficients = coefficients
-        like, jac = self._logdensity(x0=trj["x"], xt=trj["xt"], dt=trj["dt"])
+        like, jac = self._logdensity(x0=trj["x"], xt=trj["xt"], dt=trj["dt"], bias=trj["bias"])
         return (-np.sum(np.maximum(self._min_prob, like)) / weight, -np.sum(jac, axis=0) / weight)
 
-    def _logdensity1D(self, x0, xt, dt: float):
+    def _logdensity1D(self, x0, xt, dt: float, bias=0.0):
         """
         The transition density obtained via Euler expansion
         :param x0: float or array, the current value
@@ -67,18 +67,18 @@ class EulerDensity(TransitionDensity):
         :return: probability (same dimension as x0 and xt)
         """
         sig2t = (self._model.diffusion(x0)).ravel() * 2 * dt
-        mut = x0.ravel() + self._model.meandispl(x0).ravel() * dt
+        mut = x0.ravel() + self._model.meandispl(x0, bias).ravel() * dt
         ll = -((xt.ravel() - mut) ** 2) / sig2t - 0.5 * np.log(np.pi * sig2t)
         if not self.use_jac:
             return ll, np.zeros(2)
 
         jacV = (self._model.diffusion.grad_coeffs(x0)) * 2 * dt
-        l_jac_mu = 2 * ((xt.ravel() - mut) / sig2t)[:, None] * self._model.meandispl.grad_coeffs(x0) * dt
-        l_jac_V = (((xt.ravel() - mut) ** 2) / sig2t**2)[:, None] * jacV - 0.5 * jacV / sig2t[:, None]
+        l_jac_mu = 2 * ((xt.ravel() - mut) / sig2t)[:, None] * self._model.meandispl.grad_coeffs(x0, bias) * dt
+        l_jac_V = (((xt.ravel() - mut) ** 2) / sig2t ** 2)[:, None] * jacV - 0.5 * jacV / sig2t[:, None]
 
         return ll, np.hstack((l_jac_mu, l_jac_V))
 
-    def _logdensityND(self, x0, xt, dt):
+    def _logdensityND(self, x0, xt, dt, bias=0.0):
         """
         The transition density evaluated at these arguments
         :param x0: float or array, the current value
@@ -88,7 +88,7 @@ class EulerDensity(TransitionDensity):
         """
 
         # TODO: Add correction terms
-        E = x0 + self._model.meandispl(x0) * dt
+        E = x0 + self._model.meandispl(x0, bias) * dt
         V = (self._model.diffusion(x0)) * dt
         invV = np.linalg.inv(V)  # TODO: Use linalg.solve instead of inv ?
         ll = -0.5 * np.einsum("ti,tij,tj-> t", xt - E, invV, xt - E) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V))
@@ -97,13 +97,13 @@ class EulerDensity(TransitionDensity):
             return ll, np.zeros(2)
 
         jacV = (self._model.diffusion.grad_coeffs(x0)) * dt
-        l_jac_E = np.einsum("ti,tij,tjc-> tc", xt - E, invV, self._model.meandispl.grad_coeffs(x0) * dt)
+        l_jac_E = np.einsum("ti,tij,tjc-> tc", xt - E, invV, self._model.meandispl.grad_coeffs(x0, bias) * dt)
         l_jac_V = 0.5 * np.einsum("ti,tijc,tj-> tc", xt - E, np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV), xt - E) - 0.5 * np.einsum("tijc,tji->tc", jacV, invV)
         return ll, np.hstack((l_jac_E, l_jac_V))
 
-    def run_step(self, x, dt, dW, t=0.0):
-        sig_sq_dt = np.sqrt(self._model.diffusion(x, t) * dt)
-        return x + self._model.meandispl(x, t) * dt + sig_sq_dt * dW
+    def run_step_1D(self, x, dt, dW, bias=0.0):
+        sig_sq_dt = np.sqrt(self._model.diffusion(x) * dt)
+        return (x.T + (self._model.meandispl(x, bias)) * dt + sig_sq_dt * dW).T  # Weird transpose for broadcasting
 
     def _hiddenvariance(self, x0, xt, sigh, dt):
         """
@@ -160,7 +160,7 @@ class EulerDensity(TransitionDensity):
         self._model.coefficients = coefficients
         muh, Sigh = filtersmoother(
             trj["xt"][:, : self._model.dim_x],
-            self._model.force(trj["x"][:, : self._model.dim_x]) * trj["dt"],
+            self._model.force(trj["x"][:, : self._model.dim_x], trj["bias"][:, : self._model.dim_x]) * trj["dt"],
             self._model.friction(trj["x"][:, : self._model.dim_x]) * trj["dt"],
             self._model.diffusion(trj["x"][:, : self._model.dim_x]) * trj["dt"],
             mu0,
@@ -181,7 +181,7 @@ class OzakiDensity(TransitionDensity):
         """
         super().__init__(model)
 
-    def _logdensity1D(self, x0, xt, dt: float):
+    def _logdensity1D(self, x0, xt, dt: float, bias=0.0):
         """
         The transition density obtained via Ozaki expansion
         :param x0: float or array, the current value
@@ -190,8 +190,8 @@ class OzakiDensity(TransitionDensity):
         :return: probability (same dimension as x0 and xt)
         """
         sig = self._model.diffusion(x0).ravel()
-        mu = self._model.meandispl(x0).ravel()
-        mu_x = self._model.meandispl.grad_x(x0).ravel()
+        mu = self._model.meandispl(x0, bias).ravel()
+        mu_x = self._model.meandispl.grad_x(x0, bias).ravel()
         temp = mu * (np.exp(mu_x * dt) - 1) / mu_x
 
         Mt = x0.ravel() + temp
@@ -209,7 +209,7 @@ class ShojiOzakiDensity(TransitionDensity):
         """
         super().__init__(model)
 
-    def _logdensity1D(self, x0, xt, dt: float):
+    def _logdensity1D(self, x0, xt, dt: float, bias=0.0):
         """
         The transition density obtained via Shoji-Ozaki expansion
         :param x0: float or array, the current value
@@ -218,18 +218,18 @@ class ShojiOzakiDensity(TransitionDensity):
         :return: probability (same dimension as x0 and xt)
         """
         sig = np.sqrt(self._model.diffusion(x0).ravel())
-        mu = self._model.meandispl(x0).ravel()
+        mu = self._model.meandispl(x0, bias).ravel()
 
-        Mt = 0.5 * sig**2 * self._model.meandispl.hessian_x(x0).ravel()  # + self._model.meandispl_t(x0)  #Time homogenous model
-        Lt = self._model.meandispl.grad_x(x0).ravel()
+        Mt = 0.5 * sig ** 2 * self._model.meandispl.hessian_x(x0, bias).ravel()  # + self._model.meandispl_t(x0)  #Time homogenous model
+        Lt = self._model.meandispl.grad_x(x0, bias).ravel()
         if (Lt == 0).any():  # TODO: need to fix this
             B = sig * np.sqrt(dt)
-            A = x0.ravel() + mu * dt + Mt * dt**2 / 2
+            A = x0.ravel() + mu * dt + Mt * dt ** 2 / 2
         else:
             B = sig * np.sqrt((np.exp(2 * Lt * dt) - 1) / (2 * Lt))
 
             elt = np.exp(Lt * dt) - 1
-            A = x0.ravel() + mu / Lt * elt + Mt / (Lt**2) * (elt - Lt * dt)
+            A = x0.ravel() + mu / Lt * elt + Mt / (Lt ** 2) * (elt - Lt * dt)
 
         return -0.5 * ((xt.ravel() - A) / B) ** 2 - 0.5 * np.log(2 * np.pi) - np.log(B)
 
@@ -244,7 +244,7 @@ class ElerianDensity(EulerDensity):
         """
         super().__init__(model)
 
-    def _logdensity1D(self, x0, xt, dt: float):
+    def _logdensity1D(self, x0, xt, dt: float, bias=0.0):
         """
         The transition density obtained via Milstein Expansion (Elarian density).
         When d(sigma)/dx = 0, reduces to Euler
@@ -255,15 +255,15 @@ class ElerianDensity(EulerDensity):
         """
         sig_x = self._model.diffusion.grad_x(x0).ravel()
         if isinstance(x0, np.ndarray) and (sig_x == 0).any:
-            return super()._logdensity1D(x0=x0, xt=xt, dt=dt)[0]
+            return super()._logdensity1D(x0=x0, xt=xt, dt=dt, bias=bias)[0]
 
         sig = self._model.diffusion(x0).ravel()
-        mu = self._model.meandispl(x0).ravel()
+        mu = self._model.meandispl(x0, bias).ravel()
 
         A = sig * sig_x * dt * 0.5
         B = -0.5 * sig / sig_x + x0.ravel() + mu * dt - A
         z = (xt.ravel() - B) / A
-        C = 1.0 / (sig_x**2 * dt)
+        C = 1.0 / (sig_x ** 2 * dt)
 
         scz = np.sqrt(C * z)
         cpz = -0.5 * (C + z)
@@ -275,7 +275,7 @@ class ElerianDensity(EulerDensity):
         Compute Likelihood of one trajectory
         """
         self._model.coefficients = coefficients
-        return (-np.sum(np.maximum(self._min_prob, self._logdensity(x0=trj["x"], xt=trj["xt"], dt=trj["dt"]))) / weight,)
+        return (-np.sum(np.maximum(self._min_prob, self._logdensity(x0=trj["x"], xt=trj["xt"], dt=trj["dt"], bias=trj["bias"]))) / weight,)
 
 
 class KesslerDensity(TransitionDensity):
@@ -286,7 +286,7 @@ class KesslerDensity(TransitionDensity):
         """
         super().__init__(model)
 
-    def _logdensity1D(self, x0, xt, dt: float):
+    def _logdensity1D(self, x0, xt, dt: float, bias=0.0):
         """
         The transition density obtained via Kessler expansion
         :param x0: float or array, the current value
@@ -297,14 +297,14 @@ class KesslerDensity(TransitionDensity):
         sig = self._model.diffusion(x0).ravel()
         sig_x = self._model.diffusion.grad_x(x0).ravel()
         sig_xx = self._model.diffusion.hessian_x(x0).ravel()
-        mu = self._model.meandispl(x0).ravel()
-        mu_x = self._model.meandispl.grad_x(x0).ravel()
-        mu_xx = self._model.meandispl.hessian_x(x0).ravel()
+        mu = self._model.meandispl(x0, bias).ravel()
+        mu_x = self._model.meandispl.grad_x(x0, bias).ravel()
+        mu_xx = self._model.meandispl.hessian_x(x0, bias).ravel()
         x0 = x0.ravel()
-        d = dt**2 / 2
+        d = dt ** 2 / 2
         E = x0 + mu * dt + (mu * mu_x + 0.5 * sig * mu_xx) * d
 
-        V = x0**2 + (2 * mu * x0 + sig) * dt + (2 * mu * (mu_x * x0 + mu + 0.5 * sig_x) + sig * (mu_xx * x0 + 2 * mu_x + 0.5 * sig_xx)) * d - E**2
+        V = x0 ** 2 + (2 * mu * x0 + sig) * dt + (2 * mu * (mu_x * x0 + mu + 0.5 * sig_x) + sig * (mu_xx * x0 + 2 * mu_x + 0.5 * sig_xx)) * d - E ** 2
         V = np.abs(V)
         return -0.5 * ((xt.ravel() - E) ** 2 / V) - 0.5 * np.log(np.sqrt(2 * np.pi) * V)
 
@@ -317,7 +317,7 @@ class DrozdovDensity(TransitionDensity):
         """
         super().__init__(model)
 
-    def _logdensity1D(self, x0, xt, dt: float):
+    def _logdensity1D(self, x0, xt, dt: float, bias=0.0):
         """
         The transition density obtained via Drozdov expansion
         :param x0: float or array, the current value
@@ -328,11 +328,11 @@ class DrozdovDensity(TransitionDensity):
         sig = self._model.diffusion(x0).ravel()
         sig_x = self._model.diffusion.grad_x(x0).ravel()
         sig_xx = self._model.diffusion.hessian_x(x0).ravel()
-        mu = self._model.meandispl(x0).ravel()
-        mu_x = self._model.meandispl.grad_x(x0).ravel()
-        mu_xx = self._model.meandispl.hessian_x(x0).ravel()
+        mu = self._model.meandispl(x0, bias).ravel()
+        mu_x = self._model.meandispl.grad_x(x0, bias).ravel()
+        mu_xx = self._model.meandispl.hessian_x(x0, bias).ravel()
 
-        d = dt**2 / 2
+        d = dt ** 2 / 2
         E = x0.ravel() + mu * dt + (mu * mu_x + 0.5 * sig * mu_xx) * d
 
         V = sig * dt + (mu * sig_x + 2 * mu_x * sig + sig * sig_xx) * d

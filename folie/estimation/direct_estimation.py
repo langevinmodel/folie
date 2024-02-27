@@ -41,11 +41,20 @@ class KramersMoyalEstimator(Estimator):
         if dim <= 1:
             dx = dx.ravel()
         # weights = np.concatenate(data.weights, axis=0)  # TODO: implement correctly the weights
-        self.model.force.fit(X, dx, sample_weight=None)
-
-        dx -= self.model.force(X) * data[0]["dt"]
+        if self.model.is_biased:  # If bias
+            if dim <= 1:
+                dx_sq = dx ** 2
+            else:
+                dx_sq = dx[..., None] * dx[:, None, ...]
+            self.model.diffusion.fit(X, dx_sq)  # We need to estimate the diffusion first in order to have the prefactor of the bias
+            bias = np.concatenate([trj["bias"][:-1] for trj in data], axis=0)
+            self.model.force.fit(X, bias, y=dx, sample_weight=None)
+        else:
+            bias = 0.0
+            self.model.force.fit(X, dx, sample_weight=None)
+        dx -= self.model.force(X, bias) * data[0]["dt"]
         if dim <= 1:
-            dx_sq = dx**2
+            dx_sq = dx ** 2
         else:
             dx_sq = dx[..., None] * dx[:, None, ...]
         self.model.diffusion.fit(X, dx_sq)

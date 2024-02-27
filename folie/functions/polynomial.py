@@ -106,7 +106,7 @@ class Polynomial(ParametricFunction):
     def transform_x(self, x, *args, **kwargs):
         _, dim = x.shape
         res = 0.0
-        for n in range(1, self.degree):  # First value is zero anyway
+        for n in range(0, self.degree):  # First value is zero anyway
             istart = n * dim
             iend = (n + 1) * dim
             grad = self.polynom.basis(n).deriv(1)(x)[..., None] * np.eye(dim)[None, :, :]
@@ -116,7 +116,7 @@ class Polynomial(ParametricFunction):
     def transform_xx(self, x, *args, **kwargs):
         _, dim = x.shape
         res = 0.0
-        for n in range(2, self.degree):  # First values are zero anyway
+        for n in range(0, self.degree):  # First values are zero anyway
             istart = n * dim
             iend = (n + 1) * dim
             grad = self.polynom.basis(n).deriv(2)(x)[..., None] * np.eye(dim)[None, :, :]
