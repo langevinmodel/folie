@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>&lt;no title&gt; &#8212; folie 0+untagged.1.g7939340 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=eafc0fe6" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css" />
+    <script src="../../_static/documentation_options.js?v=11340436"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/copybutton.js?v=26522df0"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="&lt;no title&gt;" href="overdampedhiddenOU.html" />
+    <link rel="prev" title="Statistical performances" href="../../statistical_performances.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">folie</span> <span class="k">as</span> <span class="nn">fl</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s first simulate some trajectories with various timestep</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model_simu</span> <span class="o">=</span> <span class="n">fl</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">OrnsteinUhlenbeck</span><span class="p">()</span>
+<span class="n">model_simu</span><span class="o">.</span><span class="n">coefficients</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">])</span>
+<span class="n">data_dts</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">list_dts</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1e-3</span><span class="p">,</span> <span class="mf">5e-3</span><span class="p">,</span> <span class="mf">1e-2</span><span class="p">,</span> <span class="mf">5e-2</span><span class="p">]</span>
+<span class="k">for</span> <span class="n">dt</span> <span class="ow">in</span> <span class="n">list_dts</span><span class="p">:</span>
+    <span class="n">simulator</span> <span class="o">=</span> <span class="n">fl</span><span class="o">.</span><span class="n">Simulator</span><span class="p">(</span><span class="n">fl</span><span class="o">.</span><span class="n">simulations</span><span class="o">.</span><span class="n">ExactStepper</span><span class="p">(</span><span class="n">model_simu</span><span class="p">),</span> <span class="n">dt</span><span class="p">)</span>
+    <span class="n">data_dts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">simulator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="mi">5000</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">25</span><span class="p">,)),</span> <span class="mi">25</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">ValueError</span>                                Traceback (most recent call last)
+Cell <span class="ansi-green-fg">In[2], line 7</span>
+<span class="ansi-green-intense-fg ansi-bold">      5</span> <span class="ansi-bold" style="color: rgb(0,135,0)">for</span> dt <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> list_dts:
+<span class="ansi-green-intense-fg ansi-bold">      6</span>     simulator <span style="color: rgb(98,98,98)">=</span> fl<span style="color: rgb(98,98,98)">.</span>Simulator(fl<span style="color: rgb(98,98,98)">.</span>ExactDensity(model_simu), dt)
+<span class="ansi-green-fg">----&gt; 7</span>     data_dts<span style="color: rgb(98,98,98)">.</span>append(<span class="ansi-yellow-bg">simulator</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">.</span><span class="ansi-yellow-bg">run</span><span class="ansi-yellow-bg">(</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">5000</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg">np</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">.</span><span class="ansi-yellow-bg">zeros</span><span class="ansi-yellow-bg">(</span><span class="ansi-yellow-bg">(</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">25</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg">)</span><span class="ansi-yellow-bg">)</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">25</span><span class="ansi-yellow-bg">)</span>)
+
+File <span class="ansi-green-fg">~/Projets/folie/folie/simulations/__init__.py:34</span>, in <span class="ansi-cyan-fg">Simulator.run</span><span class="ansi-blue-fg">(self, nsteps, x0, ntrajs, save_every, **kwargs)</span>
+<span class="ansi-green-intense-fg ansi-bold">     32</span>     x <span style="color: rgb(98,98,98)">=</span> <span style="color: rgb(0,135,0)">self</span><span style="color: rgb(98,98,98)">.</span>transition<span style="color: rgb(98,98,98)">.</span>run_step(x, <span style="color: rgb(0,135,0)">self</span><span style="color: rgb(98,98,98)">.</span>dt, dW[:, n])
+<span class="ansi-green-intense-fg ansi-bold">     33</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> n <span style="color: rgb(98,98,98)">%</span> save_every <span style="color: rgb(98,98,98)">==</span> <span style="color: rgb(98,98,98)">0</span>:
+<span class="ansi-green-fg">---&gt; 34</span>         <span class="ansi-yellow-bg">x_val</span><span class="ansi-yellow-bg">[</span><span class="ansi-yellow-bg">:</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg">n</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">/</span><span class="ansi-yellow-bg" style="color: rgb(98,98,98)">/</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg">save_every</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg">:</span><span class="ansi-yellow-bg">]</span> <span style="color: rgb(98,98,98)">=</span> x
+<span class="ansi-green-intense-fg ansi-bold">     35</span> data <span style="color: rgb(98,98,98)">=</span> Trajectories(dt<span style="color: rgb(98,98,98)">=</span><span style="color: rgb(0,135,0)">self</span><span style="color: rgb(98,98,98)">.</span>dt <span style="color: rgb(98,98,98)">*</span> save_every)
+<span class="ansi-green-intense-fg ansi-bold">     36</span> <span class="ansi-bold" style="color: rgb(0,135,0)">for</span> i <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> <span style="color: rgb(0,135,0)">range</span>(ntrajs):
+
+<span class="ansi-red-fg">ValueError</span>: could not broadcast input array from shape (25,25) into shape (25,1)
+</pre></div></div>
+</div>
+<p>We can then run the estimation for various likelihood at all timesteps</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">model_simu</span><span class="o">.</span><span class="n">coefficients</span><span class="p">))</span>
+
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">transitioncls</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+    <span class="p">[</span><span class="s2">&quot;Exact&quot;</span><span class="p">,</span> <span class="s2">&quot;Euler&quot;</span><span class="p">,</span> <span class="s2">&quot;Ozaki&quot;</span><span class="p">,</span> <span class="s2">&quot;ShojiOzaki&quot;</span><span class="p">,</span> <span class="s2">&quot;Elerian&quot;</span><span class="p">,</span> <span class="s2">&quot;Kessler&quot;</span><span class="p">,</span> <span class="s2">&quot;Drozdov&quot;</span><span class="p">],</span>
+    <span class="p">[</span>
+        <span class="n">fl</span><span class="o">.</span><span class="n">ExactDensity</span><span class="p">,</span>
+        <span class="n">fl</span><span class="o">.</span><span class="n">EulerDensity</span><span class="p">,</span>
+        <span class="n">fl</span><span class="o">.</span><span class="n">OzakiDensity</span><span class="p">,</span>
+        <span class="n">fl</span><span class="o">.</span><span class="n">ShojiOzakiDensity</span><span class="p">,</span>
+        <span class="n">fl</span><span class="o">.</span><span class="n">ElerianDensity</span><span class="p">,</span>
+        <span class="n">fl</span><span class="o">.</span><span class="n">KesslerDensity</span><span class="p">,</span>
+        <span class="n">fl</span><span class="o">.</span><span class="n">DrozdovDensity</span><span class="p">,</span>
+    <span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">fl</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">OrnsteinUhlenbeck</span><span class="p">()</span>
+    <span class="n">estimator</span> <span class="o">=</span> <span class="n">fl</span><span class="o">.</span><span class="n">LikelihoodEstimator</span><span class="p">(</span><span class="n">transitioncls</span><span class="p">(</span><span class="n">model</span><span class="p">))</span>
+    <span class="n">coeffs_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">data_dts</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">coefficients</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">data_dts</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">fit_fetch</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">coeffs_vals</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">coefficients</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">axs</span><span class="p">)):</span>
+        <span class="n">axs</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">list_dts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">coeffs_vals</span><span class="p">[:,</span> <span class="n">n</span><span class="p">]</span> <span class="o">-</span> <span class="n">model_simu</span><span class="o">.</span><span class="n">coefficients</span><span class="p">[</span><span class="n">n</span><span class="p">]),</span> <span class="s2">&quot;-+&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">coeffs_vals</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">axs</span><span class="p">)):</span>
+    <span class="n">axs</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+    <span class="n">axs</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+    <span class="n">axs</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+    <span class="n">axs</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$\Delta t$&quot;</span><span class="p">)</span>
+    <span class="n">axs</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$|c-c_</span><span class="si">{real}</span><span class="s2">|$&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">folie</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">Welcome to folie’s documentation!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto.html">How-to guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../for_developper.html">For developper</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">General examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Performances</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../statistical_performances.html">Statistical performances</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API docs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/dataloading.html">Data loading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/models.html">Models of Langevin dynamics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/functions.html">Spatial dependence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/estimation.html">Estimation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../../statistical_performances.html">Statistical performances</a><ul>
+      <li>Previous: <a href="../../statistical_performances.html" title="previous chapter">Statistical performances</a></li>
+      <li>Next: <a href="overdampedhiddenOU.html" title="next chapter">&lt;no title&gt;</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Hadrien Vroylandt.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="../../_sources/notebooks/statistical_performances/overdampedOU.ipynb.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

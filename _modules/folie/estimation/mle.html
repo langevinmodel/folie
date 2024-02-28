@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>folie.estimation.mle &#8212; folie 0+untagged.1.g7939340 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=eafc0fe6" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../../_static/documentation_options.js?v=11340436"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/copybutton.js?v=26522df0"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for folie.estimation.mle</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The code in this file was originnaly adapted from pymle (https://github.com/jkirkby3/pymle)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+<span class="kn">from</span> <span class="nn">scipy.optimize</span> <span class="kn">import</span> <span class="n">minimize</span>
+<span class="kn">from</span> <span class="nn">sklearn.exceptions</span> <span class="kn">import</span> <span class="n">ConvergenceWarning</span>
+
+
+<span class="kn">from</span> <span class="nn">..base</span> <span class="kn">import</span> <span class="n">Estimator</span>
+<span class="kn">from</span> <span class="nn">.direct_estimation</span> <span class="kn">import</span> <span class="n">KramersMoyalEstimator</span><span class="p">,</span> <span class="n">UnderdampedKramersMoyalEstimator</span>
+<span class="kn">from</span> <span class="nn">..models</span> <span class="kn">import</span> <span class="n">BaseModelOverdamped</span>
+
+
+<span class="k">class</span> <span class="nc">EstimatedResult</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">log_like</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Container for the result of estimation</span>
+<span class="sd">        :param coefficients: array, the estimated (optimal) coefficients</span>
+<span class="sd">        :param log_like: float, the final log-likelihood value (at optimum)</span>
+<span class="sd">        :param sample_size: int, the size of sample used in estimation (don&#39;t include S0)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coefficients</span> <span class="o">=</span> <span class="n">coefficients</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_like</span> <span class="o">=</span> <span class="n">log_like</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_size</span> <span class="o">=</span> <span class="n">sample_size</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">likelihood</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The likelihood with estimated coefficients&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log_like</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">aic</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The AIC (Aikake Information Criteria) with estimated coefficients&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coefficients</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_like</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bic</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The BIC (Bayesian Information Criteria) with estimated coefficients&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coefficients</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_size</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_like</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;String representation of the class (for pretty printing the results)&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">coefficients      | </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">coefficients</span><span class="si">}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="sa">f</span><span class="s2">&quot;sample size | </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_size</span><span class="si">}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="sa">f</span><span class="s2">&quot;likelihood  | </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">log_like</span><span class="si">}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="sa">f</span><span class="s2">&quot;AIC         | </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">aic</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="sa">f</span><span class="s2">&quot;BIC         | </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bic</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<span class="k">class</span> <span class="nc">CallbackFunctor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Callback for scipy minimize in order to store history if wanted</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        obj_fun is a provided function to extract value from OptimizedResult</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sols</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_calls</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">res</span><span class="p">):</span>
+        <span class="n">fun_val</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">fun</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_calls</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">fun_val</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fun_val</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">save_sols</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="n">sols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sol</span> <span class="k">for</span> <span class="n">sol</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sols</span><span class="p">])</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">sols</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="LikelihoodEstimator">
+<a class="viewcode-back" href="../../../api/generated/folie.LikelihoodEstimator.html#folie.LikelihoodEstimator">[docs]</a>
+<span class="k">class</span> <span class="nc">LikelihoodEstimator</span><span class="p">(</span><span class="n">Estimator</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Likelihood-based estimator</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model : Model, optional, default=None</span>
+<span class="sd">        A model which can be used for initialization. In case an estimator is capable of online learning, i.e.,</span>
+<span class="sd">        capable of updating models, this can be used to resume the estimation process.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transition</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">transition</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transition</span> <span class="o">=</span> <span class="n">transition</span>
+
+<div class="viewcode-block" id="LikelihoodEstimator.fit">
+<a class="viewcode-back" href="../../../api/generated/folie.LikelihoodEstimator.html#folie.LikelihoodEstimator.fit">[docs]</a>
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">minimizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">coefficients0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_jac</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Fits data to the estimator&#39;s internal :class:`Model` and overwrites it. This way, every call to</span>
+<span class="sd">        :meth:`fetch_model` yields an autonomous model instance. Sometimes a :code:`partial_fit` method is available,</span>
+<span class="sd">        in which case the model can get updated by the estimator.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        data : array_like</span>
+<span class="sd">            Data that is used to fit a model.</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            Additional kwargs.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        self : Estimator</span>
+<span class="sd">            Reference to self.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">for</span> <span class="n">trj</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="o">.</span><span class="n">preprocess_traj</span><span class="p">(</span><span class="n">trj</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">coefficients0</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># TODO, check depending of the order of the model</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">BaseModelOverdamped</span><span class="p">):</span>
+                <span class="n">KramersMoyalEstimator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">coefficients0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">coefficients</span>
+        <span class="k">if</span> <span class="n">minimizer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">coefficients0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">coefficients0</span><span class="p">)</span>
+            <span class="n">minimizer</span> <span class="o">=</span> <span class="n">minimize</span>
+
+        <span class="c1"># Run once, to determine if there is a Jacobian and eventual compilation if needed by numba</span>
+        <span class="n">init_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop_over_trajs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">weights</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">coefficients0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">init_val</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">use_jac</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">minimizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_log_likelihood_negative_with_jac</span><span class="p">,</span> <span class="n">coefficients0</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">data</span><span class="p">,),</span> <span class="n">jac</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="o">.</span><span class="n">use_jac</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">minimizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_log_likelihood_negative</span><span class="p">,</span> <span class="n">coefficients0</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">data</span><span class="p">,),</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">)</span>
+        <span class="n">coefficients</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">x</span>
+
+        <span class="n">final_like</span> <span class="o">=</span> <span class="o">-</span><span class="n">res</span><span class="o">.</span><span class="n">fun</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">coefficients</span> <span class="o">=</span> <span class="n">coefficients</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fitted_</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results_</span> <span class="o">=</span> <span class="n">EstimatedResult</span><span class="p">(</span><span class="n">coefficients</span><span class="o">=</span><span class="n">coefficients</span><span class="p">,</span> <span class="n">log_like</span><span class="o">=</span><span class="n">final_like</span><span class="p">,</span> <span class="n">sample_size</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">nobs</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_log_likelihood_negative</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop_over_trajs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">weights</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_log_likelihood_negative_with_jac</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop_over_trajs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">weights</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ELBOEstimator">
+<a class="viewcode-back" href="../../../api/generated/folie.ELBOEstimator.html#folie.ELBOEstimator">[docs]</a>
+<span class="k">class</span> <span class="nc">ELBOEstimator</span><span class="p">(</span><span class="n">LikelihoodEstimator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Maximize the Evidence lower bound.</span>
+<span class="sd">    Similar to EM estimation but the expectation is realized inside the minimization loop</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">transition</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_log_likelihood_negative</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop_over_trajs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="o">.</span><span class="n">loglikelihood_w_correction</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">weights</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_log_likelihood_negative_with_jac</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop_over_trajs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="o">.</span><span class="n">loglikelihood_w_correction</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">weights</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="EMEstimator">
+<a class="viewcode-back" href="../../../api/generated/folie.EMEstimator.html#folie.EMEstimator">[docs]</a>
+<span class="k">class</span> <span class="nc">EMEstimator</span><span class="p">(</span><span class="n">LikelihoodEstimator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Maximize the likelihood using Expectation-maximization algorithm</span>
+<span class="sd">    TODO: Replace all history by a callback</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">transition</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+        <span class="n">tol</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span>
+        <span class="n">max_iter</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+        <span class="n">n_init</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">warm_start</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">no_stop</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">verbose_interval</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">transition</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose_interval</span> <span class="o">=</span> <span class="n">verbose_interval</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">tol</span> <span class="o">=</span> <span class="n">tol</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span> <span class="o">=</span> <span class="n">max_iter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_init</span> <span class="o">=</span> <span class="n">n_init</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">warm_start</span> <span class="o">=</span> <span class="n">warm_start</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">no_stop</span> <span class="o">=</span> <span class="n">no_stop</span>
+
+<div class="viewcode-block" id="EMEstimator.fit">
+<a class="viewcode-back" href="../../../api/generated/folie.EMEstimator.html#folie.EMEstimator.fit">[docs]</a>
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">minimizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">coefficients0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_jac</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        In this do a loop that alternatively minimize and compute expectation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">trj</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="o">.</span><span class="n">preprocess_traj</span><span class="p">(</span><span class="n">trj</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">coefficients0</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">coefficients0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">coefficients</span>
+        <span class="k">if</span> <span class="n">minimizer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">coefficients</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">coefficients0</span><span class="p">)</span>
+            <span class="n">minimizer</span> <span class="o">=</span> <span class="n">minimize</span>
+
+        <span class="c1"># if we enable warm_start, we will have a unique initialisation</span>
+        <span class="n">do_init</span> <span class="o">=</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">warm_start</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;converged_&quot;</span><span class="p">))</span>
+        <span class="n">n_init</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_init</span> <span class="k">if</span> <span class="n">do_init</span> <span class="k">else</span> <span class="mi">1</span>
+
+        <span class="n">max_lower_bound</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">infty</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">converged_</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># That becomes duplicate of callback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logL</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">n_init</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logL</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+        <span class="c1"># Trouver un truc pour gérer les callback multiple</span>
+        <span class="n">callbacks</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># For referencement</span>
+        <span class="n">best_coeffs</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">best_n_iter</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">best_n_init</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="n">init_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop_over_trajs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">weights</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">coefficients0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">has_jac</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">init_val</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">use_jac</span>
+        <span class="k">for</span> <span class="n">init</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_init</span><span class="p">):</span>
+            <span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">callback</span><span class="p">)())</span>  <span class="c1"># Should work as well with None</span>
+            <span class="k">if</span> <span class="n">do_init</span><span class="p">:</span>
+                <span class="n">coefficients</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_parameters</span><span class="p">(</span><span class="n">coefficients0</span><span class="p">)</span>  <span class="c1"># Need to randomize initial coefficients if multiple run</span>
+            <span class="n">mu0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">dim_h</span><span class="p">)</span>
+            <span class="n">sig0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">dim_h</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_print_verbose_msg_init_beg</span><span class="p">(</span><span class="n">init</span><span class="p">)</span>
+            <span class="n">lower_bound</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">infty</span> <span class="k">if</span> <span class="n">do_init</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">lower_bound_</span>
+            <span class="n">lower_bound_m_step</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">infty</span>
+            <span class="c1"># Algorithm loop</span>
+            <span class="k">for</span> <span class="n">n_iter</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">prev_lower_bound</span> <span class="o">=</span> <span class="n">lower_bound</span>
+                <span class="c1"># E step</span>
+                <span class="n">mu0</span><span class="p">,</span> <span class="n">sig0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop_over_trajs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="o">.</span><span class="n">e_step</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">weights</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="n">mu0</span><span class="p">,</span> <span class="n">sig0</span><span class="p">)</span>
+
+                <span class="n">lower_bound</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_log_likelihood_negative</span><span class="p">(</span><span class="n">coefficients</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">lower_bound</span> <span class="o">-</span> <span class="n">lower_bound_m_step</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Delta loglikelihood after E step:&quot;</span><span class="p">,</span> <span class="n">lower_bound</span> <span class="o">-</span> <span class="n">lower_bound_m_step</span><span class="p">)</span>
+                <span class="c1"># M Step</span>
+                <span class="k">if</span> <span class="n">has_jac</span><span class="p">:</span>
+                    <span class="n">res</span> <span class="o">=</span> <span class="n">minimizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_log_likelihood_negative_with_jac</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">data</span><span class="p">,),</span> <span class="n">jac</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">res</span> <span class="o">=</span> <span class="n">minimizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_log_likelihood_negative</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">data</span><span class="p">,),</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">)</span>
+                <span class="n">coefficients</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">x</span>
+                <span class="k">if</span> <span class="n">callbacks</span><span class="p">[</span><span class="n">init</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">callbacks</span><span class="p">[</span><span class="n">init</span><span class="p">](</span><span class="n">res</span><span class="p">)</span>
+                <span class="n">lower_bound_m_step</span> <span class="o">=</span> <span class="o">-</span><span class="n">res</span><span class="o">.</span><span class="n">fun</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">lower_bound_m_step</span> <span class="o">-</span> <span class="n">lower_bound</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Delta loglikelihood after M step:&quot;</span><span class="p">,</span> <span class="n">lower_bound_m_step</span> <span class="o">-</span> <span class="n">lower_bound</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">lower_bound_m_step</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">coefficients</span><span class="p">)):</span>  <span class="c1"># If we have nan value we simply restart the iteration</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                        <span class="s2">&quot;Initialization </span><span class="si">%d</span><span class="s2"> has NaN values. Ends iteration&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">init</span><span class="p">),</span>
+                        <span class="n">ConvergenceWarning</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">coefficients</span><span class="p">)</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;loglikelihood: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">lower_bound</span><span class="p">))</span>
+                    <span class="k">break</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">logL</span><span class="p">[</span><span class="n">init</span><span class="p">,</span> <span class="n">n_iter</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">lower_bound</span>  <span class="c1"># Value after E step</span>
+                <span class="n">change</span> <span class="o">=</span> <span class="n">lower_bound</span> <span class="o">-</span> <span class="n">prev_lower_bound</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_print_verbose_msg_iter_end</span><span class="p">(</span><span class="n">n_iter</span><span class="p">,</span> <span class="n">change</span><span class="p">,</span> <span class="n">lower_bound</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">lower_bound</span> <span class="o">&gt;</span> <span class="n">max_lower_bound</span><span class="p">:</span>
+                    <span class="n">max_lower_bound</span> <span class="o">=</span> <span class="n">lower_bound</span>
+                    <span class="n">best_coeffs</span> <span class="o">=</span> <span class="n">coefficients</span>
+                    <span class="n">best_n_iter</span> <span class="o">=</span> <span class="n">n_iter</span>
+                    <span class="n">best_n_init</span> <span class="o">=</span> <span class="n">init</span>
+
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">change</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">tol</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">converged_</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">no_stop</span><span class="p">:</span>
+                        <span class="k">break</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_print_verbose_msg_init_end</span><span class="p">(</span><span class="n">lower_bound</span><span class="p">,</span> <span class="n">n_iter</span><span class="p">)</span>
+            <span class="c1"># self.coeffs_list_all.append(coeff_list_init)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">converged_</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="s2">&quot;Initialization </span><span class="si">%d</span><span class="s2"> did not converge. &quot;</span> <span class="s2">&quot;Try different init parameters, &quot;</span> <span class="s2">&quot;or increase max_iter, tol &quot;</span> <span class="s2">&quot;or check for degenerate data.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">init</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                    <span class="n">ConvergenceWarning</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="k">if</span> <span class="n">best_coeffs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">coefficients</span> <span class="o">=</span> <span class="n">best_coeffs</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fitted_</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results_</span> <span class="o">=</span> <span class="n">EstimatedResult</span><span class="p">(</span><span class="n">coefficients</span><span class="o">=</span><span class="n">best_coeffs</span><span class="p">,</span> <span class="n">log_like</span><span class="o">=</span><span class="n">max_lower_bound</span><span class="p">,</span> <span class="n">sample_size</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">nobs</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_iter_</span> <span class="o">=</span> <span class="n">best_n_iter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_best_init_</span> <span class="o">=</span> <span class="n">best_n_init</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lower_bound_</span> <span class="o">=</span> <span class="n">max_lower_bound</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_print_verbose_msg_fit_end</span><span class="p">(</span><span class="n">max_lower_bound</span><span class="p">,</span> <span class="n">best_n_init</span><span class="p">,</span> <span class="n">best_n_iter</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_initialize_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coefficients0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Random initialisation of the parameters</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">coefficients0</span>
+
+    <span class="k">def</span> <span class="nf">_log_likelihood_negative</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop_over_trajs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">weights</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop_over_trajs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="o">.</span><span class="n">hiddencorrection</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">weights</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_log_likelihood_negative_with_jac</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">like</span><span class="p">,</span> <span class="n">jac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop_over_trajs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">weights</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">like_c</span><span class="p">,</span> <span class="n">jac_c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop_over_trajs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transition</span><span class="o">.</span><span class="n">hiddencorrection</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">weights</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">like</span> <span class="o">+</span> <span class="n">like_c</span><span class="p">,</span> <span class="n">jac</span> <span class="o">+</span> <span class="n">jac_c</span>
+
+    <span class="k">def</span> <span class="nf">_print_verbose_msg_init_beg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_init</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Print verbose message on initialization.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Initialization </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">n_init</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Initialization </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">n_init</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_init_prev_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_iter_prev_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init_prev_time</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;----------------Current parameters values------------------&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">coefficients</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_print_verbose_msg_iter_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_iter</span><span class="p">,</span> <span class="n">diff_ll</span><span class="p">,</span> <span class="n">log_likelihood</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Print verbose message on initialization.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">n_iter</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose_interval</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;***Iteration EM*** : </span><span class="si">{}</span><span class="s2"> / </span><span class="si">{}</span><span class="s2"> --- Current loglikelihood </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">n_iter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span><span class="p">,</span> <span class="n">log_likelihood</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">cur_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;***Iteration EM*** :</span><span class="si">%d</span><span class="s2"> / </span><span class="si">%d</span><span class="se">\t</span><span class="s2"> time lapse </span><span class="si">%.5f</span><span class="s2">s</span><span class="se">\t</span><span class="s2"> Current loglikelihood </span><span class="si">%.5f</span><span class="s2"> loglikelihood change </span><span class="si">%.5f</span><span class="s2">&quot;</span>
+                    <span class="o">%</span> <span class="p">(</span>
+                        <span class="n">n_iter</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span><span class="p">,</span>
+                        <span class="n">cur_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_prev_time</span><span class="p">,</span>
+                        <span class="n">log_likelihood</span><span class="p">,</span>
+                        <span class="n">diff_ll</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_iter_prev_time</span> <span class="o">=</span> <span class="n">cur_time</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;----------------Current parameters values------------------&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">coefficients</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_print_verbose_msg_init_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ll</span><span class="p">,</span> <span class="n">best_iter</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Print verbose message on the end of iteration.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Initialization converged: </span><span class="si">%s</span><span class="s2"> at step </span><span class="si">%i</span><span class="s2"> </span><span class="se">\t</span><span class="s2"> ll </span><span class="si">%.5f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">converged_</span><span class="p">,</span> <span class="n">best_iter</span><span class="p">,</span> <span class="n">ll</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Initialization converged: </span><span class="si">%s</span><span class="s2"> at step </span><span class="si">%i</span><span class="s2"> </span><span class="se">\t</span><span class="s2"> time lapse </span><span class="si">%.5f</span><span class="s2">s</span><span class="se">\t</span><span class="s2"> ll </span><span class="si">%.5f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">converged_</span><span class="p">,</span> <span class="n">best_iter</span><span class="p">,</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init_prev_time</span><span class="p">,</span> <span class="n">ll</span><span class="p">))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;----------------Current parameters values------------------&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">coefficients</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_print_verbose_msg_fit_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ll</span><span class="p">,</span> <span class="n">best_init</span><span class="p">,</span> <span class="n">best_iter</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Print verbose message on the end of iteration.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fit converged: </span><span class="si">%s</span><span class="s2"> Init: </span><span class="si">%s</span><span class="s2"> at step </span><span class="si">%i</span><span class="s2"> </span><span class="se">\t</span><span class="s2"> ll </span><span class="si">%.5f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">converged_</span><span class="p">,</span> <span class="n">best_init</span><span class="p">,</span> <span class="n">best_iter</span><span class="p">,</span> <span class="n">ll</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;Fit converged: </span><span class="si">%s</span><span class="s2"> Init: </span><span class="si">%s</span><span class="s2"> at step </span><span class="si">%i</span><span class="s2"> </span><span class="se">\t</span><span class="s2"> time lapse </span><span class="si">%.5f</span><span class="s2">s</span><span class="se">\t</span><span class="s2"> ll </span><span class="si">%.5f</span><span class="s2">&quot;</span>
+                <span class="o">%</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">converged_</span><span class="p">,</span>
+                    <span class="n">best_init</span><span class="p">,</span>
+                    <span class="n">best_iter</span><span class="p">,</span>
+                    <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init_prev_time</span><span class="p">,</span>
+                    <span class="n">ll</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;----------------Fitted parameters values------------------&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">coefficients</span><span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">folie</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../index.html">Welcome to folie’s documentation!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../howto.html">How-to guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../for_developper.html">For developper</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html">General examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials.html">Tutorials</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Performances</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../statistical_performances.html">Statistical performances</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API docs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/dataloading.html">Data loading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models of Langevin dynamics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/functions.html">Spatial dependence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/estimation.html">Estimation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Hadrien Vroylandt.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

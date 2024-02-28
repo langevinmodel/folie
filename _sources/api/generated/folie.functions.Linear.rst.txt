@@ -1,0 +1,15 @@
+﻿:mod:`folie.functions`.Linear
+====================================
+
+.. currentmodule:: folie.functions
+
+.. autoclass:: Linear
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.functions.Linear.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

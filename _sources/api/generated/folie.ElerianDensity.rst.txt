@@ -1,0 +1,15 @@
+﻿:mod:`folie`.ElerianDensity
+==================================
+
+.. currentmodule:: folie
+
+.. autoclass:: ElerianDensity
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.ElerianDensity.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>folie.LikelihoodEstimator &#8212; folie 0+untagged.1.g7939340 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=eafc0fe6" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../_static/documentation_options.js?v=11340436"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/copybutton.js?v=26522df0"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="folie.ELBOEstimator" href="folie.ELBOEstimator.html" />
+    <link rel="prev" title="folie.KramersMoyalEstimator" href="folie.KramersMoyalEstimator.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="folie-likelihoodestimator">
+<h1><code class="xref py py-mod docutils literal notranslate"><span class="pre">folie</span></code>.LikelihoodEstimator<a class="headerlink" href="#folie-likelihoodestimator" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="folie.LikelihoodEstimator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">folie.</span></span><span class="sig-name descname"><span class="pre">LikelihoodEstimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transition</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/folie/estimation/mle.html#LikelihoodEstimator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#folie.LikelihoodEstimator" title="Link to this definition">¶</a></dt>
+<dd><p>Likelihood-based estimator</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>model</strong><span class="classifier">Model, optional, default=None</span></dt><dd><p>A model which can be used for initialization. In case an estimator is capable of online learning, i.e.,
+capable of updating models, this can be used to resume the estimation process.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="folie.LikelihoodEstimator.fetch_model">
+<span class="sig-name descname"><span class="pre">fetch_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Model</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#folie.LikelihoodEstimator.fetch_model" title="Link to this definition">¶</a></dt>
+<dd><p>Yields the estimated model. Can be None if <a class="reference internal" href="#folie.LikelihoodEstimator.fit" title="folie.LikelihoodEstimator.fit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fit()</span></code></a> was not called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>model</strong><span class="classifier">Model or None</span></dt><dd><p>The estimated model or None.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="folie.LikelihoodEstimator.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minimizer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coefficients0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_jac</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/folie/estimation/mle.html#LikelihoodEstimator.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#folie.LikelihoodEstimator.fit" title="Link to this definition">¶</a></dt>
+<dd><p>Fits data to the estimator’s internal <code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code> and overwrites it. This way, every call to
+<a class="reference internal" href="#folie.LikelihoodEstimator.fetch_model" title="folie.LikelihoodEstimator.fetch_model"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fetch_model()</span></code></a> yields an autonomous model instance. Sometimes a <code class="code docutils literal notranslate"><span class="pre">partial_fit</span></code> method is available,
+in which case the model can get updated by the estimator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>data</strong><span class="classifier">array_like</span></dt><dd><p>Data that is used to fit a model.</p>
+</dd>
+<dt><strong>**kwargs</strong></dt><dd><p>Additional kwargs.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>self</strong><span class="classifier">Estimator</span></dt><dd><p>Reference to self.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="folie.LikelihoodEstimator.fit_fetch">
+<span class="sig-name descname"><span class="pre">fit_fetch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#folie.LikelihoodEstimator.fit_fetch" title="Link to this definition">¶</a></dt>
+<dd><p>Fits the internal model on data and subsequently fetches it in one call.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>data</strong><span class="classifier">array_like</span></dt><dd><p>Data that is used to fit the model.</p>
+</dd>
+<dt><strong>**kwargs</strong></dt><dd><p>Additional arguments to <a class="reference internal" href="#folie.LikelihoodEstimator.fit" title="folie.LikelihoodEstimator.fit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fit()</span></code></a>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>model</dt><dd><p>The estimated model.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="folie.LikelihoodEstimator.get_params">
+<span class="sig-name descname"><span class="pre">get_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#folie.LikelihoodEstimator.get_params" title="Link to this definition">¶</a></dt>
+<dd><p>Get the parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>params</strong><span class="classifier">mapping of string to any</span></dt><dd><p>Parameter names mapped to their values.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="folie.LikelihoodEstimator.set_params">
+<span class="sig-name descname"><span class="pre">set_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#folie.LikelihoodEstimator.set_params" title="Link to this definition">¶</a></dt>
+<dd><p>Set the parameters of this estimator.</p>
+<p>The method works on simple estimators as well as on nested objects
+(such as pipelines). The latter have parameters of the form
+<code class="docutils literal notranslate"><span class="pre">&lt;component&gt;__&lt;parameter&gt;</span></code> so that it’s possible to update each
+component of a nested object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>**params</strong><span class="classifier">dict</span></dt><dd><p>Estimator parameters.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>self</strong><span class="classifier">object</span></dt><dd><p>Estimator instance.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="folie.LikelihoodEstimator.has_model">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="headerlink" href="#folie.LikelihoodEstimator.has_model" title="Link to this definition">¶</a></dt>
+<dd><p>Property reporting whether this estimator contains an estimated model. This assumes that the model
+is initialized with <cite>None</cite> otherwise.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="folie.LikelihoodEstimator.model">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">model</span></span><a class="headerlink" href="#folie.LikelihoodEstimator.model" title="Link to this definition">¶</a></dt>
+<dd><p>Shortcut to <a class="reference internal" href="#folie.LikelihoodEstimator.fetch_model" title="folie.LikelihoodEstimator.fetch_model"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fetch_model()</span></code></a>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<section id="examples-using-folie-likelihoodestimator">
+<h2>Examples using <code class="docutils literal notranslate"><span class="pre">folie.LikelihoodEstimator</span></code><a class="headerlink" href="#examples-using-folie-likelihoodestimator" title="Link to this heading">¶</a></h2>
+<div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="How to run a simple estimation"><img alt="" src="../../_images/sphx_glr_plot_example_thumb.png" />
+<p><a class="reference internal" href="../../auto_examples/plot_example.html#sphx-glr-auto-examples-plot-example-py"><span class="std std-ref">Overdamped Langevin Estimation</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Overdamped Langevin Estimation</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="Estimation of an overdamped Langevin in presence of biased dynamics."><img alt="" src="../../_images/sphx_glr_plot_biasedOU_thumb.png" />
+<p><a class="reference internal" href="../../auto_examples/plot_biasedOU.html#sphx-glr-auto-examples-plot-biasedou-py"><span class="std std-ref">ABMD biased dynamics</span></a></p>
+  <div class="sphx-glr-thumbnail-title">ABMD biased dynamics</div>
+</div></div><div style='clear:both'></div></section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">folie</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">Welcome to folie’s documentation!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../howto.html">How-to guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../for_developper.html">For developper</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">General examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Performances</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../statistical_performances.html">Statistical performances</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API docs</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../dataloading.html">Data loading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Models of Langevin dynamics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../functions.html">Spatial dependence</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../estimation.html">Estimation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../estimation.html#direct-estimation">Direct estimation</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../estimation.html#likelihood-estimation">Likelihood estimation</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../estimation.html">Estimation</a><ul>
+      <li>Previous: <a href="folie.KramersMoyalEstimator.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">folie</span></code>.KramersMoyalEstimator</a></li>
+      <li>Next: <a href="folie.ELBOEstimator.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">folie</span></code>.ELBOEstimator</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Hadrien Vroylandt.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="../../_sources/api/generated/folie.LikelihoodEstimator.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

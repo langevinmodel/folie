@@ -1,0 +1,15 @@
+﻿:mod:`folie`.KesslerDensity
+==================================
+
+.. currentmodule:: folie
+
+.. autoclass:: KesslerDensity
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.KesslerDensity.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

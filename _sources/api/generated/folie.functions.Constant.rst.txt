@@ -1,0 +1,15 @@
+﻿:mod:`folie.functions`.Constant
+======================================
+
+.. currentmodule:: folie.functions
+
+.. autoclass:: Constant
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.functions.Constant.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

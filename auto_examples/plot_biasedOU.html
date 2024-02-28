@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>ABMD biased dynamics &#8212; folie 0+untagged.1.g7939340 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=eafc0fe6" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../_static/documentation_options.js?v=11340436"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/copybutton.js?v=26522df0"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Tutorials" href="../tutorials.html" />
+    <link rel="prev" title="Likelihood functions" href="plot_likelihood.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-plot-biasedou-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code</p>
+</div>
+<section class="sphx-glr-example-title" id="abmd-biased-dynamics">
+<span id="sphx-glr-auto-examples-plot-biasedou-py"></span><h1>ABMD biased dynamics<a class="headerlink" href="#abmd-biased-dynamics" title="Link to this heading">¶</a></h1>
+<p>Estimation of an overdamped Langevin in presence of biased dynamics.</p>
+<ul class="sphx-glr-horizontal">
+<li><img src="../_images/sphx_glr_plot_biasedOU_001.png" srcset="../_images/sphx_glr_plot_biasedOU_001.png" alt="plot biasedOU" class = "sphx-glr-multi-img"/></li>
+<li><img src="../_images/sphx_glr_plot_biasedOU_002.png" srcset="../_images/sphx_glr_plot_biasedOU_002.png" alt="Force, Force" class = "sphx-glr-multi-img"/></li>
+</ul>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>[ 0.23845493 -1.21443056  1.99977603]
+/home/runner/work/folie/folie/folie/estimation/overdamped_transitionDensity.py:193: RuntimeWarning: invalid value encountered in log
+  Kt = (2 / dt) * np.log(1 + temp / x0.ravel())
+/home/runner/work/folie/folie/folie/estimation/overdamped_transitionDensity.py:190: RuntimeWarning: overflow encountered in exp
+  temp = mu * (np.exp(mu_x * dt) - 1) / mu_x
+/home/runner/work/folie/folie/folie/estimation/overdamped_transitionDensity.py:194: RuntimeWarning: invalid value encountered in divide
+  Vt = np.sqrt(sig * (np.exp(Kt * dt) - 1) / Kt)
+[ 0.00020354 -0.0012164   0.00202358]
+[ 0.23514713 -1.21367473  2.0003453 ]
+[ 0.2399243  -1.21368373  1.99807142]
+[ 0.24324102 -1.21590026  2.00030625]
+[ 0.24020884 -1.21584374  2.00031457]
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">folie</span> <span class="k">as</span> <span class="nn">fl</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+
+<span class="c1"># First let&#39;s generate some biased trajectories</span>
+
+<a href="../api/generated/folie.OrnsteinUhlenbeck.html#folie.OrnsteinUhlenbeck" title="folie.OrnsteinUhlenbeck" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">model_simu</span></a> <span class="o">=</span> <a href="../api/generated/folie.OrnsteinUhlenbeck.html#folie.OrnsteinUhlenbeck" title="folie.OrnsteinUhlenbeck" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class"><span class="n">fl</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">OrnsteinUhlenbeck</span></a><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+<span class="n">simulator</span> <span class="o">=</span> <span class="n">fl</span><span class="o">.</span><span class="n">simulations</span><span class="o">.</span><span class="n">ABMD_Simulator</span><span class="p">(</span><a href="https://docs.python.org/3/library/abc.html#abc.ABC" title="abc.ABC" class="sphx-glr-backref-module-abc sphx-glr-backref-type-py-class"><span class="n">fl</span><span class="o">.</span><span class="n">simulations</span><span class="o">.</span><span class="n">EulerStepper</span></a><span class="p">(</span><a href="../api/generated/folie.OrnsteinUhlenbeck.html#folie.OrnsteinUhlenbeck" title="folie.OrnsteinUhlenbeck" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">model_simu</span></a><span class="p">),</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">xstop</span><span class="o">=</span><span class="mf">6.0</span><span class="p">)</span>
+<a href="../api/generated/folie.Trajectories.html#folie.Trajectories" title="folie.Trajectories" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-function"><span class="n">data</span></a> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="mi">5000</span><span class="p">,</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.zeros.html#numpy.zeros" title="numpy.zeros" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">zeros</span></a><span class="p">((</span><span class="mi">25</span><span class="p">,)),</span> <span class="mi">25</span><span class="p">)</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">xmax</span></a> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.concatenate.html#numpy.concatenate" title="numpy.concatenate" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span></a><span class="p">(</span><a href="https://docs.python.org/3/library/stdtypes.html#list" title="builtins.list" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">simulator</span><span class="o">.</span><span class="n">xmax_hist</span></a><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+
+<span class="c1"># Plot the resulting trajectories</span>
+<span class="c1"># sphinx_gallery_thumbnail_number = 1</span>
+<a href="https://matplotlib.org/stable/api/figure_api.html#matplotlib.figure.Figure" title="matplotlib.figure.Figure" class="sphx-glr-backref-module-matplotlib-figure sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">fig</span></a><span class="p">,</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a> <span class="o">=</span> <a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.subplots.html#matplotlib.pyplot.subplots" title="matplotlib.pyplot.subplots" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">subplots</span></a><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="k">for</span> <a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">n</span></a><span class="p">,</span> <a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">trj</span></a> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><a href="../api/generated/folie.Trajectories.html#folie.Trajectories" title="folie.Trajectories" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-function"><span class="n">data</span></a><span class="p">):</span>
+    <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">trj</span></a><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">])</span>
+    <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">xmax</span></a><span class="p">[:,</span> <a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">n</span></a><span class="p">])</span>
+
+<a href="https://matplotlib.org/stable/api/figure_api.html#matplotlib.figure.Figure" title="matplotlib.figure.Figure" class="sphx-glr-backref-module-matplotlib-figure sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">fig</span></a><span class="p">,</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a> <span class="o">=</span> <a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.subplots.html#matplotlib.pyplot.subplots" title="matplotlib.pyplot.subplots" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">subplots</span></a><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Force&quot;</span><span class="p">)</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;$x$&quot;</span><span class="p">)</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;$F(x)$&quot;</span><span class="p">)</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Force&quot;</span><span class="p">)</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;$x$&quot;</span><span class="p">)</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;$D(x)$&quot;</span><span class="p">)</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+
+
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">xfa</span></a> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.linspace.html#numpy.linspace" title="numpy.linspace" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">linspace</span></a><span class="p">(</span><span class="o">-</span><span class="mf">7.0</span><span class="p">,</span> <span class="mf">7.0</span><span class="p">,</span> <span class="mi">75</span><span class="p">)</span>
+<a href="../api/generated/folie.OrnsteinUhlenbeck.html#folie.OrnsteinUhlenbeck" title="folie.OrnsteinUhlenbeck" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">model_simu</span></a><span class="o">.</span><span class="n">remove_bias</span><span class="p">()</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">xfa</span></a><span class="p">,</span> <a href="../api/generated/folie.OrnsteinUhlenbeck.html#folie.OrnsteinUhlenbeck" title="folie.OrnsteinUhlenbeck" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">model_simu</span></a><span class="o">.</span><span class="n">force</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">xfa</span></a><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Exact&quot;</span><span class="p">)</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">xfa</span></a><span class="p">,</span> <a href="../api/generated/folie.OrnsteinUhlenbeck.html#folie.OrnsteinUhlenbeck" title="folie.OrnsteinUhlenbeck" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">model_simu</span></a><span class="o">.</span><span class="n">diffusion</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">xfa</span></a><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Exact&quot;</span><span class="p">)</span>
+<span class="k">for</span> <a href="https://docs.python.org/3/library/stdtypes.html#str" title="builtins.str" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">name</span></a><span class="p">,</span> <a href="../api/generated/folie.DrozdovDensity.html#folie.DrozdovDensity" title="folie.DrozdovDensity" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class"><span class="n">transitioncls</span></a> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+    <span class="p">[</span><span class="s2">&quot;Euler&quot;</span><span class="p">,</span> <span class="s2">&quot;Ozaki&quot;</span><span class="p">,</span> <span class="s2">&quot;ShojiOzaki&quot;</span><span class="p">,</span> <span class="s2">&quot;Elerian&quot;</span><span class="p">,</span> <span class="s2">&quot;Kessler&quot;</span><span class="p">,</span> <span class="s2">&quot;Drozdov&quot;</span><span class="p">],</span>
+    <span class="p">[</span>
+        <a href="../api/generated/folie.EulerDensity.html#folie.EulerDensity" title="folie.EulerDensity" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class"><span class="n">fl</span><span class="o">.</span><span class="n">EulerDensity</span></a><span class="p">,</span>
+        <a href="../api/generated/folie.OzakiDensity.html#folie.OzakiDensity" title="folie.OzakiDensity" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class"><span class="n">fl</span><span class="o">.</span><span class="n">OzakiDensity</span></a><span class="p">,</span>
+        <a href="../api/generated/folie.ShojiOzakiDensity.html#folie.ShojiOzakiDensity" title="folie.ShojiOzakiDensity" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class"><span class="n">fl</span><span class="o">.</span><span class="n">ShojiOzakiDensity</span></a><span class="p">,</span>
+        <a href="../api/generated/folie.ElerianDensity.html#folie.ElerianDensity" title="folie.ElerianDensity" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class"><span class="n">fl</span><span class="o">.</span><span class="n">ElerianDensity</span></a><span class="p">,</span>
+        <a href="../api/generated/folie.KesslerDensity.html#folie.KesslerDensity" title="folie.KesslerDensity" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class"><span class="n">fl</span><span class="o">.</span><span class="n">KesslerDensity</span></a><span class="p">,</span>
+        <a href="../api/generated/folie.DrozdovDensity.html#folie.DrozdovDensity" title="folie.DrozdovDensity" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class"><span class="n">fl</span><span class="o">.</span><span class="n">DrozdovDensity</span></a><span class="p">,</span>
+    <span class="p">],</span>
+<span class="p">):</span>
+    <a href="../api/generated/folie.LikelihoodEstimator.html#folie.LikelihoodEstimator" title="folie.LikelihoodEstimator" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">estimator</span></a> <span class="o">=</span> <a href="../api/generated/folie.LikelihoodEstimator.html#folie.LikelihoodEstimator" title="folie.LikelihoodEstimator" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class"><span class="n">fl</span><span class="o">.</span><span class="n">LikelihoodEstimator</span></a><span class="p">(</span><a href="../api/generated/folie.DrozdovDensity.html#folie.DrozdovDensity" title="folie.DrozdovDensity" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class"><span class="n">transitioncls</span></a><span class="p">(</span><a href="../api/generated/folie.OrnsteinUhlenbeck.html#folie.OrnsteinUhlenbeck" title="folie.OrnsteinUhlenbeck" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class"><span class="n">fl</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">OrnsteinUhlenbeck</span></a><span class="p">(</span><span class="n">has_bias</span><span class="o">=</span><span class="kc">True</span><span class="p">)))</span>
+    <a href="../api/generated/folie.OrnsteinUhlenbeck.html#folie.OrnsteinUhlenbeck" title="folie.OrnsteinUhlenbeck" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">res</span></a> <span class="o">=</span> <a href="../api/generated/folie.LikelihoodEstimator.html#folie.LikelihoodEstimator.fit_fetch" title="folie.LikelihoodEstimator.fit_fetch" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-method"><span class="n">estimator</span><span class="o">.</span><span class="n">fit_fetch</span></a><span class="p">(</span><a href="../api/generated/folie.Trajectories.html#folie.Trajectories" title="folie.Trajectories" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-function"><span class="n">data</span></a><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><a href="../api/generated/folie.OrnsteinUhlenbeck.html#folie.OrnsteinUhlenbeck.coefficients" title="folie.OrnsteinUhlenbeck.coefficients" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-property"><span class="n">res</span><span class="o">.</span><span class="n">coefficients</span></a><span class="p">)</span>
+    <a href="../api/generated/folie.OrnsteinUhlenbeck.html#folie.OrnsteinUhlenbeck" title="folie.OrnsteinUhlenbeck" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">res</span></a><span class="o">.</span><span class="n">remove_bias</span><span class="p">()</span>
+    <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">xfa</span></a><span class="p">,</span> <a href="../api/generated/folie.OrnsteinUhlenbeck.html#folie.OrnsteinUhlenbeck" title="folie.OrnsteinUhlenbeck" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">res</span></a><span class="o">.</span><span class="n">force</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">xfa</span></a><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span> <span class="n">label</span><span class="o">=</span><a href="https://docs.python.org/3/library/stdtypes.html#str" title="builtins.str" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">name</span></a><span class="p">)</span>
+    <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">xfa</span></a><span class="p">,</span> <a href="../api/generated/folie.OrnsteinUhlenbeck.html#folie.OrnsteinUhlenbeck" title="folie.OrnsteinUhlenbeck" class="sphx-glr-backref-module-folie sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">res</span></a><span class="o">.</span><span class="n">diffusion</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">xfa</span></a><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span> <span class="n">label</span><span class="o">=</span><a href="https://docs.python.org/3/library/stdtypes.html#str" title="builtins.str" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">name</span></a><span class="p">)</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">axs</span></a><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.show.html#matplotlib.pyplot.show" title="matplotlib.pyplot.show" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">show</span></a><span class="p">()</span>
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 10.053 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-plot-biasedou-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/06ea7db86d76538651ce447c4676348d/plot_biasedOU.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_biasedOU.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/41d2fe6defd798a4f411bf98a001982c/plot_biasedOU.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_biasedOU.py</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">folie</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Welcome to folie’s documentation!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../howto.html">How-to guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../for_developper.html">For developper</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">General examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="plot_functions.html">Functional set</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_example.html">Overdamped Langevin Estimation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_em.html">Hidden Overdamped Langevin Estimation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_likelihood.html">Likelihood functions</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">ABMD biased dynamics</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Performances</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../statistical_performances.html">Statistical performances</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API docs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/dataloading.html">Data loading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/models.html">Models of Langevin dynamics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/functions.html">Spatial dependence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/estimation.html">Estimation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">General examples</a><ul>
+      <li>Previous: <a href="plot_likelihood.html" title="previous chapter">Likelihood functions</a></li>
+      <li>Next: <a href="../tutorials.html" title="next chapter">Tutorials</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Hadrien Vroylandt.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="../_sources/auto_examples/plot_biasedOU.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
