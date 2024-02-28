@@ -30,7 +30,7 @@ class BSplinesFunction(ParametricFunction):
         return bspl.t
 
     def fit(self, X, y=None, **kwargs):
-        xstats = stats_from_input_data(X)
+        xstats = stats_from_input_data(X[:, : self.dim_x])
         t = self._build_knots_array(xstats)
         self.input_dim_ = xstats.dim
         x, unique_indices = np.unique(X[:, 0], return_index=True)
@@ -101,9 +101,9 @@ class sklearnBSplines(ParametricFunction):
         self.knots = knots
 
     def fit(self, X, y=None, **kwargs):
-        self.bspline = SplineTransformer(n_knots=self.knots, degree=self.k, extrapolation=self.bc_type).fit(X)
+        self.bspline = SplineTransformer(n_knots=self.knots, degree=self.k, extrapolation=self.bc_type).fit(X[:, : self.dim_x])
         self.n_functions_features_ = self.bspline.n_features_out_
-        super().fit(X, y, **kwargs)
+        super().fit(X[:, : self.dim_x], y, **kwargs)
         return self
 
     def transform(self, x, *args, **kwargs):

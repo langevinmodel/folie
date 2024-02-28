@@ -149,14 +149,14 @@ class Overdamped(BaseModelOverdamped):
             self.diffusion = force.copy().resize(diffusion_shape)
         else:
             self.diffusion = diffusion.resize(diffusion_shape)
-        if has_bias is not None:
-            self.add_bias(has_bias)
+        loc_dim = self.dim if self.dim > 0 else 1
+        X = np.linspace([-1] * loc_dim, [1] * loc_dim, 5)
         if not self.force.fitted_ and not kwargs.get("force_is_fitted", False):
-            X = np.linspace(-1, 1, 5).reshape(-1, self.dim if self.dim > 0 else 1)
             self.force.fit(X)
         if not self.diffusion.fitted_ and not kwargs.get("diffusion_is_fitted", False):
-            X = np.linspace(-1, 1, 5).reshape(-1, self.dim if self.dim > 0 else 1)
             self.diffusion.fit(X, np.ones((5, *diffusion_shape)))
+        if has_bias is not None:
+            self.add_bias(has_bias)
 
     @property
     def dim(self):

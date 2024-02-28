@@ -12,7 +12,7 @@ class Constant(ParametricFunction):
         super().__init__(output_shape, coefficients)
 
     def fit(self, X, y=None, **kwargs):
-        xstats = stats_from_input_data(X)
+        xstats = stats_from_input_data(X[:, : self.dim_x])
         self.n_functions_features_ = xstats.dim
         super().fit(X, y, **kwargs)
         return self
@@ -45,7 +45,7 @@ class Linear(ParametricFunction):
         super().__init__(output_shape, coefficients)
 
     def fit(self, X, y=None, **kwargs):
-        xstats = stats_from_input_data(X)
+        xstats = stats_from_input_data(X[:, : self.dim_x])
         self.n_functions_features_ = xstats.dim
         super().fit(X, y, **kwargs)
         return self
@@ -73,6 +73,7 @@ class Linear(ParametricFunction):
 
     def transform_coeffs(self, x, *args, **kwargs):
         transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
+        print("tc", x.shape, transform_coeffs.shape, self.size, self.n_functions_features_)
         return np.tensordot(x, transform_coeffs, axes=1)
 
 
@@ -89,7 +90,7 @@ class Polynomial(ParametricFunction):
         self.polynom = polynom
 
     def fit(self, X, y=None, **kwargs):
-        xstats = stats_from_input_data(X)
+        xstats = stats_from_input_data(X[:, : self.dim_x])
         self.n_functions_features_ = xstats.dim * self.degree
         super().fit(X, y, **kwargs)
         return self

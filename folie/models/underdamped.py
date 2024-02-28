@@ -1,6 +1,7 @@
 import numpy as np
 
 from .overdamped import Overdamped
+from ..functions import Constant, Polynomial
 
 
 class CombineForceFriction:
@@ -45,7 +46,8 @@ class Underdamped(Overdamped):
         self.meandispl = CombineForceFriction(self)
         self.friction = friction.resize(self.diffusion.shape)
         if not self.friction.fitted_ and not kwargs.get("friction_is_fitted", False):
-            X = np.linspace(-1, 1, 5).reshape(-1, self.dim if self.dim > 0 else 1)
+            loc_dim = self.dim if self.dim > 0 else 1
+            X = np.linspace([-1] * loc_dim, [1] * loc_dim, 5)
             self.friction.fit(X, np.ones((5, *self.diffusion.shape)))
 
     @Overdamped.dim.setter
@@ -80,3 +82,27 @@ class Underdamped(Overdamped):
     @coefficients_friction.setter
     def coefficients_friction(self, vals):
         self.friction.coefficients = vals
+
+
+class UnderdampedOrnsteinUhlenbeck(Underdamped):
+    """
+    Model for OU (ornstein-uhlenbeck):
+    Parameters: [kappa, mu, sigma]
+
+    dX(t) = mu(X,t)*dt + sigma(X,t)*dW_t
+
+    where:
+        mu(X,t)    = theta - kappa* X
+        sigma(X,t) = sqrt(sigma)
+    """
+
+    dim = 1
+    _has_exact_density = True
+
+    def __init__(self, theta=0, kappa=1.0, sigma=1.0, **kwargs):
+        # Init by passing functions to the model
+        X = np.linspace(-1, 1, 5).reshape(-1, 1)
+        super().__init__(Polynomial(1).fit(X, -1 * np.linspace(-1, 1, 5)), Constant().fit(X, np.ones(5)), Constant().fit(X, np.ones(5)), dim=0, **kwargs)
+        self.force.coefficients = np.asarray([theta, -kappa])
+        self.friction.coefficients = np.asanyarray(sigma)
+        self.diffusion.coefficients = np.asarray(sigma)

@@ -48,14 +48,18 @@ class OverdampedHidden(Overdamped):
     def __init__(self, force, friction, diffusion, dim=1, dim_h=0, **kwargs):
         self.dim_h = dim_h
         self.dim_x = dim
-        super().__init__(self, force, diffusion, dim=self.dim_x + self.dim_h, **kwargs)
+        force.dim_x = self.dim_x
+        diffusion.dim_x = self.dim_x
+        friction.dim_x = self.dim_x
+
+        super().__init__(force, diffusion, dim=self.dim_x + self.dim_h, **kwargs)
         self.friction = friction.resize((self.dim, self.dim_h))
-        self.force.dim_x = self.dim_x
-        self.diffusion.dim_x = self.dim_x
-        self.friction.dim_x = self.dim_x
         if not self.friction.fitted_ and not kwargs.get("friction_is_fitted", False):  # Set friction to constant one
-            X = np.linspace(-1, 1, 5).reshape(-1, self.dim if self.dim > 0 else 1)
+            loc_dim = self.dim if self.dim > 0 else 1
+            X = np.linspace([-1] * loc_dim, [1] * loc_dim, 5)
+            print("ini", X.shape)
             self.friction.fit(X, np.ones((5, self.dim, self.dim_h)))
+
         self.meandispl = CombineForceFrictionHidden(self, self.dim_x)
 
     @property
@@ -89,7 +93,8 @@ class UnderdampedHidden(Underdamped):
         self.dim_x = dim
         # TODO: le seul truc à changer c'est peut-être la force sur les variables cachées pour pad avec des zéros
         # Force = encapsulated(force)
-        super().__init__(self, force, friction, diffusion, dim=self.dim_x + self.dim_h, **kwargs)
-        self.force.dim_x = self.dim_x
-        self.diffusion.dim_x = self.dim_x
-        self.friction.dim_x = self.dim_x
+
+        force.dim_x = self.dim_x
+        diffusion.dim_x = self.dim_x
+        friction.dim_x = self.dim_x
+        super().__init__(force, friction, diffusion, dim=self.dim_x + self.dim_h, **kwargs)
