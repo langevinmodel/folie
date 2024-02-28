@@ -165,7 +165,7 @@ def test_numba_likelihood_estimator(data, request):
 def test_em_estimator(data_short, request):
     fun_lin = fl.functions.Linear()
     fun_cst = fl.functions.Constant()
-    model = fl.models.OverdampedHidden(fun_lin, fun_lin.copy(), fun_cst, dim=1, dim_h=2)
-    estimator = fl.EMEstimator(fl.EulerDensity(model), max_iter=2, verbose=3, verbose_interval=1)
+    model = fl.models.OverdampedHidden(fun_lin, fun_cst.copy(), fun_cst, dim=1, dim_h=2)
+    estimator = fl.EMEstimator(fl.EulerDensity(model), max_iter=5, verbose=3, verbose_interval=1)
     model = estimator.fit_fetch(data_short)
     assert model.fitted_

@@ -154,7 +154,8 @@ class Overdamped(BaseModelOverdamped):
         if not self.force.fitted_ and not kwargs.get("force_is_fitted", False):
             self.force.fit(X)
         if not self.diffusion.fitted_ and not kwargs.get("diffusion_is_fitted", False):
-            self.diffusion.fit(X, np.ones((5, *diffusion_shape)))
+            diff_target = np.concatenate([np.eye(loc_dim)[None, ...]] * 5).reshape(5, *diffusion_shape)
+            self.diffusion.fit(X, diff_target)
         if has_bias is not None:
             self.add_bias(has_bias)
 

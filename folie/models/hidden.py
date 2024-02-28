@@ -57,7 +57,6 @@ class OverdampedHidden(Overdamped):
         if not self.friction.fitted_ and not kwargs.get("friction_is_fitted", False):  # Set friction to constant one
             loc_dim = self.dim if self.dim > 0 else 1
             X = np.linspace([-1] * loc_dim, [1] * loc_dim, 5)
-            print("ini", X.shape)
             self.friction.fit(X, np.ones((5, self.dim, self.dim_h)))
 
         self.meandispl = CombineForceFrictionHidden(self, self.dim_x)

@@ -73,7 +73,6 @@ class Linear(ParametricFunction):
 
     def transform_coeffs(self, x, *args, **kwargs):
         transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
-        print("tc", x.shape, transform_coeffs.shape, self.size, self.n_functions_features_)
         return np.tensordot(x, transform_coeffs, axes=1)
 
 
