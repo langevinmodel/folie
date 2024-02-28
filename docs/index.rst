@@ -68,12 +68,12 @@ Table of contents
 
    tutorials.rst
 
- .. toctree::
-    :maxdepth: 2
-    :hidden:
-    :caption: Performances
+.. toctree::
+  :maxdepth: 2
+  :hidden:
+  :caption: Performances
 
-    statistical_performances.rst
+  statistical_performances.rst
 
 .. toctree::
    :caption: API docs
