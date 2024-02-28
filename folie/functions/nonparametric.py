@@ -20,6 +20,7 @@ class sklearnWrapper(Function):
         else:
             y = y.reshape((x.shape[0], -1))
         self.estimator = self.estimator.fit(x, y)
+        self.fitted_ = True
         return self
 
     def transform(self, X, *args, **kwargs):
@@ -54,7 +55,7 @@ class KernelFunction(Function):
             y = y.reshape((x.shape[0], -1))
         self.ref_X = check_array(x, accept_sparse=True)
         self.ref_f = y
-        self.is_fitted_ = True
+        self.fitted_ = True
         if hasattr(self.gamma, "__iter__"):
             self.gamma = self._optimize_gamma(self.gamma)
         return self  # `fit` should always return `self`
@@ -75,7 +76,7 @@ class KernelFunction(Function):
             Value of the distance to the path.
         """
         X = check_array(X, accept_sparse=True)
-        check_is_fitted(self, "is_fitted_")
+        check_is_fitted(self, "fitted_")
         K = pairwise_kernels(self.ref_X, X, metric=self.kernel, gamma=self.gamma)
         s = (K[..., None] * self.ref_f[:, None, ...]).sum(axis=0) / K.sum(axis=0)[:, None]
         return s

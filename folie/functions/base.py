@@ -22,6 +22,7 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         self.output_shape_ = np.asarray(output_shape, dtype=int)
         self.output_size_ = np.prod(self.output_shape_)
         self.dim_x = dim_x
+        self.fitted_ = False
 
     def resize(self, new_shape):
         """
@@ -137,6 +138,7 @@ class FunctionSum(Function):
             fu.fit(data, **kwargs)
         self.n_output_features_ = np.sum([fu.n_output_features_ for fu in self.functions_set])
         self.dim_out_basis = 1
+        self.fitted_ = True
         return self
 
     def __call__(self, X, *args, **kwargs):
@@ -197,7 +199,7 @@ class FunctionComposition(Function):
         self.f.fit(self.g(x), y, **kwargs)
 
         self.n_output_features_ = self.f.n_output_features_
-
+        self.fitted_ = True
         return self
 
     def transform(self, x, *args, **kwargs):
@@ -302,7 +304,7 @@ class FunctionTensored(Function):
 
         # Save fitted libs
         self.functions_set = fitted_fun
-
+        self.fitted_ = True
         return self
 
     def transform(self, x, *args, **kwargs):
@@ -407,6 +409,7 @@ class ParametricFunction(Function):
         else:
             self.n_functions_features_ = coefficients.shape[0]
             self.coefficients = coefficients
+            self.fitted_ = True  # If coefficients where given
 
     @classmethod
     def __subclasshook__(cls, C):  # Define required minimal interface for duck-typing
@@ -445,6 +448,7 @@ class ParametricFunction(Function):
         Fx = self.grad_coeffs(x)
         reg = estimator.fit(Fx.reshape((x.shape[0] * self.output_size_, -1)), y, sample_weight=sample_weight)
         self.coefficients = reg.coef_
+        self.fitted_ = True
         return self
 
     @abc.abstractmethod

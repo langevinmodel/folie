@@ -8,7 +8,7 @@ from ..functions import Constant, Polynomial, BSplinesFunction, FunctionOffset, 
 
 class ForceReference:
     """
-    A composition function for returning f(x)+g(x)*y
+    A function for returning f(x)
     """
 
     def __init__(self, model):
@@ -47,10 +47,6 @@ class BaseModelOverdamped(Model):
             self.force = ModelOverlay(self, "force")
             self.diffusion = ModelOverlay(self, "diffusion")
         self.meandispl = ForceReference(self)
-
-    # def __getattr__(self, item):  # If meandispl is not defined, it return to force
-    #     if item == "meandispl":
-    #         return self.forces
 
     # ==============================
     # Exact Transition Density and Simulation Step, override when available
@@ -155,8 +151,12 @@ class Overdamped(BaseModelOverdamped):
             self.diffusion = diffusion.resize(diffusion_shape)
         if has_bias is not None:
             self.add_bias(has_bias)
-        self.coefficients = np.concatenate((np.zeros(self.force.size), np.ones(self.diffusion.size)))
-        # Il faudrait réassigner alors le big array aux functions pour qu'on aie un seul espace mémoire
+        if not self.force.fitted_ and not kwargs.get("force_is_fitted", False):
+            X = np.linspace(-1, 1, 5).reshape(-1, self.dim if self.dim > 0 else 1)
+            self.force.fit(X)
+        if not self.diffusion.fitted_ and not kwargs.get("diffusion_is_fitted", False):
+            X = np.linspace(-1, 1, 5).reshape(-1, self.dim if self.dim > 0 else 1)
+            self.diffusion.fit(X, np.ones((5, *diffusion_shape)))
 
     @property
     def dim(self):

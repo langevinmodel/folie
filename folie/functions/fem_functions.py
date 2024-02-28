@@ -17,6 +17,7 @@ class FiniteElement(ParametricFunction):
         xstats.dim
         self.n_functions_features_ = self.basis.N
         self.coefficients = np.zeros((self.n_functions_features_, self.output_size_))
+        self.fitted_ = True
         return self
 
     def transform(self, x, *args, **kwargs):

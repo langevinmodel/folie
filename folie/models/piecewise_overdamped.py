@@ -4,7 +4,7 @@ import numba as nb
 
 
 @nb.njit
-def linear_interpolation_with_gradient(idx, h, knots, fp):
+def linear_interpolation_with_gradient(idx, h, knots, fp):  # pragma: no cover
     n_knots = knots.shape[0]
     f0, f1 = fp[idx - 1], fp[idx]
     # Second parameter set is in second half of array

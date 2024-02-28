@@ -37,7 +37,7 @@ class FreezeCoefficients(ParametricFunction):
 
     def fit(self, x, y=None, **kwargs):
         self.f.fit(x, y, **kwargs)
-
+        self.fitted_ = True
         return self
 
     def transform(self, x, *args, **kwargs):

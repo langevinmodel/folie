@@ -42,6 +42,7 @@ class BSplinesFunction(ParametricFunction):
             y = y[unique_indices, ...].reshape((x.shape[0], self.input_dim_, self.output_size_))
         self.bspline = make_lsq_spline(x, y, t, k=self.k)  # Get more efficient algo that does not assume to have a set of  points representing a curve
         self.n_functions_features_ = self.bspline.c.shape[0]
+        self.fitted_ = True
         return self
 
     def differentiate(self):
