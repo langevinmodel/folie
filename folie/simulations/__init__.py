@@ -1,10 +1,13 @@
 """
 Module that contains some utils some basic simulations of the models. Mostly for short validations runs.
 For more efficient and longuer simulations, please turn to LangevinIntegrators.jl or StochasticDiffEq.jl
+
+ABMD simulation is adapted from pyoptLE
 """
 
 import numpy as np
 from ..data import Trajectories, Trajectory
+from .stepper import ExactStepper, EulerStepper, MilsteinStepper
 
 
 class Simulator:

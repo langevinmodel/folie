@@ -25,14 +25,10 @@ class TransitionDensity(ABC):
         # TODO: Trouver un moyen de set la dimensionalité du système à partir des données
         if self._model.dim <= 1:
             self._logdensity = self._logdensity1D
-            if hasattr(self, "run_step_1D"):
-                self.run_step = self.run_step_1D
         else:
             if not hasattr(self, "_logdensityND"):
                 raise ValueError("This transition density does not support multidimensionnal model.")
             self._logdensity = self._logdensityND
-            if hasattr(self, "run_step_ND"):
-                self.run_step = self.run_step_ND
 
     @property
     def model(self):
@@ -68,17 +64,6 @@ class TransitionDensity(ABC):
 
     def density(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return np.exp(self._logdensity(x0, xt, dt))
-
-    @abstractmethod
-    def _logdensity1D(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-        """
-        The transition density evaluated at these arguments
-        :param x0: float or array, the current value
-        :param xt: float or array, the value to transition to  (must be same dimension as x0)
-        :param dt: float, the time step between x0 and xt
-        :return: probability (same dimension as x0 and xt)
-        """
-        raise NotImplementedError
 
     def __call__(self, weight, trj, coefficients):
         """

@@ -30,7 +30,7 @@ If you also want to install optionnal dependencies, run for the torch dependency
 
    pip install git+https://github.com/langevinmodel/folie.git[deep-learning]
 
-or 
+or
 
 .. code-block:: bash
 
@@ -68,6 +68,13 @@ Table of contents
 
    tutorials.rst
 
+ .. toctree::
+    :maxdepth: 2
+    :hidden:
+    :caption: Performances
+
+    statistical_performances.rst
+
 .. toctree::
    :caption: API docs
    :maxdepth: 2
@@ -76,7 +83,7 @@ Table of contents
    api/models
    api/functions
    api/estimation
-   
+
 Indices and tables
 ==================
 

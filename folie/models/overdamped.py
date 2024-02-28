@@ -237,11 +237,13 @@ class BrownianMotion(Overdamped):
 
     _has_exact_density = True
 
-    def __init__(self, mu=0, sigma=1.0, **kwargs):
-        X = np.linspace(-1, 1, 5).reshape(-1, 1)
-        super().__init__(Constant().fit(X, np.zeros(5)), Constant().fit(X, np.ones(5)), dim=0, **kwargs)
-        self.force.coefficients = np.asarray(mu)
-        self.diffusion.coefficients = np.asarray(sigma)
+    def __init__(self, mu=0, sigma=1.0, dim=1, **kwargs):
+        # X = np.linspace(-1, 1, 5).reshape(-1, dim)
+        # y_force = mu * np.ones_like(X)
+        # y_diff = sigma * no.ones_like(X)
+        super().__init__(Constant(), Constant(), dim=dim, **kwargs)
+        self.force.coefficients = mu * np.eye(dim)
+        self.diffusion.coefficients = sigma * np.eye(dim)
 
     def exact_density(self, x0, xt, t0: float, dt: float = 0.0) -> float:
         mu, sigma2 = self.coefficients
@@ -251,7 +253,7 @@ class BrownianMotion(Overdamped):
     def exact_step(self, x, dt, dZ, t=0.0):
         """Simple Brownian motion can be simulated exactly"""
         sig_sq_dt = np.sqrt(self.coefficients[1] * dt)
-        return x + self.coefficients[0] * dt + sig_sq_dt * dZ
+        return (x.T + self.coefficients[0] * dt + sig_sq_dt * dZ).T
 
 
 class OrnsteinUhlenbeck(Overdamped):
@@ -269,12 +271,14 @@ class OrnsteinUhlenbeck(Overdamped):
     dim = 1
     _has_exact_density = True
 
-    def __init__(self, theta=0, kappa=1.0, sigma=1.0, **kwargs):
+    def __init__(self, theta=0, kappa=1.0, sigma=1.0, dim=1, **kwargs):
         # Init by passing functions to the model
-        X = np.linspace(-1, 1, 5).reshape(-1, 1)
-        super().__init__(Polynomial(1).fit(X, -1 * np.linspace(-1, 1, 5)), Constant().fit(X, np.ones(5)), dim=0, **kwargs)
-        self.force.coefficients = np.asarray([theta, -kappa])
-        self.diffusion.coefficients = np.asarray(sigma)
+        # X = np.linspace(-1, 1, 5).reshape(-1, 1)
+        # .fit(X, -1 * np.linspace(-1, 1, 5))
+        # .fit(X, np.ones(5))
+        super().__init__(Polynomial(1), Constant(), dim=dim, **kwargs)
+        self.force.coefficients = np.asarray([theta, -kappa] * dim)
+        self.diffusion.coefficients = sigma * np.eye(dim)
 
     def exact_density(self, x0: float, xt: float, t0: float, dt: float = 0.0) -> float:
         theta, kappa, sigma = self.coefficients
@@ -284,7 +288,7 @@ class OrnsteinUhlenbeck(Overdamped):
 
     def exact_step(self, x, dt, dZ, t=0.0):
         theta, kappa, sigma = self.coefficients
-        mu = -theta / kappa + (x + theta / kappa) * np.exp(kappa * dt)
+        mu = -theta / kappa + (x.T + theta / kappa).T * np.exp(kappa * dt)
         var = (1 - np.exp(2 * kappa * dt)) * (sigma / (-2 * kappa))
         return mu * dt + np.sqrt(var * dt) * dZ
 

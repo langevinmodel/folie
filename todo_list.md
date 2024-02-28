@@ -15,7 +15,6 @@ Code:
 
 
   Hidden variables:
-  - Implémenter le cas overdamped
   - Mettre des e_step dans les transition density
   - Y mettre aussi des likelihood correction
   - Implémenter le cas underdamped
@@ -27,13 +26,6 @@ Code:
   Analyse:
   - Copier les codes d'éléments finis
 
-
-
-Tests:
-
-- Améliorer la couverture du code (voir codecov.io) pour atteidre les 70-80%
-- tests sur les fonctions de base
-- tests sur tous les estimateurs
 
 
 Documentations:

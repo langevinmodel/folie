@@ -1,15 +1,28 @@
+"""
+================================
+ABMD biased dynamics
+================================
+
+Estimation of an overdamped Langevin in presence of biased dynamics.
+"""
 import numpy as np
 import folie as fl
 import matplotlib.pyplot as plt
 
+
+# First let's generate some biased trajectories
+
 model_simu = fl.models.OrnsteinUhlenbeck(0.0, 1.2, 2.0)
-simulator = fl.simulations.ABMD_Simulator(fl.EulerDensity(model_simu), 1e-3, k=10.0, xstop=6.0)
+simulator = fl.simulations.ABMD_Simulator(fl.simulations.EulerStepper(model_simu), 1e-3, k=10.0, xstop=6.0)
 data = simulator.run(5000, np.zeros((25,)), 25)
 xmax = np.concatenate(simulator.xmax_hist, axis=1).T
-# fig, axs = plt.subplots(1, 2)
-# for n, trj in enumerate(data):
-#     axs[0].plot(trj["x"])
-#     axs[1].plot(xmax[:, n])
+
+# Plot the resulting trajectories
+# sphinx_gallery_thumbnail_number = 1
+fig, axs = plt.subplots(1, 2)
+for n, trj in enumerate(data):
+    axs[0].plot(trj["x"])
+    axs[1].plot(xmax[:, n])
 
 fig, axs = plt.subplots(1, 2)
 axs[0].set_title("Force")

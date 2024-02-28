@@ -3,13 +3,25 @@ import numpy as np
 import folie as fl
 
 
-def test_simple_simulation():
+@pytest.mark.parametrize("steppercls", [fl.simulations.EulerStepper, fl.simulations.MilsteinStepper])
+def test_simple_simulation(steppercls):
 
     data = np.linspace(-1, 1, 25).reshape(-1, 1)
     fun = fl.functions.Polynomial(deg=3).fit(data, data[:, 0])
     model = fl.models.Overdamped(fun)
 
-    simu_engine = fl.Simulator(fl.EulerDensity(model), 1e-3)
+    simu_engine = fl.Simulator(steppercls(model), 1e-3)
+
+    trj_data = simu_engine.run(50, [0.0])
+
+    assert len(trj_data) == 1
+
+    assert trj_data[0]["x"].shape == (50, 1)
+
+
+@pytest.mark.parametrize("model", [fl.models.BrownianMotion(), fl.models.OrnsteinUhlenbeck()])  # , fl.models.BrownianMotion(dim=3), fl.models.OrnsteinUhlenbeck(dim=3)])
+def test_exact_simulation(model):
+    simu_engine = fl.Simulator(fl.simulations.ExactStepper(model), 1e-3)
 
     trj_data = simu_engine.run(50, [0.0])
 
@@ -25,7 +37,7 @@ def test_abmd_simulation():
     fun = fl.functions.Polynomial(deg=3).fit(data, data[:, 0])
     model = fl.models.Overdamped(fun)
 
-    simu_engine = fl.simulations.ABMD_Simulator(fl.EulerDensity(model), 1e-3, k=2.0, xstop=2.0)
+    simu_engine = fl.simulations.ABMD_Simulator(fl.simulations.EulerStepper(model), 1e-3, k=2.0, xstop=2.0)
 
     trj_data = simu_engine.run(50, [0.0])
 
