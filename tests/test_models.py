@@ -35,7 +35,7 @@ def test_overdamped_w_exactdensity(model):
 
     assert model.exact_density(x[1:], x[:-1], 0.0, 1e-3).shape == (14,)
 
-    assert model.exact_step(0.0, 1e-3, 0.1) != 0.0
+    assert (model.exact_step(np.zeros((1, 1)), 1e-3, 0.1) != 0.0).any()
 
 
 @pytest.mark.parametrize("model", [fl.models.OverdampedSplines1D(), fl.models.OverdampedFreeEnergy(np.linspace(-2, 2, 5), 1.0)])
