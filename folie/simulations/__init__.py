@@ -46,9 +46,12 @@ class BiasedSimulator(Simulator):
         super().__init__(transition, dt, **kwargs)
         self.transition.model.add_bias()
 
-    def run(self, nsteps, x0, ntrajs=1, save_every=1, **kwargs):
+    def run(self, nsteps, x0, ntrajs=None, save_every=1, **kwargs):
         x0 = np.asarray(x0)
+        if ntrajs is None:
+            ntrajs = x0.shape[0]
         if x0.shape[0] != ntrajs:
+            # TODO: then extend the initials conditions
             raise ValueError("You must provide as much initial condtion as the wanted number of trajectories.")
         if x0.ndim == 1:
             dim = 1
