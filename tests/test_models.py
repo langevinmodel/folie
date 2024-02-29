@@ -38,6 +38,22 @@ def test_overdamped_w_exactdensity(model):
     assert (model.exact_step(np.zeros((1, 1)), 1e-3, 0.1) != 0.0).any()
 
 
+@pytest.mark.parametrize(
+    "model",
+    [fl.models.OrnsteinUhlenbeck(dim=3)],
+)
+def test_overdamped_w_exactdensityND(model):
+    x = np.linspace(-1, 1, 15).reshape(-1, 1)
+
+    assert model.force(x).shape == (15, 3)
+
+    assert model.diffusion(x).shape == (15, 3, 3)
+
+    # assert model.exact_density(x[1:], x[:-1], 0.0, 1e-3).shape == (14,)
+    #
+    # assert (model.exact_step(np.zeros((1, 1)), 1e-3, 0.1) != 0.0).any()
+
+
 @pytest.mark.parametrize("model", [fl.models.OverdampedSplines1D(), fl.models.OverdampedFreeEnergy(np.linspace(-2, 2, 5), 1.0)])
 def test_overdamped_various(model):
     x = np.linspace(-1, 1, 15).reshape(-1, 1)

@@ -40,6 +40,7 @@ class BaseModelOverdamped(Model):
         dX(t) = mu(X,t)dt + sigma(X,t)dW_t
 
         """
+
         self._dim = dim
         self.is_biased = False
 
@@ -149,24 +150,18 @@ class Overdamped(BaseModelOverdamped):
             self.diffusion = force.copy().resize(diffusion_shape)
         else:
             self.diffusion = diffusion.resize(diffusion_shape)
-        loc_dim = self.dim if self.dim > 0 else 1
+        loc_dim = dim if dim > 0 else 1
         X = np.linspace([-1] * loc_dim, [1] * loc_dim, 5)
         if not self.force.fitted_ and not kwargs.get("force_is_fitted", False):
             self.force.fit(X)
         if not self.diffusion.fitted_ and not kwargs.get("diffusion_is_fitted", False):
+
             diff_target = np.concatenate([np.eye(loc_dim)[None, ...]] * 5).reshape(5, *diffusion_shape)
             self.diffusion.fit(X, diff_target)
         if has_bias is not None:
             self.add_bias(has_bias)
 
-    @property
-    def dim(self):
-        """
-        Dimensionnality of the model
-        """
-        return self._dim
-
-    @dim.setter
+    @BaseModelOverdamped.dim.setter
     def dim(self, dim):
         if dim > 1:
             force_shape = (dim,)
@@ -268,7 +263,6 @@ class OrnsteinUhlenbeck(Overdamped):
         sigma(X,t) = sqrt(sigma)
     """
 
-    dim = 1
     _has_exact_density = True
 
     def __init__(self, theta=0, kappa=1.0, sigma=1.0, dim=1, **kwargs):
@@ -277,9 +271,10 @@ class OrnsteinUhlenbeck(Overdamped):
         # .fit(X, -1 * np.linspace(-1, 1, 5))
         # .fit(X, np.ones(5))
         super().__init__(Polynomial(1), Constant(), dim=dim, **kwargs)
-        self.force.coefficients = np.asarray([theta, -kappa] * dim)
+        self.force.coefficients = np.concatenate([theta * np.eye(dim), -kappa * np.eye(dim)], axis=0)
         self.diffusion.coefficients = sigma * np.eye(dim)
 
+    # TODO: Adapt for multidemnsionnal case
     def exact_density(self, x0: float, xt: float, t0: float, dt: float = 0.0) -> float:
         theta, kappa, sigma = self.coefficients
         mu = -theta / kappa + (x0 + theta / kappa) * np.exp(kappa * dt)

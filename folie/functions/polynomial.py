@@ -10,12 +10,7 @@ class Constant(ParametricFunction):
 
     def __init__(self, output_shape=(), coefficients=None):
         super().__init__(output_shape, coefficients)
-
-    def fit(self, X, y=None, **kwargs):
-        xstats = stats_from_input_data(X[:, : self.dim_x])
-        self.n_functions_features_ = xstats.dim
-        super().fit(X, y, **kwargs)
-        return self
+        self.n_functions_features_ = 1
 
     def differentiate(self):
         fun = self.copy()  # Inclure extra dim pour la differentiation
@@ -23,7 +18,7 @@ class Constant(ParametricFunction):
         return fun
 
     def transform(self, x, *args, **kwargs):
-        return np.dot(np.ones_like(x), self._coefficients)
+        return np.ones((x.shape[0], 1)) * self._coefficients
 
     def transform_x(self, x, *args, **kwargs):
         return np.zeros((x.shape[0], self.output_size_, x.shape[1]))
@@ -33,7 +28,7 @@ class Constant(ParametricFunction):
 
     def transform_coeffs(self, x, *args, **kwargs):
         transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
-        return np.tensordot(np.ones_like(x), transform_coeffs, axes=1)
+        return np.tensordot(np.ones((x.shape[0], 1)), transform_coeffs, axes=1)
 
 
 class Linear(ParametricFunction):

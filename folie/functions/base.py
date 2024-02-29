@@ -133,14 +133,6 @@ class FunctionSum(Function):
     def differentiate(self):
         return FunctionSum([fu.differentiate() for fu in self.functions_set])
 
-    def fit(self, data, **kwargs):
-        for fu in self.functions_set:
-            fu.fit(data, **kwargs)
-        self.n_output_features_ = np.sum([fu.n_output_features_ for fu in self.functions_set])
-        self.dim_out_basis = 1
-        self.fitted_ = True
-        return self
-
     def __call__(self, X, *args, **kwargs):
         return np.add.reduce([fu(X) for fu in self.functions_set])
 
@@ -171,6 +163,10 @@ class FunctionSum(Function):
     def shape(self):
         return self.functions_set[0].output_shape_
 
+    @property
+    def n_output_features_(self):
+        return np.sum([fu.n_output_features_ for fu in self.functions_set])
+
 
 class FunctionComposition(Function):
     r"""
@@ -182,7 +178,7 @@ class FunctionComposition(Function):
         self.f = f
         self.g = g
 
-    def fit(self, x, y=None, **kwargs):
+    def fit(self, x, y=None, yg=None, **kwargs):
         """
         Compute number of output features.
 
@@ -195,14 +191,14 @@ class FunctionComposition(Function):
         -------
         self : instance
         """
-        self.g.fit(x, y, **kwargs)  # TODO: Ne marche pas, il faudrait faire f^-1(y)
+        self.g.fit(x, yg, **kwargs)  # TODO: Ne marche pas, il faudrait faire f^-1(y)
         self.f.fit(self.g(x), y, **kwargs)
 
         self.n_output_features_ = self.f.n_output_features_
         self.fitted_ = True
         return self
 
-    def transform(self, x, *args, **kwargs):
+    def __call__(self, x, *args, **kwargs):
         r"""Transforms the input data.
 
         Parameters
@@ -215,40 +211,18 @@ class FunctionComposition(Function):
         transformed : array_like
             The transformed data
         """
-        return
+        return self.f(self.g(x, *args, **kwargs), *args, **kwargs)
 
-    def grad_x(self, x, **kwargs):
-        r"""Gradient of the function with respect to input data
+    def grad_x(self, x, *args, **kwargs):
+        r"""Gradient of the function with respect to input data"""
 
-        Parameters
-        ----------
-        x : array_like
-            Input data.
-
-        Returns
-        -------
-        transformed : array_like
-            The transformed data
-        """
-
-    def hessian_x(self, x, **kwargs):
+    def hessian_x(self, x, *args, **kwargs):
         """
         Hessien of the function with respect to input data
         """
 
-    def grad_coeffs(self, x, **kwargs):
-        r"""Transforms the input data.
-
-        Parameters
-        ----------
-        x : array_like
-            Input data.
-
-        Returns
-        -------
-        transformed : array_like
-            The transformed data
-        """
+    def grad_coeffs(self, x, *args, **kwargs):
+        r"""Gradient with respect to the coefficients."""
 
 
 class FunctionTensored(Function):
