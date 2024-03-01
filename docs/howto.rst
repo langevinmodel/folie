@@ -29,7 +29,12 @@ Estimation
 Analysis
 ------------
 
+Once we have obtained a model, we can extract useful quantities
 
+.. toctree::
+    :maxdepth: 2
+
+    notebooks/analysis_committor
 ..
    Dans cette partie il va falloir avoir:
     Un calcul de committor et mfpt

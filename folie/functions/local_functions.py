@@ -88,7 +88,11 @@ class BSplinesFunction(ParametricFunction):
         transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, self.input_dim_, *self.output_shape_, self.size)
         return np.trace(BSpline(self.bspline.t, transform_coeffs, self.bspline.k)(x), axis1=1, axis2=2)
 
+        # Aternative via design matrix
+        BSpline.design_matrix(x, self.bspline.t, self.bspline.k)  # return (Nobs x nelemnts_basis) en format sparse CSR
 
+
+# En vrai, ci dessous ça utilise aussi Bspline, copier le code relevant pour merger les 2
 class sklearnBSplines(ParametricFunction):
     """
     A slower but more complete set of BSplines
@@ -101,7 +105,7 @@ class sklearnBSplines(ParametricFunction):
         self.knots = knots
 
     def fit(self, X, y=None, **kwargs):
-        self.bspline = SplineTransformer(n_knots=self.knots, degree=self.k, extrapolation=self.bc_type).fit(X[:, : self.dim_x])
+        self.bspline = SplineTransformer(n_knots=self.knots, degree=self.k, extrapolation=self.bc_type, sparse_output=True).fit(X[:, : self.dim_x])
         self.n_functions_features_ = self.bspline.n_features_out_
         super().fit(X[:, : self.dim_x], y, **kwargs)
         return self
@@ -111,7 +115,7 @@ class sklearnBSplines(ParametricFunction):
 
     def transform_x(self, x, *args, **kwargs):
         len, dim = x.shape
-        x_grad = np.ones((len, 1, 1)) * np.eye(dim)[None, :, :]
+        x_grad = np.ones((len, 1, 1)) * np.eye(dim)[None, :, :]  # TODO: a corriger
         return np.einsum("nbd,bs->nsd", x_grad, self._coefficients)  # .reshape(-1, *self.output_shape_, dim)
 
     def transform_coeffs(self, x, *args, **kwargs):

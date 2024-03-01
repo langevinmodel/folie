@@ -1,6 +1,7 @@
 from .base import ParametricFunction
 import numpy as np
 from ..data import stats_from_input_data
+import sparse
 
 
 class FiniteElement(ParametricFunction):
@@ -30,45 +31,51 @@ class FiniteElement(ParametricFunction):
         return self
 
     def transform(self, x, *args, **kwargs):
-        cells = self.basis.mesh.element_finder(mapping=self.mapping)(*x)  # Change the element finder
-        # Find a way to exclude out of mesh elements, we can define an outside elements that is a constant
-        pts = self.mapping.invF(x[:, :, np.newaxis], tind=cells)
-        phis = np.array([self.elem.gbasis(self.mapping, pts, k, tind=cells)[0] for k in range(self.Nbfun)]).flatten()
-        probes_matrix = coo_matrix(
+        cells = kwargs["cells"]
+        loc_x = kwargs["loc_x"]
+        phis = np.array([self.basis.elem.gbasis(self.basis.mapping, loc_x, k, tind=cells)[0] for k in range(self.basis.Nbfun)]).flatten()
+        probes_matrix = sparse.COO(
             (
-                phis,
                 (
-                    np.tile(np.arange(x.shape[1]), self.Nbfun),
-                    self.element_dofs[:, cells].flatten(),
+                    np.tile(np.arange(x.shape[0]), self.basis.Nbfun),
+                    self.basis.element_dofs[:, cells].flatten(),
                 ),
+                phis,
             ),
-            shape=(x.shape[0], self.N),
+            shape=(x.shape[0], self.basis.N),
         )  # Use sparse array
 
-        return probes_matrix @ self._coefficients
+        return probes_matrix.tocsr() @ self._coefficients  # Check efficiency of conversion to csr
 
     def transform_x(self, x, *args, **kwargs):
         _, dim = x.shape
-        cells = self.basis.mesh.element_finder(mapping=self.mapping)(*x)  # Change the element finder
-        # Find a way to exclude out of mesh elements, we can define an outside elements that is a constant
-        pts = self.mapping.invF(x[:, :, np.newaxis], tind=cells)
-        phis = np.array([self.elem.gbasis(self.mapping, pts, k, tind=cells)[0] for k in range(self.Nbfun)]).flatten()
-        return coo_matrix(
+        cells = kwargs["cells"]
+        loc_x = kwargs["loc_x"]
+        phis = np.array([self.basis.elem.gbasis(self.basis.mapping, loc_x, k, tind=cells)[0].grad for k in range(self.basis.Nbfun)]).flatten()  # which part of gbasis
+        probes_matrix = sparse.COO(
             (
-                phis,
                 (
-                    np.tile(np.arange(x.shape[1]), self.Nbfun),
-                    self.element_dofs[:, cells].flatten(),
+                    np.tile(np.arange(x.shape[0]), self.basis.Nbfun),
+                    self.basis.element_dofs[:, cells].flatten(),  # Il faut donc pad les elements dofs avec numpy tile et rajouter une troisème colonne
                 ),
+                phis,
             ),
-            shape=(x.shape[0], self.N),
+            shape=(x.shape[0], self.basis.N, dim),
         )
         # Its return a matrix, we should either trying to do the sum, or use sparse array from the sparse library
-
-        # Reprendre le code de basis.probes et l'adapter pour avoir la dérivée
-        return np.einsum("nbd,bs->nsd", np.ones_like(x), self._coefficients).reshape(-1, *self.output_shape_, dim)
+        return sparse.einsum("nbd,bs->nsd", probes_matrix, self._coefficients)
 
     def transform_coeffs(self, x, *args, **kwargs):
-        # TODO: Retourne une matrice sparse
-        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
-        return np.tensordot(self.basis.probes(x), transform_coeffs, axes=1)
+        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
+        phis = np.array([self.basis.elem.gbasis(self.basis.mapping, loc_x, k, tind=cells)[1] for k in range(self.basis.Nbfun)]).flatten()
+        probes_matrix = sparse.COO(
+            (
+                (
+                    np.tile(np.arange(x.shape[0]), self.basis.Nbfun),
+                    self.basis.element_dofs[:, cells].flatten(),
+                ),
+                phis,
+            ),
+            shape=(x.shape[0], self.basis.N),
+        )
+        return sparse.einsum("nb,bsc->nsc", probes_matrix, transform_coeffs)
