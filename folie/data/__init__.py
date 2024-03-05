@@ -1,6 +1,6 @@
 from .trajectories import *
 from ._data_statistics import traj_stats, DescribeResult, representative_array
-import numpy as np
+from .._numpy import np
 
 
 def stats_from_input_data(X):

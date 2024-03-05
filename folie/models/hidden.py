@@ -1,31 +1,6 @@
 from .overdamped import Overdamped
 from .underdamped import Underdamped
-import numpy as np
-
-
-class CombineForceFrictionHidden:
-    """
-    A composition function for returning f(x)+g(x)*y
-    """
-
-    def __init__(self, model, dim_x=1, **kwargs):
-        self.model = model
-        self._dim_sep = dim_x
-
-    def __call__(self, x, *args, **kwargs):
-        return self.model.force(x, *args, **kwargs) + np.einsum("t...h,th-> t...", self.model.friction(x, *args, **kwargs), x[:, self._dim_sep :])
-
-    def grad_x(self, x, *args, **kwargs):
-        return self.model.force.grad_x(x, *args, **kwargs) + np.einsum("t...he,th-> t...e", self.model.friction.grad_x(x, *args, **kwargs), x[:, self._dim_sep :])
-
-    def hessian_x(self, x, *args, **kwargs):
-        return self.model.force.hessian_x(x, *args, **kwargs) + np.einsum("t...hef,th-> t...ef", self.model.friction.hessian_x(x, *args, **kwargs), x[:, self._dim_sep :])
-
-    def grad_coeffs(self, x, *args, **kwargs):
-        """
-        Jacobian of the force with respect to coefficients
-        """
-        return np.concatenate((self.model.force.grad_coeffs(x, *args, **kwargs), np.einsum("t...hc,th-> t...c", self.model.friction.grad_coeffs(x, *args, **kwargs), x[:, self._dim_sep :])), axis=-1)
+from .._numpy import np
 
 
 class OverdampedHidden(Overdamped):
@@ -59,8 +34,6 @@ class OverdampedHidden(Overdamped):
             X = np.linspace([-1] * loc_dim, [1] * loc_dim, 5)
             self.friction.fit(X, np.ones((5, self.dim, self.dim_h)))
 
-        self.meandispl = CombineForceFrictionHidden(self, self.dim_x)
-
     @property
     def coefficients(self):
         """Access the coefficients"""
@@ -80,6 +53,32 @@ class OverdampedHidden(Overdamped):
     @coefficients_friction.setter
     def coefficients_friction(self, vals):
         self.friction.coefficients = vals
+
+    def _meandispl(self, x, *args, **kwargs):
+        return self.force(x, *args, **kwargs) + np.einsum("t...h,th-> t...", self.friction(x, *args, **kwargs), x[:, self.dim_x :])
+
+    def meandispl_x(self, x, *args, **kwargs):
+        return self.force.grad_x(x, *args, **kwargs) + np.einsum("t...he,th-> t...e", self.friction.grad_x(x, *args, **kwargs), x[:, self.dim_x :])
+
+    def meandispl_xx(self, x, *args, **kwargs):
+        return self.force.hessian_x(x, *args, **kwargs) + np.einsum("t...hef,th-> t...ef", self.friction.hessian_x(x, *args, **kwargs), x[:, self.dim_x :])
+
+    def meandispl_coeffs(self, x, *args, **kwargs):
+        """
+        Jacobian of the force with respect to coefficients
+        """
+        return np.concatenate((self.force.grad_coeffs(x, *args, **kwargs), np.einsum("t...hc,th-> t...c", self.friction.grad_coeffs(x, *args, **kwargs), x[:, self.dim_x :])), axis=-1)
+
+    @property
+    def coefficients_meandispl(self):
+        """Access the coefficients"""
+        return np.concatenate((self.force.coefficients.ravel(), self.friction.coefficients.ravel()))
+
+    @coefficients_meandispl.setter
+    def coefficients_meandispl(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        self.force.coefficients = vals.ravel()[: self.force.size]
+        self.friction.coefficients = vals.ravel()[self.force.size : self.force.size + self.friction.size]
 
 
 class UnderdampedHidden(Underdamped):

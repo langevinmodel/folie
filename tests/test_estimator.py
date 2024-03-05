@@ -1,9 +1,10 @@
 import pytest
 import os
-import numpy as np
+from folie._numpy import np
 import folie as fl
 import dask.array as da
 import torch
+import skfem
 
 
 # TODO: add also xarray and pandas into the data test
@@ -137,6 +138,20 @@ def test_likelihood_estimator2d(data2d, request):
     model = fl.models.Overdamped(fun_lin, dim=2)
     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
     model = estimator.fit_fetch(data2d)
+    assert model.fitted_
+
+
+@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+def test_fem_likelihood_estimator(data, request):
+
+    n_knots = 20
+    epsilon = 1e-10
+    m = skfem.MeshLine(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots).ravel())
+    fun = fl.functions.FiniteElement(skfem.Basis(m, skfem.ElementLineP1()))
+    model = fl.models.Overdamped(fun, dim=1)
+    estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
+
+    model = estimator.fit_fetch(data)
     assert model.fitted_
 
 

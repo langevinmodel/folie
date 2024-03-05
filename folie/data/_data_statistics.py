@@ -1,5 +1,5 @@
 from collections import namedtuple
-import numpy as np
+from .._numpy import np
 import scipy.stats
 import scipy.optimize
 

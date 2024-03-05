@@ -3,7 +3,7 @@ The code in this file is copied and adapted from pymle (https://github.com/jkirk
 """
 
 from abc import ABC, abstractmethod
-import numpy as np
+from .._numpy import np
 from typing import Union
 
 
@@ -48,18 +48,20 @@ class TransitionDensity(ABC):
         """
         Basic preprocessing
         """
-        trj["xt"] = trj["x"][1:]
-        trj["x"] = trj["x"][:-1]
-        if "bias" in trj:
-            trj["bias"] = trj["bias"][:-1]
-        else:
-            trj["bias"] = np.zeros((1, trj["x"].shape[1]))
-        if hasattr(self._model, "dim_h"):
-            if self._model.dim_h > 0:
-                trj["sig_h"] = np.zeros((trj["x"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
-                trj["x"] = np.concatenate((trj["x"], np.zeros((trj["x"].shape[0], self._model.dim_h))), axis=1)
-                trj["xt"] = np.concatenate((trj["xt"], np.zeros((trj["xt"].shape[0], self._model.dim_h))), axis=1)
-                trj["bias"] = np.concatenate((trj["bias"], np.zeros((trj["bias"].shape[0], self._model.dim_h))), axis=1)
+        if "xt" not in trj:  # ie, not preprocessing yet
+            trj["xt"] = trj["x"][1:]
+            trj["x"] = trj["x"][:-1]
+            if "bias" in trj:
+                trj["bias"] = trj["bias"][:-1]
+            else:
+                trj["bias"] = np.zeros((1, trj["x"].shape[1]))
+            if hasattr(self._model, "dim_h"):
+                if self._model.dim_h > 0:
+                    trj["sig_h"] = np.zeros((trj["x"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
+                    trj["x"] = np.concatenate((trj["x"], np.zeros((trj["x"].shape[0], self._model.dim_h))), axis=1)
+                    trj["xt"] = np.concatenate((trj["xt"], np.zeros((trj["xt"].shape[0], self._model.dim_h))), axis=1)
+                    trj["bias"] = np.concatenate((trj["bias"], np.zeros((trj["bias"].shape[0], self._model.dim_h))), axis=1)
+            self.model.preprocess_traj(trj, **kwargs)
         return trj
 
     def density(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:

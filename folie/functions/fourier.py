@@ -1,4 +1,4 @@
-import numpy as np
+from .._numpy import np
 from .base import ParametricFunction
 from ..data import stats_from_input_data
 

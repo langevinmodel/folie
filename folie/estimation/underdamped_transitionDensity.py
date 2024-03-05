@@ -2,7 +2,7 @@
 The code in this file is copied and adapted from pymle (https://github.com/jkirkby3/pymle)
 """
 
-import numpy as np
+from .._numpy import np
 from typing import Union
 from .transitionDensity import TransitionDensity
 import numba as nb

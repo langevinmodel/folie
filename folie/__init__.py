@@ -2,6 +2,10 @@ from . import _version
 
 __version__ = _version.get_versions()["version"]
 
+import os
+
+os.environ["SPARSE_AUTO_DENSIFY"] = "1"
+
 
 from .data import Trajectories, Trajectory
 

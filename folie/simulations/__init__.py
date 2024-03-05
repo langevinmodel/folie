@@ -5,7 +5,7 @@ For more efficient and longuer simulations, please turn to LangevinIntegrators.j
 ABMD simulation is adapted from pyoptLE
 """
 
-import numpy as np
+from .._numpy import np
 from ..data import Trajectories, Trajectory
 from .stepper import ExactStepper, EulerStepper, MilsteinStepper
 

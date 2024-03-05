@@ -1,7 +1,8 @@
-import numpy as np
+from .._numpy import np
 
 
 from ..base import Estimator
+from sklearn import linear_model
 
 
 class KramersMoyalEstimator(Estimator):
@@ -17,7 +18,27 @@ class KramersMoyalEstimator(Estimator):
     def __init__(self, model):
         super().__init__(model)
 
-    def fit(self, data, **kwargs):
+    def preprocess_traj(self, trj, **kwargs):
+        """
+        Basic preprocessing
+        """
+        if "xt" not in trj:  # ie, not preprocessing yet
+            trj["xt"] = trj["x"][1:]
+            trj["x"] = trj["x"][:-1]
+            if "bias" in trj:
+                trj["bias"] = trj["bias"][:-1]
+            else:
+                trj["bias"] = np.zeros((1, trj["x"].shape[1]))
+            if hasattr(self._model, "dim_h"):
+                if self._model.dim_h > 0:
+                    trj["sig_h"] = np.zeros((trj["x"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
+                    trj["x"] = np.concatenate((trj["x"], np.zeros((trj["x"].shape[0], self._model.dim_h))), axis=1)
+                    trj["xt"] = np.concatenate((trj["xt"], np.zeros((trj["xt"].shape[0], self._model.dim_h))), axis=1)
+                    trj["bias"] = np.concatenate((trj["bias"], np.zeros((trj["bias"].shape[0], self._model.dim_h))), axis=1)
+            self._model.preprocess_traj(trj, **kwargs)
+        return trj
+
+    def fit(self, data, estimator=linear_model.LinearRegression(copy_X=False, fit_intercept=False), **kwargs):
         r"""Fits data to the estimator's internal :class:`Model` and overwrites it. This way, every call to
         :meth:`fetch_model` yields an autonomous model instance. Sometimes a :code:`partial_fit` method is available,
         in which case the model can get updated by the estimator.
@@ -34,30 +55,40 @@ class KramersMoyalEstimator(Estimator):
         self : Estimator
             Reference to self.
         """
-        X = np.concatenate([trj["x"][:-1] for trj in data], axis=0)
+
+        for trj in data:
+            self.preprocess_traj(trj)
+
+        dt = data[0]["dt"]
+
+        X = np.concatenate([trj["x"] for trj in data], axis=0)
+        extra_kwargs = {}
+        for key in ["cells_idx", "loc_x"]:
+            if key in data[0]:
+                extra_kwargs[key] = np.concatenate([trj[key] for trj in data], axis=0)
         # Take weight into account as well
         dim = X.shape[1]
-        dx = np.concatenate([trj["x"][1:] - trj["x"][:-1] for trj in data], axis=0)
+        dx = np.concatenate([(trj["xt"] - trj["x"]) for trj in data], axis=0)
         if dim <= 1:
             dx = dx.ravel()
-        # weights = np.concatenate(data.weights, axis=0)  # TODO: implement correctly the weights
+        # weights = np.concatenate([trj["weight"] for trj in data], axis=0) # TODO: implement correctly the weights
         if self.model.is_biased:  # If bias
             if dim <= 1:
-                dx_sq = dx ** 2
+                dx_sq = dx**2
             else:
                 dx_sq = dx[..., None] * dx[:, None, ...]
-            self.model.diffusion.fit(X, dx_sq)  # We need to estimate the diffusion first in order to have the prefactor of the bias
-            bias = np.concatenate([trj["bias"][:-1] for trj in data], axis=0)
-            self.model.force.fit(X, bias, y=dx, sample_weight=None)
+            self.model.diffusion.fit(X, dx_sq / dt, **extra_kwargs)  # We need to estimate the diffusion first in order to have the prefactor of the bias
+            bias = np.concatenate([trj["bias"] for trj in data], axis=0)
+            self.model.force.fit(X, bias, y=dx / dt, sample_weight=None, **extra_kwargs)
         else:
             bias = 0.0
-            self.model.force.fit(X, dx, sample_weight=None)
-        dx -= self.model.force(X, bias) * data[0]["dt"]
+            self.model.force.fit(X, dx, sample_weight=None, **extra_kwargs)
+        dx -= self.model.force(X, bias, **extra_kwargs) * dt
         if dim <= 1:
-            dx_sq = dx ** 2
+            dx_sq = dx**2
         else:
             dx_sq = dx[..., None] * dx[:, None, ...]
-        self.model.diffusion.fit(X, dx_sq)
+        self.model.diffusion.fit(X, dx_sq / dt, **extra_kwargs)
         self.model.fitted_ = True
         return self
 
@@ -95,22 +126,29 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
 
         # Faire calculer l'accélération sur les trajs comme préprocessing
         self._loop_over_trajs(self._preprocess_traj, data.weights, data)
-
-        acc_coeff, accsq_coeff, gram_a = self._loop_over_trajs(self._compute_acc_projection, data.weights, data, self.model)
-        acc_norm_coeff = np.linalg.inv(gram_a) @ acc_coeff
-        accsq_norm_coeff = np.linalg.inv(gram_a) @ accsq_coeff
-
-        # Et on applique la correction pour obtenir les forces et la friction
-        corr_coeff, gram_c = self._loop_over_trajs(self._compute_Ito_correction, data.weights, data, self.model, accsq_norm_coeff)
-
-        self.model.force_coeff = acc_norm_coeff - np.linalg.inv(gram_c) @ corr_coeff
-        # D'abord la diffusion
-        diffusion_coeff, gram_d = self._loop_over_trajs(self._compute_diffusion, data.weights, data, self.model)
-        self.model.coefficients_diffusion = np.linalg.inv(gram_d) @ diffusion_coeff
-
-        # Puis on calcul la moyenne de l'accélération
-        current_coeff, gram_d = self._loop_over_trajs(self._compute_current, data.weights, data, self.model)
-
+        X = np.concatenate([trj["x"][:-1] for trj in data], axis=0)
+        # Take weight into account as well
+        dim = X.shape[1]
+        acc = np.concatenate([trj["a"] for trj in data], axis=0)
+        if dim <= 1:
+            acc = acc.ravel()
+        if dim <= 1:
+            acc_sq = acc**2
+        else:
+            acc_sq = acc[..., None] * acc[:, None, ...]
+        self.model.diffusion.fit(X, acc_sq)  # We need to estimate the diffusion first in order to have the prefactor of the bias
+        # weights = np.concatenate(data.weights, axis=0)  # TODO: implement correctly the weights
+        if self.model.is_biased:  # If bias
+            bias = np.concatenate([trj["bias"][:-1] for trj in data], axis=0)
+            self.model.force.fit(X, bias, y=acc, sample_weight=None)
+        else:
+            self.model.force.fit(X, acc, sample_weight=None)
+        acc -= self.model.force(X, bias) * data[0]["dt"]
+        if dim <= 1:
+            acc_sq = acc**2
+        else:
+            acc_sq = acc[..., None] * acc[:, None, ...]
+        self.model.diffusion.fit(X, acc_sq)
         self.model.fitted_ = True
 
         return self
@@ -127,25 +165,3 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
             trj["v"] = (0.5 / trj["dt"]) * (np.roll(diffs, -1, axis=0) + diffs)[1:-1]
             trj["a"] = a[1:-1] / (trj["dt"] ** 2)
         return (0,)
-
-    @staticmethod
-    def _compute_acc_projection(weight, trj, model):
-        """
-        Force estimation over one trajectory
-        TODO: Adapter vérifier dimension array
-        """
-        force_basis = model.force_jac_coeffs(trj["x"])  # En vrai ça devrait être base force + friction
-        friction_basis = model.friction_jac_coeffs(trj["x"])
-        # Do concatenation of the basis
-        basis = np.concatenate((force_basis, np.dot(trj["v"], friction_basis)))
-        return np.dot(basis.T, trj["a"]) / trj["dt"], np.dot(basis.T, trj["a"] ** 2) / trj["dt"], np.dot(basis.T, basis)
-
-    @staticmethod
-    def _compute_diffusion(weight, trj, model):
-        """
-        Force estimation over one trajectory
-        TODO: Adapter underdamped
-        """
-
-        diffusion_basis = model.diffusion_jac_coeffs(trj["x"])
-        return np.dot(diffusion_basis.T, trj["a"] ** 2) * 0.75 * trj["dt"], np.dot(diffusion_basis.T, diffusion_basis)

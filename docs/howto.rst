@@ -35,6 +35,7 @@ Once we have obtained a model, we can extract useful quantities
     :maxdepth: 2
 
     notebooks/analysis_committor
+    notebooks/simulations
 ..
    Dans cette partie il va falloir avoir:
     Un calcul de committor et mfpt

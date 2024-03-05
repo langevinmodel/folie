@@ -2,7 +2,7 @@
 Set of analysis methods focused on 1D overdamped models
 """
 
-import numpy as np
+from .._numpy import np
 from scipy.integrate import cumulative_trapezoid
 
 

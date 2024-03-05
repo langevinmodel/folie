@@ -1,6 +1,6 @@
 # A set of analytical functions for examples
 from .base import ParametricFunction
-import numpy as np
+from .._numpy import np
 
 
 class PotentialFunction(ParametricFunction):

@@ -1,5 +1,5 @@
 from .base import ParametricFunction
-import numpy as np
+from .._numpy import np
 from scipy.interpolate import make_interp_spline, make_lsq_spline, BSpline
 from ..data import stats_from_input_data
 from sklearn.preprocessing import SplineTransformer

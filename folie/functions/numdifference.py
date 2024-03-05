@@ -13,7 +13,7 @@ without dependencies.
 Adapated from statsmodels
 """
 
-import numpy as np
+from .._numpy import np
 
 # NOTE: we only do double precision internally so far
 EPS = np.finfo(float).eps

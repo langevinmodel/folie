@@ -1,4 +1,4 @@
-import numpy as np
+from .._numpy import np
 
 from .base import ParametricFunction
 
@@ -104,7 +104,7 @@ class ModelOverlay(ParametricFunction):
         elif output_shape is None:
             raise ValueError("output_shape should be defined.")
 
-        super().__init__(output_shape, coefficients=self.coefficients, **kwargs)
+        super().__init__(output_shape, **kwargs)
 
     def transform(self, x, *args, **kwargs):
         return getattr(self.model, "_" + self.function_name)(x, *args, **kwargs)
@@ -115,12 +115,18 @@ class ModelOverlay(ParametricFunction):
         else:
             return super().transform_x(x, *args, **kwargs)  # If not implemented use finite difference
 
+    def transform_xx(self, x, *args, **kwargs):
+        if hasattr(self.model, self.function_name + "_xx"):
+            return getattr(self.model, self.function_name + "_xx")(x, *args, **kwargs)
+        else:
+            return super().transform_xx(x, *args, **kwargs)  # If not implemented use finite difference
+
     def transform_coeffs(self, x, *args, **kwargs):
         """
         Jacobian of the force with respect to coefficients
         """
-        if hasattr(self.model, self.function_name + "_jac_coeffs"):
-            return getattr(self.model, self.function_name + "_jac_coeffs")(x, *args, **kwargs)
+        if hasattr(self.model, self.function_name + "_coeffs"):
+            return getattr(self.model, self.function_name + "_coeffs")(x, *args, **kwargs)
         else:
             return super().transform_coeffs(x, *args, **kwargs)  # If not implemented use finite difference
 
@@ -133,3 +139,7 @@ class ModelOverlay(ParametricFunction):
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
         setattr(self.model, "coefficients_", vals)
+
+    @property
+    def size(self):
+        return np.prod(self.coefficients.shape)  # Es-ce qu'on ne devrait pas prendre plutot le gcd des deux ou équivalents

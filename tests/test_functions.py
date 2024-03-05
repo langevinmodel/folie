@@ -1,8 +1,9 @@
 import pytest
-import numpy as np
+from folie._numpy import np
 import folie as fl
 import scipy.optimize
 from sklearn.kernel_ridge import KernelRidge
+import skfem
 
 
 @pytest.mark.parametrize(
@@ -28,6 +29,30 @@ def test_functions(fct, parameters):
     np.testing.assert_allclose(fun.grad_x(data[0:1])[0], finite_diff_jac, rtol=1e-06)
 
     assert fun.grad_coeffs(data).shape == (25, fun.size)
+
+    def eval_fun(c):
+        fun.coefficients = c
+        return fun(data[0:1])[0]
+
+    finite_diff_jac = scipy.optimize.approx_fprime(fun.coefficients, eval_fun)
+    np.testing.assert_allclose(fun.grad_coeffs(data[0:1])[0], finite_diff_jac, rtol=1e-06)
+
+
+def test_fem_functions():
+
+    m = skfem.MeshTri().refined(4)
+    e = skfem.ElementTriP1()
+    fun = fl.functions.FiniteElement(skfem.Basis(m, e))
+    data = np.linspace(0, 1, 24).reshape(-1, 2)
+    fun.fit(data, np.ones(12))
+    assert fun(data).shape == (12,)
+
+    assert fun.grad_x(data).shape == (12, 2)
+
+    finite_diff_jac = scipy.optimize.approx_fprime(data[0], lambda x: fun(np.asarray([x]))[0])
+    np.testing.assert_allclose(fun.grad_x(data[0:1])[0], finite_diff_jac, rtol=1e-06)
+
+    assert fun.grad_coeffs(data).shape == (12, fun.size)
 
     def eval_fun(c):
         fun.coefficients = c

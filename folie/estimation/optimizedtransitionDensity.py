@@ -1,4 +1,4 @@
-import numpy as np
+from .._numpy import np
 import numba as nb
 
 from .overdamped_transitionDensity import EulerDensity

@@ -1,5 +1,5 @@
 from .base import Function
-import numpy as np
+from .._numpy import np
 from sklearn.metrics.pairwise import pairwise_kernels
 from sklearn.utils.validation import check_is_fitted, check_array
 
@@ -9,10 +9,13 @@ class sklearnWrapper(Function):
     Wraps sklearn predictor as functions. Allow to use non parametric estimator for fit.
     """
 
-    def __init__(self, estimator, output_shape=()):
+    def __init__(self, estimator, output_shape=(), expose_params=[]):
+        """
+        expose_params is a list of key for the parameters of the estimator to be exposed for optimisation
+        """
         super().__init__(output_shape)
-        # TODO: add possibility to expose some of the hyperparameters for MLE optimisation
         self.estimator = estimator
+        self.exposed_params = expose_params
 
     def fit(self, x, y=None, **kwargs):
         if y is None:
@@ -26,6 +29,27 @@ class sklearnWrapper(Function):
     def transform(self, X, *args, **kwargs):
         return self.estimator.predict(X)
 
+    @property
+    def coefficients(self):
+        """Access the coefficients"""
+        est_params = self.estimator.get_params()
+        coeffs = np.array([])
+        for key in self.exposed_params:
+            if key in est_params:
+                np.concatenate((coeffs, est_params[key].ravel()), axis=0)
+        return coeffs
+
+    @coefficients.setter
+    def coefficients(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        curr_ind = 0
+        est_params = self.estimator.get_params()
+        for key in self.exposed_params:
+            shape_params = est_params[key].shape
+            size_param = int(np.prod(est_params[key].shape))
+            self.estimator.set_params({key: (vals.ravel()[curr_ind : curr_ind + size_param]).reshape(shape_params)})
+            curr_ind += size_param
+
 
 class KernelFunction(Function):
     def __init__(self, gamma, kernel="rbf", output_shape=()):
@@ -33,7 +57,7 @@ class KernelFunction(Function):
         self.kernel = kernel
         self.gamma = gamma
 
-    def fit(self, x, y=None, **kwargs):
+    def fit(self, x, y=None, gamma_range=None, **kwargs):
         """Set reference frame associated with function values
 
         Parameters
@@ -43,6 +67,8 @@ class KernelFunction(Function):
             corresponds to a single data point.
         y : array-like of shape (n_references, )
             The target values of the function to interpolate.
+        gamma_range: iterable
+            List of gamma values to try for optimization
 
         Returns
         -------
@@ -56,8 +82,8 @@ class KernelFunction(Function):
         self.ref_X = check_array(x, accept_sparse=True)
         self.ref_f = y
         self.fitted_ = True
-        if hasattr(self.gamma, "__iter__"):
-            self.gamma = self._optimize_gamma(self.gamma)
+        if hasattr(gamma_range, "__iter__"):
+            self.gamma = self._optimize_gamma(gamma_range)
         return self  # `fit` should always return `self`
 
     def transform(self, X, *args, **kwargs):
@@ -93,3 +119,13 @@ class KernelFunction(Function):
             mse[i] = ((y_pred - self.ref_f) ** 2).mean()
 
         return gamma_values[np.nanargmin(mse)]
+
+    @property
+    def coefficients(self):
+        """Access the coefficients"""
+        return np.array([self.gamma])
+
+    @coefficients.setter
+    def coefficients(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        self.gamma = vals.ravel()[0]
