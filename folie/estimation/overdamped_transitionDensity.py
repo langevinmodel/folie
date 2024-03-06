@@ -54,7 +54,8 @@ class EulerDensity(TransitionDensity):
         """
         self._model.coefficients = coefficients
         like, jac = self._logdensity(x0=trj["x"], xt=trj["xt"], dt=trj["dt"], bias=trj["bias"])
-        return (-np.sum(np.maximum(self._min_prob, like)) / weight, -np.sum(jac, axis=0) / weight)
+        print(np.asarray(-np.sum(np.maximum(self._min_prob, like)) / weight))
+        return (np.asarray(-np.sum(np.maximum(self._min_prob, like)) / weight), np.asarray(-np.sum(jac, axis=0) / weight))
 
     def _logdensity1D(self, x0, xt, dt: float, bias=0.0):
         """
@@ -73,7 +74,6 @@ class EulerDensity(TransitionDensity):
         jacV = (self._model.diffusion.grad_coeffs(x0)) * 2 * dt
         l_jac_mu = 2 * ((xt.ravel() - mut) / sig2t)[:, None] * self._model.meandispl.grad_coeffs(x0, bias) * dt
         l_jac_V = (((xt.ravel() - mut) ** 2) / sig2t**2)[:, None] * jacV - 0.5 * jacV / sig2t[:, None]
-
         return ll, np.concatenate((l_jac_mu, l_jac_V), axis=-1)
 
     def _logdensityND(self, x0, xt, dt, bias=0.0):
