@@ -17,12 +17,12 @@ class Function(_BaseMethodsMixin, TransformerMixin):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, output_shape=(), dim_x=None, **kwargs):
+    def __init__(self, domain, output_shape=(), **kwargs):
         if output_shape is None:
             output_shape = ()
         self.output_shape_ = np.asarray(output_shape, dtype=int)
         self.output_size_ = np.prod(self.output_shape_)
-        self.dim_x = dim_x
+        self.domain = domain
         self.fitted_ = False
 
     def resize(self, new_shape):
@@ -47,6 +47,10 @@ class Function(_BaseMethodsMixin, TransformerMixin):
                 rtn = NotImplemented
         return rtn
 
+    @property
+    def size(self):
+        return len(self.coefficients)
+
     def transform(self, x, *args, **kwargs):
         r"""Transforms the input data."""
         pass
@@ -64,16 +68,16 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         r"""Hessian of the function with respect to input data.
         Implemented by finite difference.
         """
-        return approx_fprime(x, self.transform_x, self.output_shape_ + (len(x[0, : self.dim_x]),))
+        return approx_fprime(x, self.transform_x, self.output_shape_ + (len(x[0, : self.domain.dim]),))
 
     def __call__(self, x, *args, **kwargs):
-        return self.transform(x[:, : self.dim_x], *args, **kwargs).reshape((-1, *self.output_shape_))
+        return self.transform(x[:, : self.domain.dim], *args, **kwargs).reshape((-1, *self.output_shape_))
 
     def grad_x(self, x, *args, **kwargs):
-        return self.transform_x(x[:, : self.dim_x], *args, **kwargs).reshape((-1, *self.output_shape_, len(x[0, : self.dim_x])))
+        return self.transform_x(x[:, : self.domain.dim], *args, **kwargs).reshape((-1, *self.output_shape_, len(x[0, : self.domain.dim])))
 
     def hessian_x(self, x, *args, **kwargs):
-        return self.transform_xx(x[:, : self.dim_x], *args, **kwargs).reshape((-1, *self.output_shape_, len(x[0, : self.dim_x]), len(x[0, : self.dim_x])))
+        return self.transform_xx(x[:, : self.domain.dim], *args, **kwargs).reshape((-1, *self.output_shape_, len(x[0, : self.domain.dim]), len(x[0, : self.domain.dim])))
 
     def __add__(self, other):
         return FunctionSum([self, other])
@@ -109,8 +113,8 @@ class ParametricFunction(Function):
     This is mainly a overlay to get a common interface to different python librairies.
     """
 
-    def __init__(self, output_shape=(), coefficients=None, **kwargs):
-        super().__init__(output_shape)
+    def __init__(self, domain, output_shape=(), coefficients=None, **kwargs):
+        super().__init__(domain, output_shape)
         if coefficients is None:
             self._coefficients = np.zeros(output_shape)
             self.n_functions_features_ = 1
@@ -160,9 +164,8 @@ class ParametricFunction(Function):
         self.fitted_ = True
         return self
 
-    @abc.abstractmethod
     def transform_coeffs(self, x, *args, **kwargs):
-        pass  # TODO: Implement finite difference with scipy?
+        raise NotImplementedError  # TODO: Implement finite difference with scipy?
 
     def grad_coeffs(self, x, *args, **kwargs):
         r"""Gradient of the function with respect to the coefficients.
@@ -177,7 +180,7 @@ class ParametricFunction(Function):
         transformed : array_like
             The gradient
         """
-        return self.transform_coeffs(x[:, : self.dim_x], *args, **kwargs).reshape((x.shape[0], *self.output_shape_, -1))
+        return self.transform_coeffs(x[:, : self.domain.dim], *args, **kwargs).reshape((x.shape[0], *self.output_shape_, -1))
 
     def resize(self, new_shape):
         super().resize(new_shape)
@@ -200,4 +203,4 @@ class ParametricFunction(Function):
     @coefficients.setter
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
-        self._coefficients = vals.reshape((self.n_functions_features_, self.output_size_))
+        self._coefficients = vals.reshape((self.n_functions_features_, -1))

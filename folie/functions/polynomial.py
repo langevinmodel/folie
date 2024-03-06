@@ -1,6 +1,6 @@
 from .._numpy import np
 from .base import ParametricFunction
-from ..data import stats_from_input_data
+from ..domains import Domain
 
 
 class Constant(ParametricFunction):
@@ -8,8 +8,10 @@ class Constant(ParametricFunction):
     A function that return a constant value
     """
 
-    def __init__(self, output_shape=(), coefficients=None):
-        super().__init__(output_shape, coefficients)
+    def __init__(self, domain=None, output_shape=(), coefficients=None):
+        if domain is None:
+            domain = Domain.Rd(dim=1)
+        super().__init__(domain, output_shape, coefficients)
         self.n_functions_features_ = 1
 
     def differentiate(self):
@@ -36,14 +38,11 @@ class Linear(ParametricFunction):
     The linear function f(x) = c x
     """
 
-    def __init__(self, output_shape=(), coefficients=None):
-        super().__init__(output_shape, coefficients)
-
-    def fit(self, X, y=None, **kwargs):
-        xstats = stats_from_input_data(X[:, : self.dim_x])
-        self.n_functions_features_ = xstats.dim
-        super().fit(X, y, **kwargs)
-        return self
+    def __init__(self, domain=None, output_shape=(), coefficients=None):
+        if domain is None:
+            domain = Domain.Rd(dim=1)
+        self.n_functions_features_ = domain.dim
+        super().__init__(domain, output_shape, coefficients)
 
     def differentiate(self):
         fun = Constant(self.output_shape)
@@ -76,18 +75,15 @@ class Polynomial(ParametricFunction):
     The polynomial function
     """
 
-    def __init__(self, deg=None, polynom=np.polynomial.Polynomial(1), output_shape=(), coefficients=None):
-        super().__init__(output_shape, coefficients)
+    def __init__(self, deg=None, polynom=np.polynomial.Polynomial(1), domain=None, output_shape=(), coefficients=None):
         if deg is None:
             deg = polynom.degree()
         self.degree = deg + 1
         self.polynom = polynom
-
-    def fit(self, X, y=None, **kwargs):
-        xstats = stats_from_input_data(X[:, : self.dim_x])
-        self.n_functions_features_ = xstats.dim * self.degree
-        super().fit(X, y, **kwargs)
-        return self
+        if domain is None:
+            domain = Domain.Rd(dim=1)
+        self.n_functions_features_ = domain.dim * self.degree
+        super().__init__(output_shape, coefficients)
 
     def transform(self, x, *args, **kwargs):
         _, dim = x.shape

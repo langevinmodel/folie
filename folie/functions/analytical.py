@@ -1,6 +1,7 @@
 # A set of analytical functions for examples
 from .base import Function
 from .._numpy import np
+from ..domains import Domain
 
 
 class PotentialFunction(Function):
@@ -9,15 +10,12 @@ class PotentialFunction(Function):
             output_shape = ()
         else:
             output_shape = (self.dim,)
-        super().__init__(output_shape)
+        domain = Domain.Rd(self.dim)
+        super().__init__(domain, output_shape)
 
     def resize(self, new_shape):
         # We should run some test here
         pass
-
-    @property
-    def size(self):
-        return len(self._coefficients)
 
     def transform(self, x, *args, **kwargs):
         return self.force(x)
@@ -34,11 +32,11 @@ class ConstantForce(PotentialFunction):
         super().__init__()
 
     @property
-    def _coefficients(self):
+    def coefficients(self):
         return np.array([self.a])
 
-    @_coefficients.setter
-    def _coefficients(self, val):
+    @coefficients.setter
+    def coefficients(self, val):
         self.a = val[0]
 
     def potential(self, x):
@@ -59,11 +57,11 @@ class Quadratic(PotentialFunction):
         super().__init__()
 
     @property
-    def _coefficients(self):
+    def coefficients(self):
         return np.array([self.a])
 
-    @_coefficients.setter
-    def _coefficients(self, val):
+    @coefficients.setter
+    def coefficients(self, val):
         self.a = val[0]
 
     def potential(self, x):
@@ -86,11 +84,11 @@ class Quartic(PotentialFunction):
         super().__init__()
 
     @property
-    def _coefficients(self):
+    def coefficients(self):
         return np.array([self.a, self.x0, self.x1])
 
-    @_coefficients.setter
-    def _coefficients(self, val):
+    @coefficients.setter
+    def coefficients(self, val):
         self.a, self.x0, self.x1 = val
 
     def potential(self, x):
@@ -111,11 +109,11 @@ class Cosine(PotentialFunction):
         super().__init__()
 
     @property
-    def _coefficients(self):
+    def coefficients(self):
         return np.array([self.a])
 
-    @_coefficients.setter
-    def _coefficients(self, val):
+    @coefficients.setter
+    def coefficients(self, val):
         self.a = val[0]
 
     def potential(self, x):
@@ -137,11 +135,11 @@ class Quartic2D(PotentialFunction):
         super().__init__()
 
     @property
-    def _coefficients(self):
+    def coefficients(self):
         return np.array([self.a, self.b])
 
-    @_coefficients.setter
-    def _coefficients(self, val):
+    @coefficients.setter
+    def coefficients(self, val):
         self.a, self.b = val
 
     def potential(self, X):
@@ -171,7 +169,7 @@ class ThreeWell(PotentialFunction):
         super().__init__()
 
     @property
-    def _coefficients(self):
+    def coefficients(self):
         return np.array([*self.Ac, *self.a, *self.b, *self.c, *self.x0, *self.y0])
 
     def potential(self, X):
@@ -223,7 +221,7 @@ class MullerBrown(PotentialFunction):
         super().__init__()
 
     @property
-    def _coefficients(self):
+    def coefficients(self):
         return np.array([*self.Ac, *self.a, *self.b, *self.c, *self.x0, *self.y0])
 
     def potential(self, X):
@@ -268,7 +266,7 @@ class RuggedMullerBrown(PotentialFunction):
         super().__init__()
 
     @property
-    def _coefficients(self):
+    def coefficients(self):
         return np.array([*self.Ac, *self.a, *self.b, *self.c, *self.x0, *self.y0, self.gamma, self.k])
 
     def potential(self, X):
@@ -320,7 +318,7 @@ class LogExpPot(PotentialFunction):
         super().__init__()
 
     @property
-    def _coefficients(self):
+    def coefficients(self):
         return np.array([*self.a, *self.b, *self.x0, *self.y0])
 
     def potential(self, X):
@@ -377,7 +375,7 @@ class ValleyRidgePotential(PotentialFunction):
         super().__init__()
 
     @property
-    def _coefficients(self):
+    def coefficients(self):
         return np.array([self.V, self.A, self.B, self.C, self.xs, self.xi])
 
     def potential(self, X):
@@ -410,7 +408,7 @@ class SimpleValleyRidgePotential(PotentialFunction):
         super().__init__()
 
     @property
-    def _coefficients(self):
+    def coefficients(self):
         return np.array([self.a])
 
     def potential(self, X):

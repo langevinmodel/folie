@@ -9,13 +9,21 @@ class sklearnWrapper(Function):
     Wraps sklearn predictor as functions. Allow to use non parametric estimator for fit.
     """
 
-    def __init__(self, estimator, output_shape=(), expose_params=[]):
+    def __init__(self, estimator, domain, output_shape=(), expose_params=[], do_not_fit_on_init=False):
         """
         expose_params is a list of key for the parameters of the estimator to be exposed for optimisation
         """
-        super().__init__(output_shape)
+        super().__init__(domain, output_shape)
         self.estimator = estimator
         self.exposed_params = expose_params
+        if not check_is_fitted(self.estimator) and not do_not_fit_on_init:  # Fit in order to define the needed coefficients_
+            self.fit(domain.cube)
+        if hasattr(self.estimator, "predict"):
+            self.transform = self.transform_predict
+        elif hasattr(self.estimator, "transform"):
+            self.transform = self.transform_transform
+        else:
+            raise ValueError("The estimator does not have predict or transform method")
 
     def fit(self, x, y=None, **kwargs):
         if y is None:
@@ -26,7 +34,10 @@ class sklearnWrapper(Function):
         self.fitted_ = True
         return self
 
-    def transform(self, X, *args, **kwargs):
+    def transform_predict(self, X, *args, **kwargs):
+        return self.estimator.predict(X)
+
+    def transform_transform(self, X, *args, **kwargs):
         return self.estimator.predict(X)
 
     @property
@@ -37,6 +48,8 @@ class sklearnWrapper(Function):
         for key in self.exposed_params:
             if key in est_params:
                 np.concatenate((coeffs, est_params[key].ravel()), axis=0)
+            else:
+                np.concatenate((coeffs, getattr(self.estimator, key).ravel()), axis=0)
         return coeffs
 
     @coefficients.setter
@@ -45,9 +58,14 @@ class sklearnWrapper(Function):
         curr_ind = 0
         est_params = self.estimator.get_params()
         for key in self.exposed_params:
-            shape_params = est_params[key].shape
-            size_param = int(np.prod(est_params[key].shape))
-            self.estimator.set_params({key: (vals.ravel()[curr_ind : curr_ind + size_param]).reshape(shape_params)})
+            if key in est_params:
+                shape_params = est_params[key].shape
+                size_param = int(np.prod(shape_params))
+                self.estimator.set_params({key: (vals.ravel()[curr_ind : curr_ind + size_param]).reshape(shape_params)})
+            else:
+                shape_params = getattr(self.estimator, key).shape
+                size_param = int(np.prod(shape_params))
+                setattr(self.estimator, key, (vals.ravel()[curr_ind : curr_ind + size_param]).reshape(shape_params))
             curr_ind += size_param
 
 

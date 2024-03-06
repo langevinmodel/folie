@@ -1,7 +1,7 @@
 from .base import ParametricFunction
 from .._numpy import np
 from scipy.interpolate import make_interp_spline, make_lsq_spline, BSpline
-from ..data import stats_from_input_data
+from ..domains import Domain
 from sklearn.preprocessing import SplineTransformer
 
 
@@ -10,7 +10,10 @@ class BSplinesFunction(ParametricFunction):
     A function that use a set of B-splines
     """
 
-    def __init__(self, knots=5, k=3, bc_type=None, output_shape=(), coefficients=None):
+    def __init__(self, domain, k=3, bc_type=None, output_shape=(), coefficients=None):
+        # Ici domain ne peut pas être None, mais on obtient soit les knots via le domain qui doit être un MeshedDomain1D
+
+        assert domain.dim <= 1
         super().__init__(output_shape, coefficients)
         self.bc_type = bc_type
         self.k = k
@@ -98,17 +101,16 @@ class sklearnBSplines(ParametricFunction):
     A slower but more complete set of BSplines
     """
 
-    def __init__(self, knots=5, k=3, bc_type="continue", output_shape=(), coefficients=None):
+    def __init__(self, domain, knots=5, k=3, bc_type="continue", output_shape=(), coefficients=None):
+
+        assert domain.dim <= 1
         super().__init__(output_shape, coefficients)
         self.bc_type = bc_type
         self.k = k
         self.knots = knots
-
-    def fit(self, X, y=None, **kwargs):
-        self.bspline = SplineTransformer(n_knots=self.knots, degree=self.k, extrapolation=self.bc_type, sparse_output=True).fit(X[:, : self.dim_x])
+        # Si les knots sont sont en mode quantile, mais en vrai on va le faire en externe donc knots est toujours un array
+        self.bspline = SplineTransformer(n_knots=self.knots, degree=self.k, extrapolation=self.bc_type, sparse_output=True).fit(knots)
         self.n_functions_features_ = self.bspline.n_features_out_
-        super().fit(X[:, : self.dim_x], y, **kwargs)
-        return self
 
     def transform(self, x, *args, **kwargs):
         return self.bspline.transform(x) @ self._coefficients
