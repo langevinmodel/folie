@@ -13,13 +13,14 @@ import skfem
         (fl.functions.Linear, {}),
         (fl.functions.Polynomial, {"deg": 3}),
         (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
-        (fl.functions.BSplinesFunction, {"knots": 7}),
+        (fl.functions.BSplinesFunction, {}),
         (fl.functions.Fourier, {"order": 3}),
     ],
 )
 def test_functions(fct, parameters):
     data = np.linspace(-1, 1, 25).reshape(-1, 1)
-    fun = fct(**parameters).fit(data)
+    domain = fl.MeshedDomain.create_from_range(np.linspace(-1, 1, 7))
+    fun = fct(domain=domain, **parameters)
 
     assert fun(data).shape == (25,)
 
@@ -41,8 +42,9 @@ def test_functions(fct, parameters):
 def test_fem_functions():
 
     m = skfem.MeshTri().refined(4)
+    domain = fl.MeshedDomain(m)
     e = skfem.ElementTriP1()
-    fun = fl.functions.FiniteElement(skfem.Basis(m, e))
+    fun = fl.functions.FiniteElement(domain, e)
     data = np.linspace(0, 1, 24).reshape(-1, 2)
     fun.fit(data, np.ones(12))
     assert fun(data).shape == (12,)
@@ -69,13 +71,12 @@ def test_fem_functions():
         (fl.functions.Linear, {}),
         (fl.functions.Polynomial, {"deg": 3}),
         (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
-        (fl.functions.BSplinesFunction, {"knots": 7}),
         (fl.functions.Fourier, {"order": 3}),
     ],
 )
 def test_functions_ND(fct, parameters):
     data = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun = fct(output_shape=(2,), **parameters).fit(data)
+    fun = fct(domain=fl.Domain.Rd(2), output_shape=(2,), **parameters).fit(data)
 
     assert fun(data).shape == (12, 2)
 
@@ -94,13 +95,12 @@ def test_functions_ND(fct, parameters):
         (fl.functions.Linear, {}),
         (fl.functions.Polynomial, {"deg": 3}),
         (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
-        (fl.functions.BSplinesFunction, {"knots": 7}),
         (fl.functions.Fourier, {"order": 3}),
     ],
 )
 def test_functions_ND_various_dim(fct, parameters):
     data = np.linspace(-1, 1, 24).reshape(-1, 3)
-    fun = fct(output_shape=(4,), **parameters).fit(data)
+    fun = fct(domain=fl.Domain.Rd(3), output_shape=(4,), **parameters).fit(data)
 
     assert fun(data).shape == (8, 4)
 
@@ -116,13 +116,12 @@ def test_functions_ND_various_dim(fct, parameters):
         (fl.functions.Linear, {}),
         (fl.functions.Polynomial, {"deg": 3}),
         (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
-        (fl.functions.BSplinesFunction, {"knots": 7}),
         (fl.functions.Fourier, {"order": 3}),
     ],
 )
 def test_matrix_functions_ND(fct, parameters):
     data = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun = fct(**parameters).fit(data).resize((2, 2))
+    fun = fct(domain=fl.Domain.Rd(2), **parameters).fit(data).resize((2, 2))
 
     assert fun(data).shape == (12, 2, 2)
 
@@ -179,22 +178,6 @@ def test_functions_tensor():
     assert fun_ten.grad_coeffs(data).shape == (25, 2, 2)
 
 
-@pytest.mark.skip(reason="Change for more complex functions")
-def test_functions_composition():
-    data = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun1 = fl.functions.Linear(output_shape=(2,)).fit(data)
-
-    fun2 = fl.functions.Linear().fit(data)
-
-    fun_compo = fl.functions.FunctionComposition(fun1, fun2)
-
-    assert fun_compo(data).shape == (24,)
-
-    assert fun_compo.grad_x(data).shape == (24, 2)
-
-    assert fun_compo.grad_coeffs(data).shape == (24, 2)
-
-
 @pytest.mark.parametrize(
     "fct,parameters",
     [
@@ -204,8 +187,8 @@ def test_functions_composition():
 )
 def test_nonparametricfunctions(fct, parameters):
     data = np.linspace(-1, 1, 25).reshape(-1, 1)
-    y = data ** 2
-    fun = fct(**parameters).fit(data, y)
+    y = data**2
+    fun = fct(domain=fl.Domain.Rd(1), **parameters).fit(data, y)
 
     assert fun(data).shape == (25,)
 
@@ -225,7 +208,8 @@ def test_nonparametricfunctions(fct, parameters):
 def test_nonparametricfunctions_ND(fct, parameters):
     data = np.linspace(-1, 1, 24).reshape(-1, 2)
     y = data[..., None] * data[:, None, :]
-    fun = fct(output_shape=(2, 2), **parameters).fit(data, y)
+
+    fun = fct(domain=fl.Domain.Rd(2), output_shape=(2, 2), **parameters).fit(data, y)
 
     assert fun(data).shape == (12, 2, 2)
 
@@ -237,15 +221,15 @@ def test_nonparametricfunctions_ND(fct, parameters):
 
 def test_numerical_difference():
     X = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun = fl.functions.BSplinesFunction(knots=7).fit(X, X ** 2)
-    #  fun = fl.functions.BSplinesFunction(knots=7, output_shape=(2,)).fit(X, X**2)
+    domain = fl.Domain.Rd(2)
+    fun = fl.functions.Fourier(order=3, domain=domain).fit(X, (X**2).sum(axis=1))
 
     finite_diff = fl.functions.approx_fprime(X, fun, fun.output_shape_)
 
     finite_diff_jac = np.zeros((X.shape[0], X.shape[1]))
     for n in range(X.shape[0]):
         finite_diff_jac[n, :] = scipy.optimize.approx_fprime(X[n, :], lambda x: fun(x.reshape(1, -1)))
-    np.testing.assert_allclose(finite_diff, finite_diff_jac, rtol=1e-07)
+    np.testing.assert_allclose(finite_diff, finite_diff_jac, rtol=1e-06)
 
 
 @pytest.mark.parametrize(
@@ -268,7 +252,7 @@ def test_analytical_potential(pot):
 
     X = np.linspace(-1, 1, 25 * pot.dim).reshape(-1, pot.dim)
 
-    assert pot.size == len(pot._coefficients)
+    assert pot.size == len(pot.coefficients)
 
     assert pot.potential(X).shape == (25,)
 

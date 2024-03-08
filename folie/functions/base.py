@@ -5,6 +5,9 @@ import abc
 from sklearn.base import TransformerMixin
 from sklearn import linear_model
 
+import scipy.optimize
+import sparse
+
 from ..base import _BaseMethodsMixin
 from .numdifference import approx_fprime
 from .functions_composition import FunctionSum, FunctionTensored
@@ -23,7 +26,6 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         self.output_shape_ = np.asarray(output_shape, dtype=int)
         self.output_size_ = np.prod(self.output_shape_)
         self.domain = domain
-        self.fitted_ = False
 
     def resize(self, new_shape):
         """
@@ -68,7 +70,7 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         r"""Hessian of the function with respect to input data.
         Implemented by finite difference.
         """
-        return approx_fprime(x, self.transform_x, self.output_shape_ + (len(x[0, : self.domain.dim]),))
+        return approx_fprime(x, self.transform_x, self.output_shape_ + (self.domain.dim,))
 
     def __call__(self, x, *args, **kwargs):
         return self.transform(x[:, : self.domain.dim], *args, **kwargs).reshape((-1, *self.output_shape_))
@@ -116,12 +118,9 @@ class ParametricFunction(Function):
     def __init__(self, domain, output_shape=(), coefficients=None, **kwargs):
         super().__init__(domain, output_shape)
         if coefficients is None:
-            self._coefficients = np.zeros(output_shape)
-            self.n_functions_features_ = 1
+            self._coefficients = np.random.randn(self.n_functions_features_, self.output_size_)  # Initialize to random value
         else:
-            self.n_functions_features_ = coefficients.shape[0]
             self.coefficients = coefficients
-            self.fitted_ = True  # If coefficients where given
 
     @classmethod
     def __subclasshook__(cls, C):  # Define required minimal interface for duck-typing
@@ -132,7 +131,6 @@ class ParametricFunction(Function):
                 rtn = NotImplemented
         return rtn
 
-    # TODO: Implement the fit outside of the functions, since we mainly need it in KramersMoyal
     def fit(self, x, y=None, estimator=linear_model.LinearRegression(copy_X=False, fit_intercept=False), sample_weight=None, **kwargs):
         """
         Fit coefficients of the function using linear regression.
@@ -158,14 +156,25 @@ class ParametricFunction(Function):
         else:
             y = y.ravel()
 
-        Fx = self.grad_coeffs(x, **kwargs)
-        reg = estimator.fit(Fx.reshape((x.shape[0] * self.output_size_, -1)), y, sample_weight=sample_weight)
+        Fx = self.grad_coeffs(x, **kwargs).reshape((x.shape[0] * self.output_size_, -1))
+        if isinstance(Fx, sparse.SparseArray):
+            Fx = Fx.tocsr()
+        reg = estimator.fit(Fx, y, sample_weight=sample_weight)
         self.coefficients = reg.coef_
         self.fitted_ = True
         return self
 
     def transform_coeffs(self, x, *args, **kwargs):
-        raise NotImplementedError  # TODO: Implement finite difference with scipy?
+        init_coeffs = self.coefficients.copy()
+
+        def f_coeffs(c, *args, **kwargs):
+            self.coefficients = c
+            return self.transform(*args, **kwargs)
+
+        fprime = scipy.optimize.approx_fprime(self.coefficients, f_coeffs, x, *args, **kwargs)
+        self.coefficients = init_coeffs
+        return fprime
+        # raise NotImplementedError  # TODO: Check implementation
 
     def grad_coeffs(self, x, *args, **kwargs):
         r"""Gradient of the function with respect to the coefficients.

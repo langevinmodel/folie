@@ -8,12 +8,11 @@ import folie as fl
     [
         (fl.functions.Constant, {}, 1),
         (fl.functions.Polynomial, {"deg": 3}, 4),
-        (fl.functions.BSplinesFunction, {"knots": 7}, 7),
+        (fl.functions.BSplinesFunction, {"domain": fl.MeshedDomain.create_from_range(np.linspace(-1, 1, 7))}, 7),
     ],
 )
 def test_overdamped(fct, parameters, expected):
-    data = np.linspace(-1, 1, 25).reshape(-1, 1)
-    fun = fct(**parameters).fit(data)
+    fun = fct(**parameters)
     model = fl.models.Overdamped(fun, fun.copy())
 
     x = np.linspace(-1, 1, 15).reshape(-1, 1)

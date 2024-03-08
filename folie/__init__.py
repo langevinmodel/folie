@@ -9,6 +9,8 @@ os.environ["SPARSE_AUTO_DENSIFY"] = "1"
 
 from .data import Trajectories, Trajectory
 
+from .domains import *
+
 from .estimation import *
 from .models import *
 

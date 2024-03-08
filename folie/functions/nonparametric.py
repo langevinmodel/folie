@@ -9,21 +9,15 @@ class sklearnWrapper(Function):
     Wraps sklearn predictor as functions. Allow to use non parametric estimator for fit.
     """
 
-    def __init__(self, estimator, domain, output_shape=(), expose_params=[], do_not_fit_on_init=False):
+    def __init__(self, estimator, domain, output_shape=(), expose_params=[]):
         """
         expose_params is a list of key for the parameters of the estimator to be exposed for optimisation
         """
         super().__init__(domain, output_shape)
         self.estimator = estimator
         self.exposed_params = expose_params
-        if not check_is_fitted(self.estimator) and not do_not_fit_on_init:  # Fit in order to define the needed coefficients_
-            self.fit(domain.cube)
-        if hasattr(self.estimator, "predict"):
-            self.transform = self.transform_predict
-        elif hasattr(self.estimator, "transform"):
-            self.transform = self.transform_transform
-        else:
-            raise ValueError("The estimator does not have predict or transform method")
+        if not hasattr(self.estimator, "predict"):
+            raise ValueError("The estimator does not have predict method")
 
     def fit(self, x, y=None, **kwargs):
         if y is None:
@@ -34,10 +28,7 @@ class sklearnWrapper(Function):
         self.fitted_ = True
         return self
 
-    def transform_predict(self, X, *args, **kwargs):
-        return self.estimator.predict(X)
-
-    def transform_transform(self, X, *args, **kwargs):
+    def transform(self, X, *args, **kwargs):
         return self.estimator.predict(X)
 
     @property
@@ -70,8 +61,8 @@ class sklearnWrapper(Function):
 
 
 class KernelFunction(Function):
-    def __init__(self, gamma, kernel="rbf", output_shape=()):
-        super().__init__(output_shape)
+    def __init__(self, gamma, domain, kernel="rbf", output_shape=()):
+        super().__init__(domain, output_shape)
         self.kernel = kernel
         self.gamma = gamma
 

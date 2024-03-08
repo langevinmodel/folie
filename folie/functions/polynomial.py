@@ -11,8 +11,8 @@ class Constant(ParametricFunction):
     def __init__(self, domain=None, output_shape=(), coefficients=None):
         if domain is None:
             domain = Domain.Rd(dim=1)
-        super().__init__(domain, output_shape, coefficients)
         self.n_functions_features_ = 1
+        super().__init__(domain, output_shape, coefficients)
 
     def differentiate(self):
         fun = self.copy()  # Inclure extra dim pour la differentiation
@@ -83,7 +83,7 @@ class Polynomial(ParametricFunction):
         if domain is None:
             domain = Domain.Rd(dim=1)
         self.n_functions_features_ = domain.dim * self.degree
-        super().__init__(output_shape, coefficients)
+        super().__init__(domain, output_shape, coefficients)
 
     def transform(self, x, *args, **kwargs):
         _, dim = x.shape

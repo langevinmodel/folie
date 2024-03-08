@@ -30,6 +30,12 @@ class Domain:
         self.dim = dim
         self.cube = cube  # Enclosing cube
 
+    def localize_data(self, X):
+        """
+        Find cells indices and local value
+        """
+        return 0, None
+
     @classmethod
     def create_from_data(cls, data):
         stats = stats_from_input_data(data)
@@ -78,6 +84,17 @@ class MeshedDomain(Domain):
         mplot = self.mesh.refined(refined)
         return mplot.p.T
 
+    def localize_data(self, X, mapping=None):
+        """
+        Get elements and position within the elements
+        """
+        if mapping is None:
+            mapping = self.mesh.mapping()
+        cells = self.mesh.element_finder(mapping=mapping)(*(X.T))  # Change the element finder
+        # Find a way to exclude out of mesh elements, we can define an outside elements that is a constant
+        loc_x = mapping.invF(X.T[:, :, np.newaxis], tind=cells)
+        return cells, loc_x[..., 0].T
+
     @classmethod
     def create_from_range(cls, *xis, periodic=None):
         """
@@ -86,6 +103,7 @@ class MeshedDomain(Domain):
         if periodic is None:
             if len(xis) == 1:
                 meshcls = skfem.MeshLine
+                return cls(meshcls.init_tensor(*xis))
             elif len(xis) == 2:
                 meshcls = skfem.MeshTri
             elif len(xis) == 3:
@@ -97,6 +115,7 @@ class MeshedDomain(Domain):
         else:
             if len(xis) == 1:
                 meshcls = skfem.MeshLine1DG
+                return cls(meshcls.init_tensor(*xis, periodic=periodic))
             elif len(xis) == 2:
                 meshcls = skfem.MeshTri1DG
             else:

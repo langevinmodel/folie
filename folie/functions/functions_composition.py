@@ -66,63 +66,6 @@ class FunctionSum:
         return np.sum([fu.n_output_features_ for fu in self.functions_set])
 
 
-class FunctionComposition:
-    r"""
-    Composition operation to evaluate :math:`(f \circ g)(x) = f(g(x))`, where
-    :math:`f` and :math:`g` are functions
-    """
-
-    def __init__(self, f, g):
-        self.f = f
-        self.g = g
-
-    def fit(self, x, y=None, yg=None, **kwargs):
-        """
-        Compute number of output features.
-
-        Parameters
-        ----------
-        x : array-like, shape (n_samples, n_features)
-            The data.
-
-        Returns
-        -------
-        self : instance
-        """
-        self.g.fit(x, yg, **kwargs)  # TODO: Ne marche pas, il faudrait faire f^-1(y)
-        self.f.fit(self.g(x), y, **kwargs)
-
-        self.n_output_features_ = self.f.n_output_features_
-        self.fitted_ = True
-        return self
-
-    def __call__(self, x, *args, **kwargs):
-        r"""Transforms the input data.
-
-        Parameters
-        ----------
-        x : array_like
-            Input data.
-
-        Returns
-        -------
-        transformed : array_like
-            The transformed data
-        """
-        return self.f(self.g(x, *args, **kwargs), *args, **kwargs)
-
-    def grad_x(self, x, *args, **kwargs):
-        r"""Gradient of the function with respect to input data"""
-
-    def hessian_x(self, x, *args, **kwargs):
-        """
-        Hessien of the function with respect to input data
-        """
-
-    def grad_coeffs(self, x, *args, **kwargs):
-        r"""Gradient with respect to the coefficients."""
-
-
 class FunctionTensored:
     r"""
     Tensor operation to evaluate :math:`(f_1 \otimes f_2 \otimes f_3)(x,y,z) = f_1(x)f_2(y)f_3(z)`, where
