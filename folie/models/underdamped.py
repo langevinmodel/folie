@@ -16,10 +16,6 @@ class Underdamped(Overdamped):
         """
         super().__init__(force, diffusion, dim=dim)
         self.friction = friction.resize(self.diffusion.shape)
-        if not self.friction.fitted_ and not kwargs.get("friction_is_fitted", False):
-            loc_dim = self.dim if self.dim > 0 else 1
-            X = np.linspace([-1] * loc_dim, [1] * loc_dim, 5)
-            self.friction.fit(X, np.ones((5, *self.diffusion.shape)))
 
     @Overdamped.dim.setter
     def dim(self, dim):
@@ -102,6 +98,7 @@ class UnderdampedOrnsteinUhlenbeck(Underdamped):
 
     def __init__(self, theta=0, kappa=1.0, sigma=1.0, **kwargs):
         # Init by passing functions to the model
+        # TODO: Update to not use fit
         X = np.linspace(-1, 1, 5).reshape(-1, 1)
         super().__init__(Polynomial(1).fit(X, -1 * np.linspace(-1, 1, 5)), Constant().fit(X, np.ones(5)), Constant().fit(X, np.ones(5)), dim=0, **kwargs)
         self.force.coefficients = np.asarray([theta, -kappa])

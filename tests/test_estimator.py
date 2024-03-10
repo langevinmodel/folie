@@ -91,7 +91,7 @@ def test_direct_estimator(data, request, fct, parameters):
     ],
 )
 def test_direct_estimator2d(data2d, request, fct, parameters):
-    model = fl.models.Overdamped(fct(**parameters), dim=2)
+    model = fl.models.Overdamped(fct(domain=fl.Domain.Rd(2), **parameters), dim=2)
     estimator = fl.KramersMoyalEstimator(model)
     model = estimator.fit_fetch(data2d)
     assert model.fitted_
@@ -134,7 +134,7 @@ def test_likelihood_estimator(data, request):
 
 @pytest.mark.parametrize("data2d", ["numpy"], indirect=True)
 def test_likelihood_estimator2d(data2d, request):
-    fun_lin = fl.functions.Linear()
+    fun_lin = fl.functions.Linear(domain=fl.Domain.Rd(2))
     model = fl.models.Overdamped(fun_lin, dim=2)
     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
     model = estimator.fit_fetch(data2d)
@@ -147,7 +147,8 @@ def test_fem_likelihood_estimator(data, request):
     n_knots = 20
     epsilon = 1e-10
     m = skfem.MeshLine(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots).ravel())
-    fun = fl.functions.FiniteElement(skfem.Basis(m, skfem.ElementLineP1()))
+    domain = fl.MeshedDomain(m)
+    fun = fl.functions.FiniteElement(domain, skfem.ElementLineP1())
     model = fl.models.Overdamped(fun, dim=1)
     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
 

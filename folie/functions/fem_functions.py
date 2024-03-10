@@ -20,18 +20,23 @@ class FiniteElement(ParametricFunction):
             loc_x = kwargs["loc_x"]
         except KeyError:
             cells, loc_x = self.domain.localize_data(x)
-        phis = np.array([self.basis.elem.gbasis(self.basis.mapping, loc_x.T[..., None], k, tind=cells)[0] for k in range(self.basis.Nbfun)]).flatten()
-        probes_matrix = sparse.COO(
-            np.array(
-                [
-                    np.tile(np.arange(x.shape[0]), self.basis.Nbfun),
-                    self.basis.element_dofs[:, cells].flatten(),
-                ]
-            ),
-            phis,
-            shape=(x.shape[0], self.basis.N),
-        )
-        return probes_matrix.tocsr() @ self._coefficients  # Check efficiency of conversion to csr
+        # phis = np.array([self.basis.elem.gbasis(self.basis.mapping, loc_x.T[..., None], k, tind=cells)[0] for k in range(self.basis.Nbfun)])
+        # probes_matrix = sparse.COO(
+        #     np.array(
+        #         [
+        #             np.tile(np.arange(x.shape[0]), self.basis.Nbfun),
+        #             self.basis.element_dofs[:, cells].flatten(),
+        #         ]
+        #     ),
+        #     phis.flatten(),
+        #     shape=(x.shape[0], self.basis.N),
+        # )
+        # return probes_matrix.tocsr() @ self._coefficients
+
+        res = 0.0
+        for k in range(self.basis.Nbfun):
+            res += self.basis.elem.gbasis(self.basis.mapping, loc_x.T[..., None], k, tind=cells)[0] * self._coefficients[self.basis.element_dofs[k, cells], ...]
+        return res
 
     def transform_x(self, x, *args, **kwargs):
         _, dim = x.shape

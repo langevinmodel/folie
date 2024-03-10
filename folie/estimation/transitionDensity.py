@@ -61,7 +61,7 @@ class TransitionDensity(ABC):
                     trj["x"] = np.concatenate((trj["x"], np.zeros((trj["x"].shape[0], self._model.dim_h))), axis=1)
                     trj["xt"] = np.concatenate((trj["xt"], np.zeros((trj["xt"].shape[0], self._model.dim_h))), axis=1)
                     trj["bias"] = np.concatenate((trj["bias"], np.zeros((trj["bias"].shape[0], self._model.dim_h))), axis=1)
-            self.model.preprocess_traj(trj, **kwargs)
+            trj = self.model.preprocess_traj(trj, **kwargs)
         return trj
 
     def density(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
@@ -72,4 +72,4 @@ class TransitionDensity(ABC):
         Compute Likelihood of one trajectory
         """
         self._model.coefficients = coefficients
-        return (-np.sum(np.maximum(self._min_prob, self._logdensity(x0=trj["x"], xt=trj["xt"], dt=trj["dt"], bias=trj["bias"]))) / weight,)
+        return (-np.sum(np.maximum(self._min_prob, self._logdensity(**trj))) / weight,)

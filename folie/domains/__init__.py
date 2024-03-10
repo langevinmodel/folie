@@ -30,11 +30,11 @@ class Domain:
         self.dim = dim
         self.cube = cube  # Enclosing cube
 
-    def localize_data(self, X):
-        """
-        Find cells indices and local value
-        """
-        return 0, None
+    # def localize_data(self, X):
+    #     """
+    #     Find cells indices and local value
+    #     """
+    #     return 0, None
 
     @classmethod
     def create_from_data(cls, data):
@@ -49,6 +49,9 @@ class Domain:
         """
         Build d dimensionnal space
         """
+        assert dim >= 0
+        if dim < 1:
+            dim = 1
         range = np.empty((2, dim))
         range[0, :] = -np.infty
         range[1, :] = np.infty

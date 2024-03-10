@@ -29,10 +29,6 @@ class OverdampedHidden(Overdamped):
 
         super().__init__(force, diffusion, dim=self.dim_x + self.dim_h, **kwargs)
         self.friction = friction.resize((self.dim, self.dim_h))
-        if not self.friction.fitted_ and not kwargs.get("friction_is_fitted", False):  # Set friction to constant one
-            loc_dim = self.dim if self.dim > 0 else 1
-            X = np.linspace([-1] * loc_dim, [1] * loc_dim, 5)
-            self.friction.fit(X, np.ones((5, self.dim, self.dim_h)))
 
     @property
     def coefficients(self):

@@ -13,7 +13,7 @@ class BSplinesFunction(ParametricFunction):
     def __init__(self, domain, k=3, bc_type=None, output_shape=(), coefficients=None):
         if domain.dim > 1:
             raise ValueError("BSplinesFunction does not handle higher dimensionnal system")
-        knots = domain.mesh.p[0]
+        knots = domain.mesh.p.squeeze()
         self.bspline = make_interp_spline(knots, np.zeros(len(knots)), k=k, bc_type=bc_type)
         self.n_functions_features_ = self.bspline.c.shape[0]
         super().__init__(domain, output_shape, coefficients)
@@ -71,17 +71,17 @@ class sklearnBSplines(ParametricFunction):
     def __init__(self, domain, k=3, bc_type="continue", output_shape=(), coefficients=None):
 
         assert domain.dim <= 1
-        super().__init__(output_shape, coefficients)
         self.bc_type = bc_type
         self.k = k
         self.knots = domain.mesh.p.T
         # Si les knots sont sont en mode quantile, mais en vrai on va le faire en externe donc knots est toujours un array
         self.bspline = SplineTransformer(n_knots=self.knots.shape[0], degree=self.k, extrapolation=self.bc_type, sparse_output=True).fit(self.knots)
         self.n_functions_features_ = self.bspline.n_features_out_
+        super().__init__(domain, output_shape, coefficients)
 
     def transform(self, x, *args, **kwargs):
         return self.bspline.transform(x) @ self._coefficients
 
     def transform_coeffs(self, x, *args, **kwargs):
-        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
-        return np.tensordot(self.bspline.transform(x), transform_coeffs, axes=1)
+        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, -1)
+        return self.bspline.transform(x) @ transform_coeffs
