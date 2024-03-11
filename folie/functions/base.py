@@ -183,7 +183,6 @@ class ParametricFunction(Function):
             y = np.zeros((x.shape[0] * self.output_size_))
         else:
             y = y.ravel()
-
         Fx = self.grad_coeffs(x, **kwargs).reshape((x.shape[0] * self.output_size_, -1))
         if isinstance(Fx, sparse.SparseArray):
             Fx = Fx.tocsr()

@@ -106,7 +106,6 @@ class MeshedDomain(Domain):
         if periodic is None:
             if len(xis) == 1:
                 meshcls = skfem.MeshLine
-                return cls(meshcls.init_tensor(*xis))
             elif len(xis) == 2:
                 meshcls = skfem.MeshTri
             elif len(xis) == 3:
@@ -114,17 +113,16 @@ class MeshedDomain(Domain):
             else:
                 raise ValueError("Too many inputs. Cannot create mesh of dimension higher than 3")
 
-            return cls(meshcls.init_tensors(*xis))
+            return cls(meshcls.init_tensor(*xis))
         else:
             if len(xis) == 1:
                 meshcls = skfem.MeshLine1DG
-                return cls(meshcls.init_tensor(*xis, periodic=periodic))
             elif len(xis) == 2:
                 meshcls = skfem.MeshTri1DG
             else:
                 raise ValueError("Too many inputs. Cannot create periodic mesh of dimension higher than 2")
 
-            return cls(meshcls.init_tensors(*xis, periodic=periodic))
+            return cls(meshcls.init_tensor(*xis, periodic=periodic))
 
 
 class MeshedDomain1D(MeshedDomain):

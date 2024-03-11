@@ -49,7 +49,7 @@ def test_local_likelihood(data, request, benchmark, local_fun, parameters):
     transition = fl.EulerDensity(model)
     for i, trj in enumerate(data):
         transition.preprocess_traj(trj)
-    transition.use_jac = False
+    # transition.use_jac = False
     loglikelihood = benchmark(transition, data.weights[0], data[0], np.concatenate((np.zeros(n_knots), np.zeros(n_knots) + 1.0)))
     assert len(loglikelihood) == 2
 

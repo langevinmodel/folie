@@ -79,5 +79,5 @@ class FiniteElement(ParametricFunction):
         if self.size == self.basis.N:  # C'est peut-être une autre condition plus générale, genre un gcd?
             return probes_matrix.reshape((-1, self.output_size_, self.basis.N))
         else:
-            transform_coeffs = np.eye(self.size).reshape((self.n_functions_features_, self.output_size_, self.size))
+            transform_coeffs = sparse.COO.from_numpy(np.eye(self.size).reshape((self.n_functions_features_, self.output_size_, self.size)))
             return sparse.einsum("nb,bsc->nsc", probes_matrix, transform_coeffs)

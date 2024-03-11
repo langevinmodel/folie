@@ -71,10 +71,10 @@ class KramersMoyalEstimator(Estimator):
         dx = np.concatenate([(trj["xt"] - trj["x"]) for trj in data], axis=0)
         if dim <= 1:
             dx = dx.ravel()
-        # weights = np.concatenate([trj["weight"] for trj in data], axis=0) # TODO: implement correctly the weights
+        # weights = np.concatenate([trj["weight"] for trj in data], axis=0)  # TODO: implement correctly the weights
         if self.model.is_biased:  # If bias
             if dim <= 1:
-                dx_sq = dx**2
+                dx_sq = dx ** 2
             else:
                 dx_sq = dx[..., None] * dx[:, None, ...]
             self.model.diffusion.fit(X, dx_sq / dt, **extra_kwargs)  # We need to estimate the diffusion first in order to have the prefactor of the bias
@@ -85,7 +85,7 @@ class KramersMoyalEstimator(Estimator):
             self.model.force.fit(X, dx, sample_weight=None, **extra_kwargs)
         dx -= self.model.force(X, bias, **extra_kwargs) * dt
         if dim <= 1:
-            dx_sq = dx**2
+            dx_sq = dx ** 2
         else:
             dx_sq = dx[..., None] * dx[:, None, ...]
         self.model.diffusion.fit(X, dx_sq / dt, **extra_kwargs)
@@ -133,7 +133,7 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
         if dim <= 1:
             acc = acc.ravel()
         if dim <= 1:
-            acc_sq = acc**2
+            acc_sq = acc ** 2
         else:
             acc_sq = acc[..., None] * acc[:, None, ...]
         self.model.diffusion.fit(X, acc_sq)  # We need to estimate the diffusion first in order to have the prefactor of the bias
@@ -145,7 +145,7 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
             self.model.force.fit(X, acc, sample_weight=None)
         acc -= self.model.force(X, bias) * data[0]["dt"]
         if dim <= 1:
-            acc_sq = acc**2
+            acc_sq = acc ** 2
         else:
             acc_sq = acc[..., None] * acc[:, None, ...]
         self.model.diffusion.fit(X, acc_sq)

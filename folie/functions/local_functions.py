@@ -57,9 +57,9 @@ class BSplinesFunction(ParametricFunction):
     def transform_coeffs(self, x, *args, **kwargs):
         transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
         return np.trace(BSpline(self.bspline.t, transform_coeffs, self.bspline.k)(x), axis1=1, axis2=2)
-        transform_coeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
-        dmat = sparse.GCXS.from_scipy_sparse(BSpline.design_matrix(x[:, 0], self.bspline.t, self.bspline.k))  # return (Nobs x nelemnts_basis) en format sparse CSR that we convert into sparse matrix
-        return sparse.einsum("nb,bsc->nsc", dmat, transform_coeffs)
+        # transform_coeffs = sparse.COO.from_numpy(np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size))
+        # dmat = sparse.COO.from_scipy_sparse(BSpline.design_matrix(x[:, 0], self.bspline.t, self.bspline.k))  # return (Nobs x nelemnts_basis) en format sparse CSR that we convert into sparse matrix
+        # return sparse.einsum("nb,bsc->nsc", dmat, transform_coeffs)
 
 
 # En vrai, ci dessous ça utilise aussi Bspline, copier le code relevant pour merger les 2
