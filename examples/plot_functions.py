@@ -13,22 +13,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import folie.functions as ff
+import folie as fl
 
 from scipy.interpolate import splrep
 
 x_range = np.linspace(-2, 2, 30).reshape(-1, 1)
 
+domain = fl.MeshedDomain.create_from_range(np.linspace(-2, 2, 6))
+
+
 t, c, k = splrep(x_range, x_range**4 - 2 * x_range**2 + 0.5 * x_range)
 
 fun_set = {
-    "Linear": ff.Linear(),
-    "Polynom": ff.Polynomial(3),
-    "Hermite Polynom": ff.Polynomial(3, np.polynomial.Hermite),
-    "Fourier": ff.Fourier(order=2, freq=1.0),
-    "B Splines": ff.BSplinesFunction(knots=6, k=3),
+    "Linear": ff.Linear(domain=domain),
+    "Polynom": ff.Polynomial(3, domain=domain),
+    "Hermite Polynom": ff.Polynomial(3, np.polynomial.Hermite, domain=domain),
+    "Fourier": ff.Fourier(order=2, freq=1.0, domain=domain),
+    "B Splines": ff.BSplinesFunction(domain=domain, k=3),
 }
-for key, fun in fun_set.items():
-    fun.fit(x_range)
 
 fig_kernel, axs = plt.subplots(2, 3)
 m = 0

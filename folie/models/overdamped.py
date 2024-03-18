@@ -145,7 +145,7 @@ class Overdamped(BaseModelOverdamped):
             force_shape = ()
             diffusion_shape = ()
         self.force = force.resize(force_shape)
-        if diffusion is None:
+        if diffusion is None or diffusion is force:
             self.diffusion = force.copy().resize(diffusion_shape)
         else:
             self.diffusion = diffusion.resize(diffusion_shape)
@@ -200,14 +200,6 @@ class Overdamped(BaseModelOverdamped):
     @coefficients_force.setter
     def coefficients_force(self, vals):
         self.force.coefficients = vals
-
-    @property
-    def coefficients_diffusion(self):
-        return self.diffusion.coefficients
-
-    @coefficients_diffusion.setter
-    def coefficients_diffusion(self, vals):
-        self.diffusion.coefficients = vals
 
     def add_bias(self, bias=True):
         if isinstance(bias, bool) and bias:

@@ -190,7 +190,7 @@ class FunctionOffset:
         return dfx + np.einsum("t...he,th-> t...e", self._g.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], dfx.shape[-1])), v)
 
     def hessian_x(self, x, v, *args, **kwargs):
-        ddfx = self._f.hessian_x(x[:, : self.f.dim_x], *args, **kwargs)
+        ddfx = self._f.hessian_x(x, *args, **kwargs)
         return ddfx + np.einsum("t...hef,th-> t...ef", self._g.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], v.shape[1], *ddfx.shape[-2:])), v)
 
     def __getattr__(self, item):  # Anything else should be passed to f

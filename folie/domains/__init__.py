@@ -102,7 +102,16 @@ class MeshedDomain(Domain):
     def create_from_range(cls, *xis, periodic=None):
         """
         Return MeshedDomain initialized from the range
+        If xis is an ndarray, assume than the dimension is the smallest dim between xis.shape[0] and xis.shape[1]
         """
+        if isinstance(xis, np.ndarray):
+            if xis.ndim > 1:
+                if xis.shape[0] > xis.shape[1]:
+                    xis = xis.T.tolist()
+                else:
+                    xis = xis.tolist()
+            else:
+                xis = [xis]
         if periodic is None:
             if len(xis) == 1:
                 meshcls = skfem.MeshLine

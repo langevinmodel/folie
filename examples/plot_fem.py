@@ -39,10 +39,10 @@ xfa = np.linspace(data.stats.min, data.stats.max, 75)
 
 n_knots = 10
 epsilon = 1e-10
-mesh_points = np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots).ravel()
-m = skfem.MeshLine(mesh_points)
-fem = fl.functions.FiniteElement(skfem.Basis(m, skfem.ElementLineP1()))
-bsplines = fl.functions.BSplinesFunction(knots=mesh_points)
+domain = fl.MeshedDomain.create_from_range(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots).ravel())
+
+fem = fl.functions.FiniteElement(domain, element=skfem.ElementLineP1())
+bsplines = fl.functions.BSplinesFunction(domain=domain)
 for fun in [bsplines, fem]:
     model = fl.models.Overdamped(fun, dim=1)
     estimator = fl.KramersMoyalEstimator(model)

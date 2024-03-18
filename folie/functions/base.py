@@ -58,7 +58,36 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         r"""Transforms the input data."""
         pass
 
-    def fit(self, x, y=None, **kwargs):
+    def fit(self, x, *args, y=None, estimator=linear_model.LinearRegression(copy_X=False, fit_intercept=False), sample_weight=None, **kwargs):
+        """
+        Fit coefficients of the function using linear regression.
+        Use as features the derivative of the function with respect to the coefficients
+
+        Parameters
+        ----------
+
+            X : {array-like} of shape (n_samples, dim)
+            Point of evaluation of the training data
+
+            y : array-like of shape (n_samples,) or (n_samples, n_targets)
+            Target values. Will be cast to X's dtype if necessary.
+
+
+            estimator: sklearn compatible estimator
+            Defaut to sklearn.linear_model.LinearRegression(copy_X=False, fit_intercept=False) but any compatible estimator can be used.
+            Estimator should have a coef_ attibutes after fitting
+
+        """
+        if y is None:
+            y = np.zeros((x.shape[0] * self.output_size_))
+        else:
+            y = y.ravel()
+        Fx = self.grad_coeffs(x, *args, **kwargs).reshape((x.shape[0] * self.output_size_, -1))
+        if isinstance(Fx, sparse.SparseArray):
+            Fx = Fx.tocsr()
+        reg = estimator.fit(Fx, y, sample_weight=sample_weight)
+        self.coefficients = reg.coef_
+        self.fitted_ = True
         return self
 
     def transform_x(self, x, **kwargs):
@@ -159,38 +188,6 @@ class ParametricFunction(Function):
                 rtn = NotImplemented
         return rtn
 
-    def fit(self, x, y=None, estimator=linear_model.LinearRegression(copy_X=False, fit_intercept=False), sample_weight=None, **kwargs):
-        """
-        Fit coefficients of the function using linear regression.
-        Use as features the derivative of the function with respect to the coefficients
-
-        Parameters
-        ----------
-
-            X : {array-like} of shape (n_samples, dim)
-            Point of evaluation of the training data
-
-            y : array-like of shape (n_samples,) or (n_samples, n_targets)
-            Target values. Will be cast to X's dtype if necessary.
-
-
-            estimator: sklearn compatible estimator
-            Defaut to sklearn.linear_model.LinearRegression(copy_X=False, fit_intercept=False) but any compatible estimator can be used.
-            Estimator should have a coef_ attibutes after fitting
-
-        """
-        if y is None:
-            y = np.zeros((x.shape[0] * self.output_size_))
-        else:
-            y = y.ravel()
-        Fx = self.grad_coeffs(x, **kwargs).reshape((x.shape[0] * self.output_size_, -1))
-        if isinstance(Fx, sparse.SparseArray):
-            Fx = Fx.tocsr()
-        reg = estimator.fit(Fx, y, sample_weight=sample_weight)
-        self.coefficients = reg.coef_
-        self.fitted_ = True
-        return self
-
     def resize(self, new_shape):
         super().resize(new_shape)
         self._coefficients = np.resize(self._coefficients, (self.n_functions_features_, self.output_size_))
@@ -267,7 +264,7 @@ class ModelOverlay(Function):
     @coefficients.setter
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
-        setattr(self.model, "coefficients_", vals)
+        setattr(self.model, "coefficients_" + self.function_name, vals)
 
     @property
     def size(self):
