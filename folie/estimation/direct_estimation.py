@@ -74,7 +74,7 @@ class KramersMoyalEstimator(Estimator):
         # weights = np.concatenate([trj["weight"] for trj in data], axis=0)  # TODO: implement correctly the weights
         if self.model.is_biased:  # If bias
             if dim <= 1:
-                dx_sq = dx ** 2
+                dx_sq = dx**2
             else:
                 dx_sq = dx[..., None] * dx[:, None, ...]
             self.model.diffusion.fit(X, dx_sq / dt, **extra_kwargs)  # We need to estimate the diffusion first in order to have the prefactor of the bias
@@ -85,7 +85,7 @@ class KramersMoyalEstimator(Estimator):
             self.model.force.fit(X, dx, sample_weight=None, **extra_kwargs)
         dx -= self.model.force(X, bias, **extra_kwargs) * dt
         if dim <= 1:
-            dx_sq = dx ** 2
+            dx_sq = dx**2
         else:
             dx_sq = dx[..., None] * dx[:, None, ...]
         self.model.diffusion.fit(X, dx_sq / dt, **extra_kwargs)
@@ -94,7 +94,7 @@ class KramersMoyalEstimator(Estimator):
 
 
 class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
-    r"""Implement method of Brückner and Ronceray to obtain underdamped model
+    r"""Obtain underdamped model
 
     Parameters
     ----------
@@ -142,25 +142,12 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
         # Take weight into account as well
         dim = X.shape[1]
         acc = np.concatenate([trj["a"] for trj in data], axis=0)
-        print((V ** 2).sum(), np.sum(acc[:, 0] * V[:, 0], axis=0))
-        print(acc.shape)
         if dim <= 1:
             acc = acc.ravel()
-        if dim <= 1:
-            acc_sq = acc ** 2
-        else:
-            acc_sq = acc[..., None] * acc[:, None, ...]
-        self.model.diffusion.fit(X, y=acc_sq * 3 * dt / 2)  # We need to estimate the diffusion first in order to have the prefactor of the bias
-        self.model.friction.fit(X, y=self.model.diffusion(X))
-        print(self.model.friction.coefficients)
-        acc_corr = acc  # - self.model.friction(X) / 6.0
-        print(V.shape, (V ** 2).shape, (acc * V[:, 0]).shape)
-        print((V ** 2).sum(), np.sum(acc * V[:, 0], axis=0))
-        self.model.meandispl.fit(X, V, bias, y=acc_corr, sample_weight=None)
+        self.model.meandispl.fit(X, V, bias, y=acc, sample_weight=None)
         acc -= self.model.force(X)
-        print((V ** 2).sum(), np.sum(acc * V[:, 0], axis=0))
         if dim <= 1:
-            acc_sq = acc ** 2
+            acc_sq = acc**2
         else:
             acc_sq = acc[..., None] * acc[:, None, ...]
         self.model.diffusion.fit(X, y=acc_sq * dt)
@@ -179,7 +166,7 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
             if "v" not in list(trj.keys()):
                 trj["v"] = (0.5 / trj["dt"]) * (trj["x"] - np.roll(trj["x"], 2, axis=0))[2:-1]
             else:
-                trj["v"] = trj["v"][1:-1]
+                trj["v"] = trj["v"][2:-1]
             trj["a"] = a[2:-1] / (trj["dt"] ** 2)
             trj["x"] = trj["x"][2:-1]
             if "bias" in trj:
