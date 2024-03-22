@@ -67,6 +67,12 @@ class TransitionDensity(ABC):
     def density(self, x0: Union[float, np.ndarray], xt: Union[float, np.ndarray], dt: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return np.exp(self._logdensity(x0, xt, dt))
 
+    def _gaussian_likelihood_1D(self, xt, E, V):
+        return -0.5 * ((xt.ravel() - E) ** 2 / V) - 0.5 * np.log(np.sqrt(2 * np.pi) * V)
+
+    def _gaussian_likelihood_ND(self, xt, E, V):
+        return -0.5 * np.dot(np.dot(xt - E, np.linalg.inv(V)), xt - E) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V))
+
     def __call__(self, weight, trj, coefficients):
         """
         Compute Likelihood of one trajectory

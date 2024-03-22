@@ -64,15 +64,15 @@ class EulerDensity(TransitionDensity):
         :param dt: float, the time step between x and xt
         :return: probability (same dimension as x and xt)
         """
-        sig2t = (self._model.diffusion(x, **kwargs)).ravel() * 2 * dt
+        sig2t = (self._model.diffusion(x, **kwargs)).ravel() * dt
         mut = x.ravel() + self._model.meandispl(x, bias, **kwargs).ravel() * dt
-        ll = -((xt.ravel() - mut) ** 2) / sig2t - 0.5 * np.log(np.pi * sig2t)
+        ll = self._gaussian_likelihood_1D(xt, mut, sig2t)
         if not self.use_jac:
             return ll, np.zeros(2)
 
         jacV = (self._model.diffusion.grad_coeffs(x, **kwargs)) * 2 * dt
         l_jac_mu = 2 * ((xt.ravel() - mut) / sig2t)[:, None] * self._model.meandispl.grad_coeffs(x, bias, **kwargs) * dt
-        l_jac_V = (((xt.ravel() - mut) ** 2) / sig2t**2)[:, None] * jacV - 0.5 * jacV / sig2t[:, None]
+        l_jac_V = (((xt.ravel() - mut) ** 2) / sig2t ** 2)[:, None] * jacV - 0.5 * jacV / sig2t[:, None]
         return ll, np.concatenate((l_jac_mu, l_jac_V), axis=-1)
 
     def _logdensityND(self, x, xt, dt, bias=0.0, **kwargs):
@@ -192,7 +192,7 @@ class OzakiDensity(TransitionDensity):
         Kt = (2 / dt) * np.log(1 + temp / x.ravel())
         Vt = np.sqrt(sig * (np.exp(Kt * dt) - 1) / Kt)
 
-        return -0.5 * ((xt.ravel() - Mt) / Vt) ** 2 - 0.5 * np.log(2 * np.pi) - np.log(Vt)
+        return self._gaussian_likelihood_1D(xt, Mt, Vt)
 
 
 class ShojiOzakiDensity(TransitionDensity):
@@ -214,18 +214,18 @@ class ShojiOzakiDensity(TransitionDensity):
         sig = np.sqrt(self._model.diffusion(x, **kwargs).ravel())
         mu = self._model.meandispl(x, bias, **kwargs).ravel()
 
-        Mt = 0.5 * sig**2 * self._model.meandispl.hessian_x(x, bias, **kwargs).ravel()  # + self._model.meandispl_t(x)  #Time homogenous model
+        Mt = 0.5 * sig ** 2 * self._model.meandispl.hessian_x(x, bias, **kwargs).ravel()  # + self._model.meandispl_t(x)  #Time homogenous model
         Lt = self._model.meandispl.grad_x(x, bias, **kwargs).ravel()
         if (Lt == 0).any():  # TODO: need to fix this
             B = sig * np.sqrt(dt)
-            A = x.ravel() + mu * dt + Mt * dt**2 / 2
+            A = x.ravel() + mu * dt + Mt * dt ** 2 / 2
         else:
             B = sig * np.sqrt((np.exp(2 * Lt * dt) - 1) / (2 * Lt))
 
             elt = np.exp(Lt * dt) - 1
-            A = x.ravel() + mu / Lt * elt + Mt / (Lt**2) * (elt - Lt * dt)
+            A = x.ravel() + mu / Lt * elt + Mt / (Lt ** 2) * (elt - Lt * dt)
 
-        return -0.5 * ((xt.ravel() - A) / B) ** 2 - 0.5 * np.log(2 * np.pi) - np.log(B)
+        return self._gaussian_likelihood_1D(xt, A, B)
 
 
 class ElerianDensity(EulerDensity):
@@ -257,7 +257,7 @@ class ElerianDensity(EulerDensity):
         A = sig * sig_x * dt * 0.5
         B = -0.5 * sig / sig_x + x.ravel() + mu * dt - A
         z = (xt.ravel() - B) / A
-        C = 1.0 / (sig_x**2 * dt)
+        C = 1.0 / (sig_x ** 2 * dt)
 
         scz = np.sqrt(C * z)
         cpz = -0.5 * (C + z)
@@ -295,12 +295,12 @@ class KesslerDensity(TransitionDensity):
         mu_x = self._model.meandispl.grad_x(x, bias, **kwargs).ravel()
         mu_xx = self._model.meandispl.hessian_x(x, bias, **kwargs).ravel()
         x = x.ravel()
-        d = dt**2 / 2
+        d = dt ** 2 / 2
         E = x + mu * dt + (mu * mu_x + 0.5 * sig * mu_xx) * d
 
-        V = x**2 + (2 * mu * x + sig) * dt + (2 * mu * (mu_x * x + mu + 0.5 * sig_x) + sig * (mu_xx * x + 2 * mu_x + 0.5 * sig_xx)) * d - E**2
+        V = x ** 2 + (2 * mu * x + sig) * dt + (2 * mu * (mu_x * x + mu + 0.5 * sig_x) + sig * (mu_xx * x + 2 * mu_x + 0.5 * sig_xx)) * d - E ** 2
         V = np.abs(V)
-        return -0.5 * ((xt.ravel() - E) ** 2 / V) - 0.5 * np.log(np.sqrt(2 * np.pi) * V)
+        return self._gaussian_likelihood_1D(xt, E, V)
 
 
 class DrozdovDensity(TransitionDensity):
@@ -326,9 +326,9 @@ class DrozdovDensity(TransitionDensity):
         mu_x = self._model.meandispl.grad_x(x, bias, **kwargs).ravel()
         mu_xx = self._model.meandispl.hessian_x(x, bias, **kwargs).ravel()
 
-        d = dt**2 / 2
+        d = dt ** 2 / 2
         E = x.ravel() + mu * dt + (mu * mu_x + 0.5 * sig * mu_xx) * d
 
         V = sig * dt + (mu * sig_x + 2 * mu_x * sig + sig * sig_xx) * d
         V = np.abs(V)
-        return -0.5 * ((xt.ravel() - E) ** 2 / V) - 0.5 * np.log(np.sqrt(2 * np.pi) * V)
+        return self._gaussian_likelihood_1D(xt, E, V)
