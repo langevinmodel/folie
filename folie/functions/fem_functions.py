@@ -2,6 +2,7 @@ from .base import ParametricFunction
 from .._numpy import np
 import sparse
 import skfem
+import numba as nb
 
 
 class FiniteElement(ParametricFunction):
@@ -81,3 +82,60 @@ class FiniteElement(ParametricFunction):
         else:
             transform_coeffs = sparse.COO.from_numpy(np.eye(self.size).reshape((self.n_functions_features_, self.output_size_, self.size)))
             return sparse.einsum("nb,bsc->nsc", probes_matrix, transform_coeffs)
+
+
+@nb.njit
+def linear_interpolation(idx, h, fp):  # pragma: no cover
+    f0, f1 = fp[idx - 1], fp[idx]
+    hm = 1 - h
+    val = hm * f0 + h * f1
+    return val
+
+
+@nb.njit
+def linear_interpolation_x(idx, h, fp):  # pragma: no cover
+    f0, f1 = fp[idx - 1], fp[idx]
+    return f0 - f1
+
+
+@nb.njit
+def linear_element_gradient(idx, h, n_coeffs):  # pragma: no cover
+    hm = 1 - h
+    # Set gradient elements one by one
+    grad = np.zeros((n_coeffs, idx.shape[0]))
+    for i, ik in enumerate(idx):
+        grad[ik - 1, i] = hm[i]
+        grad[ik, i] = h[i]
+    return grad
+
+
+class Optimized1DLinearElement(ParametricFunction):
+    def __init__(self, domain, element, output_shape=(), coefficients=None):
+        self.basis = skfem.CellBasis(domain.mesh, element)
+        self.n_functions_features_ = self.basis.N
+        super().__init__(domain, output_shape, coefficients)
+
+    def transform(self, x, *args, **kwargs):
+        try:
+            cells = kwargs["cells_idx"]
+            loc_x = kwargs["loc_x"]
+        except KeyError:
+            cells, loc_x = self.domain.localize_data(x)
+        return linear_interpolation(cells, loc_x, self.coefficients)  # Check shape
+
+    def transform_x(self, x, *args, **kwargs):
+        _, dim = x.shape
+        try:
+            cells = kwargs["cells_idx"]
+            loc_x = kwargs["loc_x"]
+        except KeyError:
+            cells, loc_x = self.domain.localize_data(x)
+        return linear_interpolation_x(cells, loc_x, self.coefficients)
+
+    def transform_coeffs(self, x, *args, **kwargs):
+        try:
+            cells = kwargs["cells_idx"]
+            loc_x = kwargs["loc_x"]
+        except KeyError:
+            cells, loc_x = self.domain.localize_data(x)
+        return linear_element_gradient(cells, loc_x, self.size)

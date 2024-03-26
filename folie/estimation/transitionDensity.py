@@ -71,7 +71,20 @@ class TransitionDensity(ABC):
         return -0.5 * ((xt.ravel() - E) ** 2 / V) - 0.5 * np.log(np.sqrt(2 * np.pi) * V)
 
     def _gaussian_likelihood_ND(self, xt, E, V):
-        return -0.5 * np.dot(np.dot(xt - E, np.linalg.inv(V)), xt - E) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V))
+        invVE = np.linalg.solve(V, xt - E)
+        return -0.5 * np.dot(xt - E, invVE) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V))
+
+    def _gaussian_likelihood_derivative_1D(self, xt, E, V, jacE, jacV):
+        l_jac_E = ((xt.ravel() - E) / V)[:, None] * jacE
+        l_jac_V = 0.5 * (((xt.ravel() - E) ** 2) / V ** 2)[:, None] * jacV - 0.5 * jacV / V[:, None]
+        return np.concatenate((l_jac_E, l_jac_V), axis=-1)
+
+    def _gaussian_likelihood_derivative_ND(self, xt, E, V, jacE, jacV):
+        invV = np.linalg.inv(V)  # TODO: Use linalg.solve instead of inv ?
+        invVE = np.dot(V, xt - E)
+        l_jac_E = np.einsum("ti,tic-> tc", invVE, jacE)
+        l_jac_V = 0.5 * np.einsum("ti,tijc,tj-> tc", invVE, jacV, invVE) - 0.5 * np.einsum("tijc,tji->tc", jacV, invV)
+        return np.concatenate((l_jac_E, l_jac_V), axis=-1)
 
     def __call__(self, weight, trj, coefficients):
         """
