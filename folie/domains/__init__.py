@@ -104,14 +104,14 @@ class MeshedDomain(Domain):
         Return MeshedDomain initialized from the range
         If xis is an ndarray, assume than the dimension is the smallest dim between xis.shape[0] and xis.shape[1]
         """
-        if isinstance(xis, np.ndarray):
-            if xis.ndim > 1:
-                if xis.shape[0] > xis.shape[1]:
-                    xis = xis.T.tolist()
+        if len(xis) == 1 and isinstance(xis[0], np.ndarray):
+            if xis[0].ndim == 2:
+                if xis[0].shape[0] > xis[0].shape[1]:
+                    xis = xis[0].T.tolist()
                 else:
-                    xis = xis.tolist()
+                    xis = xis[0].tolist()
             else:
-                xis = [xis]
+                xis = [xis[0].ravel()]
         if periodic is None:
             if len(xis) == 1:
                 meshcls = skfem.MeshLine
@@ -121,7 +121,6 @@ class MeshedDomain(Domain):
                 meshcls = skfem.MeshTet1
             else:
                 raise ValueError("Too many inputs. Cannot create mesh of dimension higher than 3")
-
             return cls(meshcls.init_tensor(*xis))
         else:
             if len(xis) == 1:

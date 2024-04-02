@@ -5,6 +5,7 @@ The code in this file is copied and adapted from pymle (https://github.com/jkirk
 from .._numpy import np
 import warnings
 from .transitionDensity import TransitionDensity
+from .transitionDensity import gaussian_likelihood_1D, gaussian_likelihood_ND, gaussian_likelihood_derivative_1D, gaussian_likelihood_derivative_ND
 
 try:
     from ._filter_smoother import filtersmoother
@@ -66,14 +67,11 @@ class EulerDensity(TransitionDensity):
         """
         sig2t = (self._model.diffusion(x, **kwargs)).ravel() * dt
         mut = x.ravel() + self._model.meandispl(x, bias, **kwargs).ravel() * dt
-        ll = self._gaussian_likelihood_1D(xt, mut, sig2t)
         if not self.use_jac:
-            return ll, np.zeros(2)
+            return gaussian_likelihood_1D(xt, mut, sig2t), np.zeros(2)
 
-        jacV = (self._model.diffusion.grad_coeffs(x, **kwargs)) * 2 * dt
-        l_jac_mu = 2 * ((xt.ravel() - mut) / sig2t)[:, None] * self._model.meandispl.grad_coeffs(x, bias, **kwargs) * dt
-        l_jac_V = (((xt.ravel() - mut) ** 2) / sig2t ** 2)[:, None] * jacV - 0.5 * jacV / sig2t[:, None]
-        return ll, np.concatenate((l_jac_mu, l_jac_V), axis=-1)
+        jacV = (self._model.diffusion.grad_coeffs(x, **kwargs)) * dt
+        return gaussian_likelihood_derivative_1D(xt, mut, sig2t, self._model.meandispl.grad_coeffs(x, bias, **kwargs) * dt, jacV)
 
     def _logdensityND(self, x, xt, dt, bias=0.0, **kwargs):
         """
@@ -87,17 +85,17 @@ class EulerDensity(TransitionDensity):
         # TODO: Add correction terms
         E = x + self._model.meandispl(x, bias, **kwargs) * dt
         V = (self._model.diffusion(x, **kwargs)) * dt
-        invVE = np.linalg.solve(V, xt - E)
-        ll = -0.5 * np.einsum("ti,ti-> t", invVE, xt - E) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V))
-
         if not self.use_jac:
+            ll = gaussian_likelihood_ND(xt, E, V)
             return ll, np.zeros(2)
-
         jacV = (self._model.diffusion.grad_coeffs(x, **kwargs)) * dt
-        invV = np.linalg.inv(V)  # TODO: Use linalg.solve instead of inv ?
-        l_jac_E = np.einsum("ti,tic-> tc", invVE, self._model.meandispl.grad_coeffs(x, bias, **kwargs) * dt)
-        l_jac_V = 0.5 * np.einsum("ti,tijc,tj-> tc", xt - E, np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV), xt - E) - 0.5 * np.einsum("tijc,tji->tc", jacV, invV)
-        return ll, np.concatenate((l_jac_E, l_jac_V), axis=-1)
+        jacE = self._model.meandispl.grad_coeffs(x, bias, **kwargs) * dt
+        return gaussian_likelihood_derivative_ND(xt, E, V, jacE, jacV)
+
+        # invV = np.linalg.inv(V)  # TODO: Use linalg.solve instead of inv ?
+        # l_jac_E = np.einsum("ti,tic-> tc", invVE, self._model.meandispl.grad_coeffs(x, bias, **kwargs) * dt)
+        # l_jac_V = 0.5 * np.einsum("ti,tijc,tj-> tc", xt - E, np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV), xt - E) - 0.5 * np.einsum("tijc,tji->tc", jacV, invV)
+        # return ll, np.concatenate((l_jac_E, l_jac_V), axis=-1)
 
     def _hiddenvariance(self, x, xt, sigh, dt, **kwargs):
         """
@@ -192,7 +190,7 @@ class OzakiDensity(TransitionDensity):
         Kt = (2 / dt) * np.log(1 + temp / x.ravel())
         Vt = np.sqrt(sig * (np.exp(Kt * dt) - 1) / Kt)
 
-        return self._gaussian_likelihood_1D(xt, Mt, Vt)
+        return gaussian_likelihood_1D(xt, Mt, Vt)
 
 
 class ShojiOzakiDensity(TransitionDensity):
@@ -225,7 +223,7 @@ class ShojiOzakiDensity(TransitionDensity):
             elt = np.exp(Lt * dt) - 1
             A = x.ravel() + mu / Lt * elt + Mt / (Lt ** 2) * (elt - Lt * dt)
 
-        return self._gaussian_likelihood_1D(xt, A, B)
+        return gaussian_likelihood_1D(xt, A, B)
 
 
 class ElerianDensity(EulerDensity):
@@ -300,7 +298,7 @@ class KesslerDensity(TransitionDensity):
 
         V = x ** 2 + (2 * mu * x + sig) * dt + (2 * mu * (mu_x * x + mu + 0.5 * sig_x) + sig * (mu_xx * x + 2 * mu_x + 0.5 * sig_xx)) * d - E ** 2
         V = np.abs(V)
-        return self._gaussian_likelihood_1D(xt, E, V)
+        return gaussian_likelihood_1D(xt, E, V)
 
 
 class DrozdovDensity(TransitionDensity):
@@ -331,4 +329,4 @@ class DrozdovDensity(TransitionDensity):
 
         V = sig * dt + (mu * sig_x + 2 * mu_x * sig + sig * sig_xx) * d
         V = np.abs(V)
-        return self._gaussian_likelihood_1D(xt, E, V)
+        return gaussian_likelihood_1D(xt, E, V)

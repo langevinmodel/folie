@@ -88,18 +88,18 @@ class OverdampedFreeEnergy(BaseModelOverdamped):
         G, logD, _ = linear_interpolation_with_gradient(idx, h, self.knots, self._coefficients)
         return 2.0 * np.exp(logD)
 
-    def force_x(self, x, *args, **kwargs):  # TODO: Implement the derivative
+    def _force_x(self, x, *args, **kwargs):  # TODO: Implement the derivative
         idx, h, _ = self.preprocess_traj(x)
         G, logD, dXdk = linear_interpolation_with_gradient(idx, h, self.knots, self._coefficients)
         return np.dot(self._coefficients[: self._n_coeffs_force], self.basis.derivative(x))
 
-    def force_xx(self, x, *args, **kwargs):
+    def _force_xx(self, x, *args, **kwargs):
         return 0.0
 
-    def diffusion_x(self, x, *args, **kwargs):
+    def _diffusion_x(self, x, *args, **kwargs):
         idx, h, _ = self.preprocess_traj(x)
         G, logD, dXdk = linear_interpolation_with_gradient(idx, h, self.knots, self._coefficients)
         return np.dot(self._coefficients[self._n_coeffs_force :], self.basis.derivative(x))
 
-    def diffusion_xx(self, x, *args, **kwargs):
+    def _diffusion_xx(self, x, *args, **kwargs):
         return 0.0

@@ -3,47 +3,12 @@ The code in this file was originnaly adapted from pymle (https://github.com/jkir
 """
 
 from .._numpy import np
-import warnings
 from time import time
-from scipy.optimize import minimize
-from sklearn.exceptions import ConvergenceWarning
 
+from .mle import EstimatedResult
 
 from ..base import Estimator
-from .direct_estimation import KramersMoyalEstimator, UnderdampedKramersMoyalEstimator
 from ..models import BaseModelOverdamped
-
-
-class EstimatedResult(object):
-    def __init__(self, coefficients: np.ndarray, log_like: float, sample_size: int):
-        """
-        Container for the result of estimation
-        :param coefficients: array, the estimated (optimal) coefficients
-        :param log_like: float, the final log-likelihood value (at optimum)
-        :param sample_size: int, the size of sample used in estimation (don't include S0)
-        """
-        self.coefficients = coefficients
-        self.log_like = log_like
-        self.sample_size = sample_size
-
-    @property
-    def likelihood(self) -> float:
-        """The likelihood with estimated coefficients"""
-        return np.exp(self.log_like)
-
-    @property
-    def aic(self) -> float:
-        """The AIC (Aikake Information Criteria) with estimated coefficients"""
-        return 2 * (len(self.coefficients) - self.log_like)
-
-    @property
-    def bic(self) -> float:
-        """The BIC (Bayesian Information Criteria) with estimated coefficients"""
-        return len(self.coefficients) * np.log(self.sample_size) - 2 * self.log_like
-
-    def __str__(self):
-        """String representation of the class (for pretty printing the results)"""
-        return f"\ncoefficients      | {self.coefficients} \n" f"sample size | {self.sample_size} \n" f"likelihood  | {self.log_like} \n" f"AIC         | {self.aic}\n" f"BIC         | {self.bic}"
 
 
 class LikelihoodEstimator(Estimator):

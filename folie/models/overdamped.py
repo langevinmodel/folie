@@ -29,10 +29,10 @@ class BaseModelOverdamped(Model):
             output_shape_diff = (self.dim, self.dim)
 
         if hasattr(self, "_force") and hasattr(self, "_diffusion"):
-            self.force = ModelOverlay(self, "force", output_shape=output_shape_force)
-            self.diffusion = ModelOverlay(self, "diffusion", output_shape=output_shape_diff)
+            self.force = ModelOverlay(self, "_force", output_shape=output_shape_force)
+            self.diffusion = ModelOverlay(self, "_diffusion", output_shape=output_shape_diff)
 
-        self.meandispl = ModelOverlay(self, "meandispl", output_shape=output_shape_force)
+        self.meandispl = ModelOverlay(self, "_meandispl", output_shape=output_shape_force)
 
     # ==============================
     # Exact Transition Density and Simulation Step, override when available
@@ -66,13 +66,13 @@ class BaseModelOverdamped(Model):
     def _meandispl(self, x, *args, **kwargs):
         return self.force(x, *args, **kwargs)
 
-    def meandispl_x(self, x, *args, **kwargs):
+    def _meandispl_x(self, x, *args, **kwargs):
         return self.force.grad_x(x, *args, **kwargs)
 
-    def meandispl_xx(self, x, *args, **kwargs):
+    def _meandispl_xx(self, x, *args, **kwargs):
         return self.force.hessian_x(x, *args, **kwargs)
 
-    def meandispl_coeffs(self, x, *args, **kwargs):
+    def _meandispl_coeffs(self, x, *args, **kwargs):
         """
         Jacobian of the force with respect to coefficients
         """
@@ -200,6 +200,14 @@ class Overdamped(BaseModelOverdamped):
     @coefficients_force.setter
     def coefficients_force(self, vals):
         self.force.coefficients = vals
+
+    @property
+    def coefficients_diffusion(self):
+        return self.diffusion.coefficients
+
+    @coefficients_diffusion.setter
+    def coefficients_diffusion(self, vals):
+        self.diffusion.coefficients = vals
 
     def add_bias(self, bias=True):
         if isinstance(bias, bool) and bias:

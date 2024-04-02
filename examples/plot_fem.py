@@ -39,7 +39,7 @@ xfa = np.linspace(data.stats.min, data.stats.max, 75)
 
 n_knots = 10
 epsilon = 1e-10
-domain = fl.MeshedDomain.create_from_range(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots).ravel())
+domain = fl.MeshedDomain.create_from_range(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots))
 
 fem = fl.functions.FiniteElement(domain, element=skfem.ElementLineP1())
 bsplines = fl.functions.BSplinesFunction(domain=domain)

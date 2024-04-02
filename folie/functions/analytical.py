@@ -174,7 +174,7 @@ class ThreeWell(PotentialFunction):
 
     def potential(self, X):
         """
-        Compute muller brown potential
+        Compute three wells potential
         """
         x = X[:, 0]
         y = X[:, 1]

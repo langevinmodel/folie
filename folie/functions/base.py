@@ -221,8 +221,8 @@ class ModelOverlay(Function):
         self.model = model
         domain = Domain.Rd(model.dim)
         # Do some check
-        if not hasattr(self.model, "_" + function_name):
-            raise ValueError("Model does not implement " + "_" + function_name + ".")
+        if not hasattr(self.model, function_name):
+            raise ValueError("Model does not implement " + function_name + ".")
         self.function_name = function_name
         # Define output shape from model dimension
         if output_shape is None and model.dim <= 1:
@@ -233,7 +233,7 @@ class ModelOverlay(Function):
         super().__init__(domain, output_shape, **kwargs)
 
     def transform(self, x, *args, **kwargs):
-        return getattr(self.model, "_" + self.function_name)(x, *args, **kwargs)
+        return getattr(self.model, self.function_name)(x, *args, **kwargs)
 
     def transform_x(self, x, *args, **kwargs):
         if hasattr(self.model, self.function_name + "_x"):

@@ -42,7 +42,7 @@ def test_likelihood_functions(data, request, benchmark, transitioncls):
 def test_local_likelihood(data, request, benchmark, local_fun, parameters):
     n_knots = 20
     epsilon = 1e-10
-    domain = fl.MeshedDomain.create_from_range(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots).ravel())
+    domain = fl.MeshedDomain.create_from_range(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots))
     fun = local_fun(domain, **parameters)
 
     model = fl.models.Overdamped(fun)
