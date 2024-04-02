@@ -113,7 +113,6 @@ class LikelihoodEstimator(Estimator):
         if minimizer is None:
             coefficients0 = np.asarray(coefficients0)
             minimizer = minimize
-
         # Run once, to determine if there is a Jacobian and eventual compilation if needed by numba
         init_val = self._loop_over_trajs(self.transition, data.weights, data, coefficients0, **kwargs)
 
@@ -193,7 +192,7 @@ class EMEstimator(LikelihoodEstimator):
         for trj in data:
             self.transition.preprocess_traj(trj)
         if coefficients0 is None:
-            coefficients0 = self.transition._model.coefficients
+            coefficients0 = self._initialize_parameters(data, coefficients0)
         if minimizer is None:
             coefficients = np.asarray(coefficients0)
             minimizer = minimize
@@ -222,9 +221,9 @@ class EMEstimator(LikelihoodEstimator):
         for init in range(n_init):
             callbacks.append(type(callback)())  # Should work as well with None
             if do_init:
-                coefficients = self._initialize_parameters(coefficients0)  # Need to randomize initial coefficients if multiple run
-            mu0 = np.zeros(self.transition._model.dim_h)
-            sig0 = np.identity(self.transition._model.dim_h)
+                coefficients = self._initialize_parameters(data, coefficients0)  # Need to randomize initial coefficients if multiple run
+            mu0 = np.zeros(self.model.dim_h)
+            sig0 = np.identity(self.model.dim_h)
             self._print_verbose_msg_init_beg(init)
             lower_bound = -np.infty if do_init else self.lower_bound_
             lower_bound_m_step = -np.infty
@@ -291,11 +290,16 @@ class EMEstimator(LikelihoodEstimator):
         self._print_verbose_msg_fit_end(max_lower_bound, best_n_init, best_n_iter)
         return self
 
-    def _initialize_parameters(self, coefficients0):
+    def _initialize_parameters(self, data, coefficients0):
         """
         Random initialisation of the parameters
         """
-        return coefficients0
+        # Random initialization of hidden variables
+        for trj in data:
+            trj["x"][:, self.model.dim_x :] = np.random.randn(trj["x"].shape[0], self.model.dim_h)
+            trj["xt"][:, self.model.dim_x :] = np.random.randn(trj["xt"].shape[0], self.model.dim_h)
+        KramersMoyalEstimator(self.model).fit(data)  # We get initiale parameters via KramersMoyal fit of random hidden values
+        return self.model.coefficients
 
     def _log_likelihood_negative(self, coefficients, data, **kwargs):
         return self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)[0] + self._loop_over_trajs(self.transition.hiddencorrection, data.weights, data, coefficients, **kwargs)[0]

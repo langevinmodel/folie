@@ -8,12 +8,11 @@ import folie as fl
     [
         (fl.functions.Constant, {}, 1),
         (fl.functions.Polynomial, {"deg": 3}, 4),
-        (fl.functions.BSplinesFunction, {"knots": 7}, 7),
+        (fl.functions.BSplinesFunction, {"domain": fl.MeshedDomain.create_from_range(np.linspace(-1, 1, 7))}, 7),
     ],
 )
 def test_overdamped(fct, parameters, expected):
-    data = np.linspace(-1, 1, 25).reshape(-1, 1)
-    fun = fct(**parameters).fit(data)
+    fun = fct(**parameters)
     model = fl.models.Overdamped(fun, fun.copy())
 
     x = np.linspace(-1, 1, 15).reshape(-1, 1)
@@ -40,10 +39,10 @@ def test_overdamped_w_exactdensity(model):
 
 @pytest.mark.parametrize(
     "model",
-    [fl.models.OrnsteinUhlenbeck(dim=3)],
+    [fl.models.BrownianMotion(dim=3), fl.models.OrnsteinUhlenbeck(dim=3)],
 )
 def test_overdamped_w_exactdensityND(model):
-    x = np.linspace(-1, 1, 15).reshape(-1, 1)
+    x = np.linspace(-1, 1, 45).reshape(-1, 3)
 
     assert model.force(x).shape == (15, 3)
 
@@ -54,7 +53,7 @@ def test_overdamped_w_exactdensityND(model):
     # assert (model.exact_step(np.zeros((1, 1)), 1e-3, 0.1) != 0.0).any()
 
 
-@pytest.mark.parametrize("model", [fl.models.OverdampedSplines1D(), fl.models.OverdampedFreeEnergy(np.linspace(-2, 2, 5), 1.0)])
+@pytest.mark.parametrize("model", [fl.models.OverdampedSplines1D(fl.MeshedDomain1D.create_from_range(np.linspace(-1, 1, 7))), fl.models.OverdampedFreeEnergy(np.linspace(-2, 2, 5), 1.0)])
 def test_overdamped_various(model):
     x = np.linspace(-1, 1, 15).reshape(-1, 1)
 
@@ -68,7 +67,7 @@ def test_overdamped_various(model):
     [
         (fl.functions.Constant, {}, 1),
         (fl.functions.Polynomial, {"deg": 3}, 4),
-        (fl.functions.BSplinesFunction, {"knots": 7}, 7),
+        (fl.functions.sklearnBSplines, {"domain": fl.MeshedDomain1D.create_from_range(np.linspace(-1, 1, 7))}, 7),
     ],
 )
 def test_overdamped_ND(fct, parameters, expected):
@@ -87,7 +86,7 @@ def test_overdamped_ND(fct, parameters, expected):
     [
         (fl.functions.Constant, {}, 1),
         (fl.functions.Polynomial, {"deg": 3}, 4),
-        (fl.functions.BSplinesFunction, {"knots": 7}, 7),
+        (fl.functions.BSplinesFunction, {"domain": fl.MeshedDomain1D.create_from_range(np.linspace(-1, 1, 7))}, 7),
     ],
 )
 def test_underdamped(fct, parameters, expected):
@@ -113,7 +112,7 @@ def test_underdamped(fct, parameters, expected):
     [
         (fl.functions.Constant, {}, 1),
         (fl.functions.Polynomial, {"deg": 3}, 4),
-        (fl.functions.BSplinesFunction, {"knots": 7}, 7),
+        (fl.functions.sklearnBSplines, {"domain": fl.MeshedDomain1D.create_from_range(np.linspace(-1, 1, 7))}, 7),
     ],
 )
 def test_underdamped_ND(fct, parameters, expected):

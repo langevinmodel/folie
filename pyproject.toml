@@ -19,7 +19,9 @@ dependencies = [
     'numpy>=1.20',
     'scipy>=1.7.0',
     'scikit-learn>=1.0',
-    'numba >= 0.5'
+    'numba >= 0.5',
+    'scikit-fem>= 8.0',
+    'sparse >=0.14'
 ]
 dynamic = ['version']
 
@@ -34,7 +36,6 @@ download = "https://pypi.org/project/folie/#files"
 
 [project.optional-dependencies]
 deep-learning = ['torch']
-finite-element = ['scikit-fem']
 plotting = ['matplotlib']
 units = ['pint>=0.20']
 tests = [

@@ -29,10 +29,6 @@ class OverdampedHidden(Overdamped):
 
         super().__init__(force, diffusion, dim=self.dim_x + self.dim_h, **kwargs)
         self.friction = friction.resize((self.dim, self.dim_h))
-        if not self.friction.fitted_ and not kwargs.get("friction_is_fitted", False):  # Set friction to constant one
-            loc_dim = self.dim if self.dim > 0 else 1
-            X = np.linspace([-1] * loc_dim, [1] * loc_dim, 5)
-            self.friction.fit(X, np.ones((5, self.dim, self.dim_h)))
 
     @property
     def coefficients(self):
@@ -57,13 +53,13 @@ class OverdampedHidden(Overdamped):
     def _meandispl(self, x, *args, **kwargs):
         return self.force(x, *args, **kwargs) + np.einsum("t...h,th-> t...", self.friction(x, *args, **kwargs), x[:, self.dim_x :])
 
-    def meandispl_x(self, x, *args, **kwargs):
+    def _meandispl_x(self, x, *args, **kwargs):
         return self.force.grad_x(x, *args, **kwargs) + np.einsum("t...he,th-> t...e", self.friction.grad_x(x, *args, **kwargs), x[:, self.dim_x :])
 
-    def meandispl_xx(self, x, *args, **kwargs):
+    def _meandispl_xx(self, x, *args, **kwargs):
         return self.force.hessian_x(x, *args, **kwargs) + np.einsum("t...hef,th-> t...ef", self.friction.hessian_x(x, *args, **kwargs), x[:, self.dim_x :])
 
-    def meandispl_coeffs(self, x, *args, **kwargs):
+    def _meandispl_coeffs(self, x, *args, **kwargs):
         """
         Jacobian of the force with respect to coefficients
         """
