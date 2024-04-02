@@ -5,78 +5,89 @@ For more efficient and longuer simulations, please turn to LangevinIntegrators.j
 ABMD simulation is adapted from pyoptLE
 """
 
-import numpy as np
+from .._numpy import np
 from ..data import Trajectories, Trajectory
-from .stepper import ExactStepper, EulerStepper, MilsteinStepper
+from .stepper import ExactStepper, EulerStepper, MilsteinStepper, VECStepper
 
 
 class Simulator:
-    def __init__(self, transition, dt, seed=None, keep_dim=None):
+    def __init__(self, stepper, dt, seed=None, keep_dim=None):
         self.dt = dt
-        self.transition = transition
+        self.stepper = stepper
         self.keep_dim = keep_dim
+        dim = self.stepper.model.dim
 
-    def run(self, nsteps, x0, ntrajs=1, save_every=1, **kwargs):
-        x0 = np.asarray(x0)
-        if x0.shape[0] != ntrajs:
-            raise ValueError("You must provide as much initial condtion as the wanted number of trajectories.")
-        if x0.ndim == 1:
-            dim = 1
+        if keep_dim is None:
+            self.keep_dim = dim
         else:
-            dim = x0.shape[1]
-        if self.keep_dim is None:
-            keep_dim = dim
-        else:
-            keep_dim = self.keep_dim % dim
-        x = x0.reshape(-1, dim)
+            self.keep_dim = self.keep_dim % dim
+
+    def run(self, nsteps, x0, save_every=1, **kwargs):
+        dim = self.stepper.model.dim
+        x = np.asarray(x0).reshape(-1, dim)
+        ntrajs = x.shape[0]
+
         x_val = np.empty((ntrajs, nsteps // save_every, dim))
-        dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, nsteps))
         for n in range(nsteps):
-            x = self.transition.run_step(x, self.dt, dW[:, n])
+            dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, dim))
+            x = self.stepper.run_step(x, self.dt, dW)
             if n % save_every == 0:
                 x_val[:, n // save_every, :] = x
         data = Trajectories(dt=self.dt * save_every)
         for i in range(ntrajs):
-            data.append(x_val[i, :, :keep_dim])
+            data.append(x_val[i, :, : self.keep_dim])
+        return data
+
+
+class UnderdampedSimulator(Simulator):
+    def run(self, nsteps, x0, save_every=1, **kwargs):
+        dim = 2 * self.stepper.model.dim
+        x = np.asarray(x0).reshape(-1, dim)
+        ntrajs = x.shape[0]
+
+        x_val = np.empty((ntrajs, nsteps // save_every, dim))
+        for n in range(nsteps):
+            dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, dim))
+            x = self.stepper.run_step(x, self.dt, dW)
+            if n % save_every == 0:
+                x_val[:, n // save_every, :] = x
+        data = Trajectories(dt=self.dt * save_every)
+        for i in range(ntrajs):
+            data.append(Trajectory(self.dt, x_val[i, :, : self.keep_dim], v=x_val[i, :, dim // 2 : dim // 2 + self.keep_dim]))
         return data
 
 
 class BiasedSimulator(Simulator):
-    def __init__(self, transition, dt, k=1, xstop=np.infty, **kwargs):
-        super().__init__(transition, dt, **kwargs)
-        self.transition.model.add_bias()
+    def __init__(self, stepper, dt, k=1, **kwargs):
+        super().__init__(stepper, dt, **kwargs)
+        self.stepper.model.add_bias()
 
-    def run(self, nsteps, x0, ntrajs=1, save_every=1, **kwargs):
-        x0 = np.asarray(x0)
-        if x0.shape[0] != ntrajs:
-            raise ValueError("You must provide as much initial condtion as the wanted number of trajectories.")
-        if x0.ndim == 1:
-            dim = 1
-        else:
-            dim = x0.shape[1]
-        if self.keep_dim is None:
-            keep_dim = dim
-        else:
-            keep_dim = self.keep_dim % dim
-        x = x0.reshape(-1, dim)
+    def run(self, nsteps, x0, save_every=1, **kwargs):
+        dim = self.stepper.model.dim
+        x = np.asarray(x0).reshape(-1, dim)
+        ntrajs = x.shape[0]
+
         x_val = np.empty((ntrajs, nsteps // save_every, dim))
         bias_t = np.empty((ntrajs, nsteps // save_every, dim))
         dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, nsteps))
         for n in range(nsteps):
             bias = self._bias(x)
-            x = self.transition.run_step(x, self.dt, dW[:, n], bias=bias)
+            x = self.stepper.run_step(x, self.dt, dW[:, n], bias=bias)
             if n % save_every == 0:
                 x_val[:, n // save_every, :] = x
                 bias_t[:, n // save_every, :] = bias
         data = Trajectories(dt=self.dt * save_every)
         for i in range(ntrajs):
-            data.append(Trajectory(self.dt, x_val[i, :, :keep_dim], bias=bias_t[i, :, :keep_dim]))
+            data.append(Trajectory(self.dt, x_val[i, :, : self.keep_dim], bias=bias_t[i, :, : self.keep_dim]))
         return data
+
+    def _bias(self, xt):
+        return 0.0
 
 
 class ABMD_Simulator(BiasedSimulator):
-    def __init__(self, transition, dt, k=1, xstop=np.infty, **kwargs):
-        super().__init__(transition, dt, **kwargs)
+    def __init__(self, stepper, dt, k=1, xstop=np.infty, **kwargs):
+        super().__init__(stepper, dt, **kwargs)
         self.xmax = None
         self.k = k
         self.xstop = xstop

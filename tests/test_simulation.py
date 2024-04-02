@@ -1,5 +1,5 @@
 import pytest
-import numpy as np
+from folie._numpy import np
 import folie as fl
 
 
@@ -17,6 +17,24 @@ def test_simple_simulation(steppercls):
     assert len(trj_data) == 1
 
     assert trj_data[0]["x"].shape == (50, 1)
+
+
+@pytest.mark.parametrize("steppercls", [fl.simulations.VECStepper])
+def test_underdamped_simulation(steppercls):
+
+    data = np.linspace(-1, 1, 25).reshape(-1, 1)
+    fun = fl.functions.Polynomial(deg=3).fit(data, data[:, 0])
+    model = fl.models.Underdamped(fun, fun, fun)
+
+    simu_engine = fl.simulations.UnderdampedSimulator(steppercls(model), 1e-3)
+
+    trj_data = simu_engine.run(50, [0.0, 0.1])
+
+    assert len(trj_data) == 1
+
+    assert trj_data[0]["x"].shape == (50, 1)
+
+    assert trj_data[0]["v"].shape == (50, 1)
 
 
 @pytest.mark.parametrize("model", [fl.models.BrownianMotion(), fl.models.OrnsteinUhlenbeck()])  # , fl.models.BrownianMotion(dim=3), fl.models.OrnsteinUhlenbeck(dim=3)])

@@ -1,6 +1,6 @@
 import pytest
 import os
-import numpy as np
+from folie._numpy import np
 import folie as fl
 import dask.array as da
 

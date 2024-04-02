@@ -1,33 +1,10 @@
-import numpy as np
+from .._numpy import np
 import warnings
 from scipy.stats import norm
 
 from ..base import Model
 from ..functions import Constant, Polynomial, BSplinesFunction, FunctionOffset, FunctionOffsetWithCoefficient, ParametricFunction, ModelOverlay
-
-
-class ForceReference:
-    """
-    A function for returning f(x)
-    """
-
-    def __init__(self, model):
-        self.model = model
-
-    def __call__(self, x, *args, **kwargs):
-        return self.model.force(x, *args, **kwargs)
-
-    def grad_x(self, x, *args, **kwargs):
-        return self.model.force.grad_x(x, *args, **kwargs)
-
-    def hessian_x(self, x, *args, **kwargs):
-        return self.model.force.hessian_x(x, *args, **kwargs)
-
-    def grad_coeffs(self, x, *args, **kwargs):
-        """
-        Jacobian of the force with respect to coefficients
-        """
-        return self.model.force.grad_coeffs(x, *args, **kwargs)
+from ..domains import Domain
 
 
 class BaseModelOverdamped(Model):
@@ -40,13 +17,22 @@ class BaseModelOverdamped(Model):
         dX(t) = mu(X,t)dt + sigma(X,t)dW_t
 
         """
+
         self._dim = dim
         self.is_biased = False
 
+        if self.dim <= 1:
+            output_shape_force = ()
+            output_shape_diff = ()
+        else:
+            output_shape_force = (self.dim,)
+            output_shape_diff = (self.dim, self.dim)
+
         if hasattr(self, "_force") and hasattr(self, "_diffusion"):
-            self.force = ModelOverlay(self, "force")
-            self.diffusion = ModelOverlay(self, "diffusion")
-        self.meandispl = ForceReference(self)
+            self.force = ModelOverlay(self, "_force", output_shape=output_shape_force)
+            self.diffusion = ModelOverlay(self, "_diffusion", output_shape=output_shape_diff)
+
+        self.meandispl = ModelOverlay(self, "_meandispl", output_shape=output_shape_force)
 
     # ==============================
     # Exact Transition Density and Simulation Step, override when available
@@ -74,21 +60,33 @@ class BaseModelOverdamped(Model):
         if dim != self._dim:
             raise ValueError("Dimension did not match dimension of the model. Change model or review dimension of your data")
 
-    def exact_density(self, x0: float, xt: float, t0: float, dt: float = 0.0) -> float:
-        """
-        In the case where the exact transition density,
-        P(Xt, t | X0) is known, override this method
-        :param x0: float, the current value
-        :param xt: float, the value to transition to
-        :param t0: float, the time of observing x0
-        :param dt: float, the time step between x0 and xt
-        :return: probability
-        """
-        raise NotImplementedError
+    def preprocess_traj(self, trj, **kwargs):
+        return trj
 
-    def exact_step(self, x, dt, dZ, t=0.0):
-        """Exact Simulation Step, Implement if known (e.g. Browian motion or GBM)"""
-        raise NotImplementedError
+    def _meandispl(self, x, *args, **kwargs):
+        return self.force(x, *args, **kwargs)
+
+    def _meandispl_x(self, x, *args, **kwargs):
+        return self.force.grad_x(x, *args, **kwargs)
+
+    def _meandispl_xx(self, x, *args, **kwargs):
+        return self.force.hessian_x(x, *args, **kwargs)
+
+    def _meandispl_coeffs(self, x, *args, **kwargs):
+        """
+        Jacobian of the force with respect to coefficients
+        """
+        return self.force.grad_coeffs(x, *args, **kwargs)
+
+    @property
+    def coefficients_meandispl(self):
+        """Access the coefficients"""
+        return self.force.coefficients
+
+    @coefficients_meandispl.setter
+    def coefficients_meandispl(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        self.force.coefficients = vals
 
     # ==============================
     # Direct acces to parameters (Not Implemented By Default)
@@ -120,7 +118,7 @@ class Overdamped(BaseModelOverdamped):
     A class that implement a overdamped model with given functions for space dependency
     """
 
-    def __init__(self, force, diffusion=None, dim=0, has_bias=None, **kwargs):
+    def __init__(self, force, diffusion=None, dim=None, has_bias=None, **kwargs):
         r"""
         Initialize an overdamped Langevin model
 
@@ -130,13 +128,15 @@ class Overdamped(BaseModelOverdamped):
             Functions for the spatial dependance of the force and position.
             If diffusion is not given it default to the copy of force
         dim : int
-            Dimension of the model
+            Dimension of the model. By default it is the dimension of the domain of the force
         has_bias: None, bool or ParametricFunction
             If None, assume no bias in the data.
             If true, this assume that an extra column is present in the data
             If this is a ParametricFunction, the bias is the g(x)*f_bias with g(x) a function to optimize
 
         """
+        if dim is None:
+            dim = force.domain.dim
         super().__init__(dim=dim)
         if dim > 1:
             force_shape = (dim,)
@@ -145,28 +145,24 @@ class Overdamped(BaseModelOverdamped):
             force_shape = ()
             diffusion_shape = ()
         self.force = force.resize(force_shape)
-        if diffusion is None:
+        if diffusion is None or diffusion is force:
             self.diffusion = force.copy().resize(diffusion_shape)
         else:
             self.diffusion = diffusion.resize(diffusion_shape)
-        loc_dim = self.dim if self.dim > 0 else 1
-        X = np.linspace([-1] * loc_dim, [1] * loc_dim, 5)
-        if not self.force.fitted_ and not kwargs.get("force_is_fitted", False):
-            self.force.fit(X)
-        if not self.diffusion.fitted_ and not kwargs.get("diffusion_is_fitted", False):
-            diff_target = np.concatenate([np.eye(loc_dim)[None, ...]] * 5).reshape(5, *diffusion_shape)
-            self.diffusion.fit(X, diff_target)
+        # loc_dim = dim if dim > 0 else 1
+        # X = np.linspace([-1] * loc_dim, [1] * loc_dim, 5)  # TODO: Ne marche pas si on a un mesh
+        # if not self.force.fitted_ and not kwargs.get("force_is_fitted", False):
+        #     self.force.fit(X)
+        # if not self.diffusion.fitted_ and not kwargs.get("diffusion_is_fitted", False):
+
+        #     diff_target = np.concatenate([np.eye(loc_dim)[None, ...]] * 5).reshape(5, *diffusion_shape)
+        #     self.diffusion.fit(X, diff_target)
         if has_bias is not None:
             self.add_bias(has_bias)
 
-    @property
-    def dim(self):
-        """
-        Dimensionnality of the model
-        """
-        return self._dim
+        # TODO: Ensuite il faut trouver le domain du modèle, et vérifier s'il sont tous compatible
 
-    @dim.setter
+    @BaseModelOverdamped.dim.setter
     def dim(self, dim):
         if dim > 1:
             force_shape = (dim,)
@@ -177,6 +173,14 @@ class Overdamped(BaseModelOverdamped):
         self.force = self.force.resize(force_shape)
         self.diffusion = self.diffusion.resize(diffusion_shape)
         self._dim = dim
+
+    def preprocess_traj(self, trj, **kwargs):
+        if hasattr(self.force.domain, "localize_data") or hasattr(self.diffusion.domain, "localize_data"):
+            # Check if domain are compatible
+            cells_idx, loc_x = self.force.domain.localize_data(trj["x"], **kwargs)
+            trj["cells_idx"] = cells_idx
+            trj["loc_x"] = loc_x
+        return trj
 
     @property
     def coefficients(self):
@@ -238,11 +242,8 @@ class BrownianMotion(Overdamped):
     _has_exact_density = True
 
     def __init__(self, mu=0, sigma=1.0, dim=1, **kwargs):
-        # X = np.linspace(-1, 1, 5).reshape(-1, dim)
-        # y_force = mu * np.ones_like(X)
-        # y_diff = sigma * no.ones_like(X)
-        super().__init__(Constant(), Constant(), dim=dim, **kwargs)
-        self.force.coefficients = mu * np.eye(dim)
+        super().__init__(Constant(domain=Domain.Rd(dim)), Constant(domain=Domain.Rd(dim)), dim=dim, **kwargs)
+        self.force.coefficients = mu * np.ones(dim)
         self.diffusion.coefficients = sigma * np.eye(dim)
 
     def exact_density(self, x0, xt, t0: float, dt: float = 0.0) -> float:
@@ -268,7 +269,6 @@ class OrnsteinUhlenbeck(Overdamped):
         sigma(X,t) = sqrt(sigma)
     """
 
-    dim = 1
     _has_exact_density = True
 
     def __init__(self, theta=0, kappa=1.0, sigma=1.0, dim=1, **kwargs):
@@ -276,10 +276,11 @@ class OrnsteinUhlenbeck(Overdamped):
         # X = np.linspace(-1, 1, 5).reshape(-1, 1)
         # .fit(X, -1 * np.linspace(-1, 1, 5))
         # .fit(X, np.ones(5))
-        super().__init__(Polynomial(1), Constant(), dim=dim, **kwargs)
-        self.force.coefficients = np.asarray([theta, -kappa] * dim)
+        super().__init__(Polynomial(1, domain=Domain.Rd(dim)), Constant(domain=Domain.Rd(dim)), dim=dim, **kwargs)
+        self.force.coefficients = np.concatenate([theta * np.eye(dim), -kappa * np.eye(dim)], axis=0)
         self.diffusion.coefficients = sigma * np.eye(dim)
 
+    # TODO: Adapt for multidemnsionnal case
     def exact_density(self, x0: float, xt: float, t0: float, dt: float = 0.0) -> float:
         theta, kappa, sigma = self.coefficients
         mu = -theta / kappa + (x0 + theta / kappa) * np.exp(kappa * dt)
@@ -293,7 +294,7 @@ class OrnsteinUhlenbeck(Overdamped):
         return mu * dt + np.sqrt(var * dt) * dZ
 
 
-def OverdampedSplines1D(knots=5):
+def OverdampedSplines1D(domain):
     """
     Generate defaut model for estimation of overdamped Langevin dynamics.
 
@@ -304,4 +305,4 @@ def OverdampedSplines1D(knots=5):
             Either the number of knots to use in the spline or a list of knots.
             The more knots the more precise the model but it will be more expensive to run and require more data for precise estimation.
     """
-    return Overdamped(BSplinesFunction(knots=knots), dim=0)
+    return Overdamped(BSplinesFunction(domain), dim=1)

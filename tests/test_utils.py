@@ -1,5 +1,5 @@
 import pytest
-import numpy as np
+from folie._numpy import np
 import torch
 
 

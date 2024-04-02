@@ -1,5 +1,5 @@
 from collections.abc import MutableSequence, Mapping
-import numpy as np
+from .._numpy import np
 from ._data_statistics import traj_stats, sum_stats, domain, representative_array
 
 

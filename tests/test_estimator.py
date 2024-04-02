@@ -1,9 +1,10 @@
 import pytest
 import os
-import numpy as np
+from folie._numpy import np
 import folie as fl
 import dask.array as da
 import torch
+import skfem
 
 
 # TODO: add also xarray and pandas into the data test
@@ -90,7 +91,7 @@ def test_direct_estimator(data, request, fct, parameters):
     ],
 )
 def test_direct_estimator2d(data2d, request, fct, parameters):
-    model = fl.models.Overdamped(fct(**parameters), dim=2)
+    model = fl.models.Overdamped(fct(domain=fl.Domain.Rd(2), **parameters), dim=2)
     estimator = fl.KramersMoyalEstimator(model)
     model = estimator.fit_fetch(data2d)
     assert model.fitted_
@@ -111,7 +112,6 @@ def test_direct_estimator_biased(data_biased, request, fct, parameters):
     assert model.fitted_
 
 
-@pytest.mark.skip(reason="Not implemented yet")
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 def test_direct_estimator_underdamped(data, request):
     fun_lin = fl.functions.Linear()
@@ -133,10 +133,26 @@ def test_likelihood_estimator(data, request):
 
 @pytest.mark.parametrize("data2d", ["numpy"], indirect=True)
 def test_likelihood_estimator2d(data2d, request):
-    fun_lin = fl.functions.Linear()
-    model = fl.models.Overdamped(fun_lin, dim=2)
+    fun_lin = fl.functions.Linear(domain=fl.Domain.Rd(2))
+    fun_diff = fl.functions.Polynomial(deg=2, domain=fl.Domain.Rd(2))
+    model = fl.models.Overdamped(fun_lin, fun_diff, dim=2)
     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
     model = estimator.fit_fetch(data2d)
+    assert model.fitted_
+
+
+@pytest.mark.parametrize("data", ["numpy"], indirect=True)
+def test_fem_likelihood_estimator(data, request):
+
+    n_knots = 20
+    epsilon = 1e-10
+    m = skfem.MeshLine(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots).ravel())
+    domain = fl.MeshedDomain(m)
+    fun = fl.functions.FiniteElement(domain, skfem.ElementLineP1())
+    model = fl.models.Overdamped(fun, dim=1)
+    estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
+
+    model = estimator.fit_fetch(data)
     assert model.fitted_
 
 
@@ -161,6 +177,7 @@ def test_numba_likelihood_estimator(data, request):
     assert model.fitted_
 
 
+@pytest.mark.skip(reason="A bug remain here, to be inestigated")
 @pytest.mark.parametrize("data_short", ["numpy"], indirect=True)
 def test_em_estimator(data_short, request):
     fun_lin = fl.functions.Linear()

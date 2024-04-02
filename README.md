@@ -12,7 +12,7 @@ folie intends to provide a simple to use module for inference of Langevin equati
 folie is currently WIP so feel free to provide feedback or potential bugs in the GitHub issue tracker.
 
 
-folie is partly based on [pymle](https://github.com/jkirkby3/pymle), [pyoptLe](https://github.com/jhenin/pyOptLE) and  [deeptime](https://github.com/deeptime-ml/deeptime). In particuler, the interface of folie should be compatible with [deeptime](https://github.com/deeptime-ml/deeptime).
+folie is partly based on [pymle](https://github.com/jkirkby3/pymle), [pyoptLe](https://github.com/jhenin/pyOptLE) and  [deeptime](https://github.com/deeptime-ml/deeptime). In particular, the interface of folie should be compatible with [deeptime](https://github.com/deeptime-ml/deeptime).
 
 ## Installation
 

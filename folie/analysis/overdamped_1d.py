@@ -2,7 +2,7 @@
 Set of analysis methods focused on 1D overdamped models
 """
 
-import numpy as np
+from .._numpy import np
 from scipy.integrate import cumulative_trapezoid
 
 
@@ -10,11 +10,12 @@ def free_energy_profile_1d(model, x):
     """
     From the force and diffusion construct the free energy profile
     """
+    x = x.ravel()
     diff_prime_val = model.diffusion.grad_x(x.reshape(-1, 1)).ravel()
     force_val = model.force(x.reshape(-1, 1)).ravel()
     diff_val = model.diffusion(x.reshape(-1, 1)).ravel()
 
-    diff_U = -1 * (force_val - 2 * diff_val * diff_prime_val) / diff_val**2
+    diff_U = -1 * (force_val - 2 * diff_val * diff_prime_val) / diff_val ** 2
 
     pmf = cumulative_trapezoid(diff_U, x, initial=0.0)
 

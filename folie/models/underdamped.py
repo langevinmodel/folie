@@ -1,35 +1,7 @@
-import numpy as np
+from .._numpy import np
 
 from .overdamped import Overdamped
 from ..functions import Constant, Polynomial
-
-
-class CombineForceFriction:
-    """
-    A composition function for returning f(x)+g(x)*v
-    """
-
-    def __init__(self, model, **kwargs):
-        self.model = model
-
-    def __call__(self, x, v, *args, **kwargs):
-        fx = self.model.force(x, *args, **kwargs)
-        return fx + np.einsum("t...h,th-> t...", self.model.friction(x, *args, **kwargs).reshape((*fx.shape, v.shape[1])), v)
-
-    def grad_x(self, x, v, *args, **kwargs):
-        dfx = self.model.force.grad_x(x, *args, **kwargs)
-        return dfx + np.einsum("t...he,th-> t...e", self.model.friction.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], dfx.shape[-1])), v)
-
-    def hessian_x(self, x, v, *args, **kwargs):
-        ddfx = self.model.force.hessian_x(x, *args, **kwargs)
-        return ddfx + np.einsum("t...hef,th-> t...ef", self.model.friction.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], v.shape[1], *ddfx.shape[-2:])), v)
-
-    def grad_coeffs(self, x, v, *args, **kwargs):
-        """
-        Jacobian of the force with respect to coefficients
-        """
-        dfx = self.model.force.grad_coeffs(x, *args, **kwargs)
-        return np.concatenate((dfx, np.einsum("t...hc,th-> t...c", self.model.friction.grad_coeffs(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], -1)), v)), axis=-1)
 
 
 class Underdamped(Overdamped):
@@ -42,13 +14,11 @@ class Underdamped(Overdamped):
         dV(t) = f(X,t)dt+ gamma(X,t)V(t)dt + sigma(X,t)dW_t
 
         """
+
+        if friction is diffusion:
+            friction = diffusion.copy()
         super().__init__(force, diffusion, dim=dim)
-        self.meandispl = CombineForceFriction(self)
         self.friction = friction.resize(self.diffusion.shape)
-        if not self.friction.fitted_ and not kwargs.get("friction_is_fitted", False):
-            loc_dim = self.dim if self.dim > 0 else 1
-            X = np.linspace([-1] * loc_dim, [1] * loc_dim, 5)
-            self.friction.fit(X, np.ones((5, *self.diffusion.shape)))
 
     @Overdamped.dim.setter
     def dim(self, dim):
@@ -63,25 +33,47 @@ class Underdamped(Overdamped):
         self.diffusion = self.diffusion.resize(diffusion_shape)
         self.friction = self.friction.resize(diffusion_shape)
 
+    def _meandispl(self, x, v, *args, **kwargs):
+        fx = self.force(x, *args, **kwargs)
+        return fx - np.einsum("t...h,th-> t...", self.friction(x, *args, **kwargs).reshape((*fx.shape, v.shape[1])), v)
+
+    def _meandispl_x(self, x, v, *args, **kwargs):
+        dfx = self.force.grad_x(x, *args, **kwargs)
+        return dfx - np.einsum("t...he,th-> t...e", self.friction.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], dfx.shape[-1])), v)
+
+    def _meandispl_xx(self, x, v, *args, **kwargs):
+        ddfx = self.force.hessian_x(x, *args, **kwargs)
+        return ddfx - np.einsum("t...hef,th-> t...ef", self.friction.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], v.shape[1], *ddfx.shape[-2:])), v)
+
+    def _meandispl_coeffs(self, x, v, *args, **kwargs):
+        """
+        Jacobian of the force with respect to coefficients
+        """
+        dfx = self.force.grad_coeffs(x, *args, **kwargs)
+        return np.concatenate((dfx, -1 * np.einsum("t...hc,th-> t...c", self.friction.grad_coeffs(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], -1)), v)), axis=-1)
+
     @property
     def coefficients(self):
         """Access the coefficients"""
-        return np.concatenate((self.force.coefficients.ravel(), self.diffusion.coefficients.ravel(), self.friction.coefficients.ravel()))
+        return np.concatenate((self.force.coefficients.ravel(), self.friction.coefficients.ravel(), self.diffusion.coefficients.ravel()))
 
     @coefficients.setter
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
         self.force.coefficients = vals.ravel()[: self.force.size]
-        self.diffusion.coefficients = vals.ravel()[self.force.size : self.force.size + self.diffusion.size]
-        self.friction.coefficients = vals.ravel()[self.force.size + self.diffusion.size :]
+        self.diffusion.coefficients = vals.ravel()[self.force.size + self.friction.size :]
+        self.friction.coefficients = vals.ravel()[self.force.size : self.force.size + self.friction.size]
 
     @property
-    def coefficients_friction(self):
-        return self.friction.coefficients
+    def coefficients_meandispl(self):
+        """Access the coefficients"""
+        return np.concatenate((self.force.coefficients.ravel(), self.friction.coefficients.ravel()))
 
-    @coefficients_friction.setter
-    def coefficients_friction(self, vals):
-        self.friction.coefficients = vals
+    @coefficients_meandispl.setter
+    def coefficients_meandispl(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        self.force.coefficients = vals.ravel()[: self.force.size]
+        self.friction.coefficients = vals.ravel()[self.force.size : self.force.size + self.friction.size]
 
 
 class UnderdampedOrnsteinUhlenbeck(Underdamped):
@@ -101,8 +93,8 @@ class UnderdampedOrnsteinUhlenbeck(Underdamped):
 
     def __init__(self, theta=0, kappa=1.0, sigma=1.0, **kwargs):
         # Init by passing functions to the model
-        X = np.linspace(-1, 1, 5).reshape(-1, 1)
-        super().__init__(Polynomial(1).fit(X, -1 * np.linspace(-1, 1, 5)), Constant().fit(X, np.ones(5)), Constant().fit(X, np.ones(5)), dim=0, **kwargs)
+        # TODO: Update to not use fit
+        super().__init__(Polynomial(1), Constant(), Constant(), dim=1, **kwargs)
         self.force.coefficients = np.asarray([theta, -kappa])
         self.friction.coefficients = np.asanyarray(sigma)
         self.diffusion.coefficients = np.asarray(sigma)

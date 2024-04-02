@@ -1,6 +1,6 @@
-import numpy as np
+from .._numpy import np
 from .base import ParametricFunction
-from ..data import stats_from_input_data
+from ..domains import Domain
 
 
 class Fourier(ParametricFunction):
@@ -8,17 +8,14 @@ class Fourier(ParametricFunction):
     The Fourier series f(x) = c x
     """
 
-    def __init__(self, order=1, freq=1.0, start_order=0, output_shape=(), coefficients=None):
-        super().__init__(output_shape, coefficients)
+    def __init__(self, order=1, freq=1.0, start_order=0, domain=None, output_shape=(), coefficients=None):
+        if domain is None:
+            domain = Domain.Td(dim=1)
         self.order = 2 * order + 1
         self.start_order = start_order
         self.freq = freq
-
-    def fit(self, X, y=None, **kwargs):
-        xstats = stats_from_input_data(X)
-        self.n_functions_features_ = xstats.dim * (self.order - self.start_order)
-        super().fit(X, y, **kwargs)
-        return self
+        self.n_functions_features_ = domain.dim * (self.order - self.start_order)
+        super().__init__(domain, output_shape, coefficients)
 
     def differentiate(self):
         fun = Fourier(self.output_shape)  # Use start_order to remove first value
