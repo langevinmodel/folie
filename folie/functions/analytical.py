@@ -14,7 +14,8 @@ class PotentialFunction(Function):
         super().__init__(domain, output_shape)
 
     def resize(self, new_shape):
-        # We should run some test here
+        if new_shape != (self.dim,) or (self.dim == 1 and (new_shape != ())):
+            print("Analytical functions cannot be resized, check what your are doing")
         return self
 
     def transform(self, x, *args, **kwargs):
