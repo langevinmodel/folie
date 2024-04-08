@@ -15,7 +15,7 @@ class PotentialFunction(Function):
 
     def resize(self, new_shape):
         # We should run some test here
-        pass
+        return self
 
     def transform(self, x, *args, **kwargs):
         return self.force(x)
@@ -43,7 +43,7 @@ class ConstantForce(PotentialFunction):
         return np.dot(x, self.a)
 
     def force(self, X):
-        return self.a * np.ones_like(X)
+        return -self.a * np.ones_like(X)
 
 
 class Quadratic(PotentialFunction):
@@ -65,7 +65,7 @@ class Quadratic(PotentialFunction):
         self.a = val[0]
 
     def potential(self, x):
-        return 0.5 * self.a * np.sum(x ** 2, axis=1)
+        return 0.5 * self.a * np.sum(x**2, axis=1)
 
     def force(self, X):
         return -1 * self.a * X
@@ -148,7 +148,7 @@ class Quartic2D(PotentialFunction):
     def force(self, X):
         F = np.zeros(X.shape)
         F[:, 0] = -4 * self.a * X[:, 0] * (X[:, 0] ** 2 - 1.0)
-        F[:, 1] = self.b * X[:, 1]
+        F[:, 1] = -self.b * X[:, 1]
         return F
 
 
@@ -181,7 +181,7 @@ class ThreeWell(PotentialFunction):
         pot = 0.0
         for n in range(4):
             pot += self.Ac[n] * np.exp(self.a[n] * (x - self.x0[n]) ** 2 + self.b[n] * (x - self.x0[n]) * (y - self.y0[n]) + self.c[n] * (y - self.y0[n]) ** 2)
-        pot += 2 * x ** 4 / 10 + 2 * (y - 1.0 / 3) ** 4 / 10
+        pot += 2 * x**4 / 10 + 2 * (y - 1.0 / 3) ** 4 / 10
         return pot
 
     def force(self, X):
@@ -195,7 +195,7 @@ class ThreeWell(PotentialFunction):
         for n in range(4):
             dU[:, 0] += self.Ac[n] * (2 * self.a[n] * (x - self.x0[n]) + self.b[n] * (y - self.y0[n])) * np.exp(self.a[n] * (x - self.x0[n]) ** 2 + self.b[n] * (x - self.x0[n]) * (y - self.y0[n]) + self.c[n] * (y - self.y0[n]) ** 2)
             dU[:, 1] += self.Ac[n] * (self.b[n] * (x - self.x0[n]) + 2 * self.c[n] * (y - self.y0[n])) * np.exp(self.a[n] * (x - self.x0[n]) ** 2 + self.b[n] * (x - self.x0[n]) * (y - self.y0[n]) + self.c[n] * (y - self.y0[n]) ** 2)
-        dU[:, 0] += 8 * x ** 3 / 10
+        dU[:, 0] += 8 * x**3 / 10
         dU[:, 1] += 8 * (y - 1.0 / 3) ** 3 / 10
         return -dU
 
@@ -357,12 +357,12 @@ class ValleyRidgePotential(PotentialFunction):
         self.V = V
 
         b1 = Hw - self.V * (xw / self.xs) ** 2 * ((xw / self.xs) ** 2 - 2)
-        b2 = -4 * self.V * xw * (self.xs ** 2 - xw ** 2) / self.xs ** 4
+        b2 = -4 * self.V * xw * (self.xs**2 - xw**2) / self.xs**4
 
         A = [
-            [yw ** 2 * (self.xi - xw), yw ** 4, yw ** 4 * xw],
-            [yw ** 2, 0.0, -(yw ** 4)],
-            [2 * yw * (xw - self.xi), -4 * yw ** 3, -4 * yw ** 3 * xw],
+            [yw**2 * (self.xi - xw), yw**4, yw**4 * xw],
+            [yw**2, 0.0, -(yw**4)],
+            [2 * yw * (xw - self.xi), -4 * yw**3, -4 * yw**3 * xw],
         ]
 
         par = np.linalg.solve(A, np.array([b1, b2, 0.0]))
@@ -392,8 +392,8 @@ class ValleyRidgePotential(PotentialFunction):
         x = X[:, 0]
         y = X[:, 1]
         F = np.zeros(X.shape)
-        F[:, 0] = 4 * self.V * x * (self.xs ** 2 - x ** 2) / self.xs ** 4 + self.A * y ** 2 - self.C * y ** 4
-        F[:, 1] = 2 * self.A * y * (x - self.xi) - 4 * y ** 3 * (self.B + self.C * x)
+        F[:, 0] = 4 * self.V * x * (self.xs**2 - x**2) / self.xs**4 + self.A * y**2 - self.C * y**4
+        F[:, 1] = 2 * self.A * y * (x - self.xi) - 4 * y**3 * (self.B + self.C * x)
         return F
 
 
@@ -425,6 +425,6 @@ class SimpleValleyRidgePotential(PotentialFunction):
         x = X[:, 0]
         y = X[:, 1]
         F = np.zeros(X.shape)
-        F[:, 0] = 8 * x * (1 - x) + y ** 2 * (2 - y ** 2)
-        F[:, 1] = y * (4 * x * (1 - y ** 2) - 1)
+        F[:, 0] = 8 * x * (1 - x) + y**2 * (2 - y**2)
+        F[:, 1] = y * (4 * x * (1 - y**2) - 1)
         return self.a * F

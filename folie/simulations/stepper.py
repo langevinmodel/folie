@@ -41,6 +41,10 @@ class EulerStepper(Stepper):
     def run_step_1D(self, x, dt, dW, bias=0.0):
         sig_sq_dt = np.sqrt(self.model.diffusion(x) * dt)
         return (x.T + (self.model.meandispl(x, bias)) * dt + sig_sq_dt * dW).T  # Weird transpose for broadcasting
+    
+    def run_step_ND(self, x, dt, dW, bias=0.0):  # New function
+        sig_sq_dt =np.sqrt(self.model.diffusion(x) * dt)  # Work only for diagonal diffusion that should a cholesky instead
+        return x + self.model.meandispl(x, bias) * dt + np.einsum("ijk,ik->ij", sig_sq_dt, dW) 
 
 
 class MilsteinStepper(Stepper):
