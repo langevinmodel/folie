@@ -21,15 +21,6 @@ class PotentialFunction(Function):
     def transform(self, x, *args, **kwargs):
         return self.force(x)
     
-class PotentialFunctionAdapter(PotentialFunction):
-     """
-     Temporary attempted solution of problem that Quartic2D.force dooesn't have domain attribute
-     It just takes f as 'Quartic2D.force' object and pass it to class PotentialFunction in order to inherit the domain attribute 
-     """
-     def __init__(self, f, dim=2):
-         self.dim = dim
-         super().__init__()
-
 class ConstantForce(PotentialFunction):
     """
     Constant force potential

@@ -119,7 +119,7 @@ class Overdamped(BaseModelOverdamped):
     """
 
     def __init__(self, force, diffusion=None, dim=None, has_bias=None, **kwargs):
-        """
+        r"""
         Initialize an overdamped Langevin model
 
         Parameters

@@ -30,7 +30,7 @@ class Simulator:
         x_val = np.empty((ntrajs, nsteps // save_every, dim))
         for n in range(nsteps):
             dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, dim))
-            x = self.stepper.run_step(x, self.dt, dW)
+            x = self.stepper.run_step(x, self.dt, dW)     # if you plan to use it in 1d use dw[:,n], in 2D leave dW ,in ND still to see 
             if n % save_every == 0:
                 x_val[:, n // save_every, :] = x
         data = Trajectories(dt=self.dt * save_every)
