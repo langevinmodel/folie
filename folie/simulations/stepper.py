@@ -40,7 +40,7 @@ class ExactStepper(Stepper):
 class EulerStepper(Stepper):
     def run_step_1D(self, x, dt, dW, bias=0.0):
         sig_sq_dt = np.sqrt(self.model.diffusion(x) * dt)
-        return (x.T + (self.model.meandispl(x, bias)) * dt + sig_sq_dt * dW.T).T  # Weird transpose for broadcasting
+        return (x.T + (self.model.meandispl(x, bias)) * dt + sig_sq_dt * dW.T).T  # Weird transpose for broadcasting  (I added a Transposition to dW in order to do the element-wise product of sid_sq_dt*dW, before it was calculation the matrix product returning a matrix of shape (ntrajs,ntrajs))
     
     def run_step_ND(self, x, dt, dW, bias=0.0):  # New function
         sig_sq_dt =np.sqrt(self.model.diffusion(x) * dt)  # Work only for diagonal diffusion that should a cholesky instead
@@ -50,7 +50,7 @@ class EulerStepper(Stepper):
 class MilsteinStepper(Stepper):
     def run_step_1D(self, x, dt, dW, bias=0.0):
         sig_sq_dt = np.sqrt(self.model.diffusion(x) * dt)
-        return (x.T + (self.model.meandispl(x, bias)) * dt + sig_sq_dt * dW + 0.25 * self.model.diffusion.grad_x(x)[..., 0] * (dW**2 - 1) * dt).T
+        return (x.T + (self.model.meandispl(x, bias)) * dt + sig_sq_dt * dW.T + 0.25 * self.model.diffusion.grad_x(x)[..., 0] * ((dW.T)**2 - 1) * dt).T  # same problem of dW.T as in EulerStepper class
 
 
 class VECStepper(Stepper):
