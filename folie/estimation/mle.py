@@ -82,7 +82,8 @@ class LikelihoodEstimator(Estimator):
     """
 
     def __init__(self, transition, **kwargs):
-        super().__init__(transition.model)
+        print('LikelihoodEstimator init')
+        super().__init__(transition.model, **kwargs)
         self.transition = transition
 
     def fit(self, data, minimizer=None, coefficients0=None, use_jac=True, callback=None, minimize_kwargs={"method": "L-BFGS-B"}, **kwargs):
@@ -108,13 +109,15 @@ class LikelihoodEstimator(Estimator):
         if coefficients0 is None:
             # TODO, check depending of the order of the model
             if isinstance(self.model, BaseModelOverdamped):
-                KramersMoyalEstimator(self.model).fit(data)
+                KramersMoyalEstimator(self.model, n_jobs=self.n_jobs).fit(data)
             coefficients0 = self.model.coefficients
         if minimizer is None:
             coefficients0 = np.asarray(coefficients0)
             minimizer = minimize
+        print('Done initial guess')
         # Run once, to determine if there is a Jacobian and eventual compilation if needed by numba
         init_val = self._loop_over_trajs(self.transition, data.weights, data, coefficients0, **kwargs)
+        print('Done initial run, optimizing...')
 
         if len(init_val) >= 2 and use_jac:
             res = minimizer(self._log_likelihood_negative_with_jac, coefficients0, args=(data,), jac=True, **minimize_kwargs)
@@ -122,6 +125,7 @@ class LikelihoodEstimator(Estimator):
             self.transition.use_jac = False
             res = minimizer(self._log_likelihood_negative, coefficients0, args=(data,), callback=callback, **minimize_kwargs)
         coefficients = res.x
+        print('Done optimizing')
 
         final_like = -res.fun
 

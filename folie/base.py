@@ -156,11 +156,14 @@ class Estimator(_BaseMethodsMixin):
     """
 
     def __init__(self, model=None, n_jobs=1):
+        print('Estimator INIT ' + str(self))
         self._model = model
         self.n_jobs = int(n_jobs)
         if self.n_jobs <= 1:
+            print('using serial')
             self._loop_over_trajs = self._loop_over_trajs_serial
         else:
+            print('using parallel')
             self._loop_over_trajs = self._loop_over_trajs_parallel
 
     @abc.abstractmethod

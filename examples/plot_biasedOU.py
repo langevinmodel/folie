@@ -51,12 +51,12 @@ for name, transitioncls in zip(
         fl.DrozdovDensity,
     ],
 ):
-    estimator = fl.LikelihoodEstimator(transitioncls(fl.models.OrnsteinUhlenbeck(has_bias=True)))
+    estimator = fl.LikelihoodEstimator(transitioncls(fl.models.OrnsteinUhlenbeck(has_bias=True)), n_jobs=20)
     res = estimator.fit_fetch(data)
     print(res.coefficients)
     res.remove_bias()
-    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), label=name)
-    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
-axs[0].legend()
-axs[1].legend()
-plt.show()
+    # axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), label=name)
+    # axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
+# axs[0].legend()
+# axs[1].legend()
+# plt.show()

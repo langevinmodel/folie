@@ -15,8 +15,8 @@ class KramersMoyalEstimator(Estimator):
         capable of updating models, this can be used to resume the estimation process.
     """
 
-    def __init__(self, model):
-        super().__init__(model)
+    def __init__(self, model, **kwargs):
+        super().__init__(model, **kwargs)
 
     def preprocess_traj(self, trj, **kwargs):
         """
