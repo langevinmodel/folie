@@ -1,4 +1,5 @@
-# A set of analytical functions for examples
+"""A set of analytical functions for examples"""
+
 from .base import Function
 from .._numpy import np
 from ..domains import Domain

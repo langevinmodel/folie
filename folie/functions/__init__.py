@@ -1,6 +1,6 @@
 import os, sys
 
-from .base import Function, ParametricFunction, ModelOverlay
+from .base import Function, ParametricFunction, ModelOverlay, FunctionSum, FunctionOffset, FunctionOffsetWithCoefficient
 
 dir_path = os.path.dirname(os.path.abspath(__file__))
 files_in_dir = [f[:-3] for f in os.listdir(dir_path) if f.endswith(".py") and f != "__init__.py" and f != "base.py"]

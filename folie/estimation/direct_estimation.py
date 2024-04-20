@@ -74,7 +74,7 @@ class KramersMoyalEstimator(Estimator):
         # weights = np.concatenate([trj["weight"] for trj in data], axis=0)  # TODO: implement correctly the weights
         if self.model.is_biased:  # If bias
             if dim <= 1:
-                dx_sq = dx ** 2
+                dx_sq = dx**2
             else:
                 dx_sq = dx[..., None] * dx[:, None, ...]
             self.model.diffusion.fit(X, y=dx_sq / dt, **extra_kwargs)  # We need to estimate the diffusion first in order to have the prefactor of the bias
@@ -85,99 +85,9 @@ class KramersMoyalEstimator(Estimator):
             self.model.force.fit(X, y=dx, sample_weight=None, **extra_kwargs)
         dx -= self.model.force(X, bias, **extra_kwargs) * dt
         if dim <= 1:
-            dx_sq = dx ** 2
+            dx_sq = dx**2
         else:
             dx_sq = dx[..., None] * dx[:, None, ...]
         self.model.diffusion.fit(X, y=dx_sq / dt, **extra_kwargs)
         self.model.fitted_ = True
         return self
-
-
-class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
-    r"""Obtain underdamped model
-
-    Parameters
-    ----------
-    model : Model, optional, default=None
-        A model which can be used for initialization. In case an estimator is capable of online learning, i.e.,
-        capable of updating models, this can be used to resume the estimation process.
-    """
-
-    def __init__(self, model):
-        super().__init__(model)
-
-    def fit(self, data, **kwargs):
-        r"""Fits data to the estimator's internal :class:`Model` and overwrites it. This way, every call to
-        :meth:`fetch_model` yields an autonomous model instance. Sometimes a :code:`partial_fit` method is available,
-        in which case the model can get updated by the estimator.
-
-        Parameters
-        ----------
-        data : array_like
-            Data that is used to fit a model.
-        **kwargs
-            Additional kwargs.
-
-        Returns
-        -------
-        self : Estimator
-            Reference to self.
-        """
-
-        for trj in data:
-            self.preprocess_traj(trj)
-
-        dt = data[0]["dt"]
-
-        X = np.concatenate([trj["x"] for trj in data], axis=0)
-        V = np.concatenate([trj["v"] for trj in data], axis=0)
-        bias = np.concatenate([trj["bias"] for trj in data], axis=0)
-        extra_kwargs = {}
-        for key in ["cells_idx", "loc_x"]:
-            if key in data[0]:
-                extra_kwargs[key] = np.concatenate([trj[key] for trj in data], axis=0)
-
-        # weights = np.concatenate(data.weights, axis=0)  # TODO: implement correctly the weights
-
-        # Take weight into account as well
-        dim = X.shape[1]
-        acc = np.concatenate([trj["a"] for trj in data], axis=0)
-        if dim <= 1:
-            acc = acc.ravel()
-        self.model.meandispl.fit(X, V, bias, y=acc, sample_weight=None)
-        acc -= self.model.force(X)
-        if dim <= 1:
-            acc_sq = acc ** 2
-        else:
-            acc_sq = acc[..., None] * acc[:, None, ...]
-        self.model.diffusion.fit(X, y=acc_sq * dt)
-        self.model.fitted_ = True
-
-        return self
-
-    def preprocess_traj(self, trj, **kwargs):
-        """
-        Compute velocity and acceleration
-        """
-
-        if "a" not in list(trj.keys()):
-            diffs = trj["x"] - np.roll(trj["x"], 1, axis=0)
-            a = np.roll(diffs, -1, axis=0) - diffs
-            if "v" not in list(trj.keys()):
-                trj["v"] = (0.5 / trj["dt"]) * (trj["x"] - np.roll(trj["x"], 2, axis=0))[2:-1]
-            else:
-                trj["v"] = trj["v"][2:-1]
-            trj["a"] = a[2:-1] / (trj["dt"] ** 2)
-            trj["x"] = trj["x"][2:-1]
-            if "bias" in trj:
-                trj["bias"] = trj["bias"][2:-1]
-            else:
-                trj["bias"] = np.zeros((1, trj["x"].shape[1]))
-            if hasattr(self._model, "dim_h"):
-                if self._model.dim_h > 0:
-                    trj["sig_h"] = np.zeros((trj["x"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
-                    trj["v"] = np.concatenate((trj["v"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
-                    trj["a"] = np.concatenate((trj["a"], np.zeros((trj["a"].shape[0], self._model.dim_h))), axis=1)
-                    trj["bias"] = np.concatenate((trj["bias"], np.zeros((trj["bias"].shape[0], self._model.dim_h))), axis=1)
-            self._model.preprocess_traj(trj, **kwargs)
-        return trj

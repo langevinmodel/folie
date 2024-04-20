@@ -29,17 +29,6 @@ def test_likelihood_optimization(data, request, benchmark):
     assert model.fitted_
 
 
-@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
-def test_numba_optimized(data, request, benchmark):
-    n_knots = 20
-    epsilon = 1e-10
-    model = fl.models.OverdampedFreeEnergy(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots), 1.0)
-    estimator = fl.LikelihoodEstimator(fl.EulerNumbaOptimizedDensity(model), n_jobs=multiprocessing.cpu_count())
-    fitted_estimator = benchmark(estimator.fit, data, coefficients0=np.concatenate((np.zeros(n_knots), np.zeros(n_knots) + 1.0)))
-    model = fitted_estimator.fetch_model()
-    assert model.fitted_
-
-
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_em_estimator(data, request, benchmark):
     fun_lin = fl.functions.Linear().fit(data)
