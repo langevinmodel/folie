@@ -22,6 +22,5 @@ from . import analysis
 
 from . import _version
 
-from . import fem
 
 __version__ = _version.get_versions()["version"]

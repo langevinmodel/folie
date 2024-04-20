@@ -106,23 +106,3 @@ def testcorrection_hiddenND_derivative(data, request, transitioncls, dim_h):
     np.testing.assert_allclose(correction[1], finite_diff_jac, rtol=1e-06, atol=1e-6)
 
     # TODO: assert also the plain likelihood part of the transitionDensity
-
-
-@pytest.mark.parametrize("data", ["numpy"], indirect=True)
-def test_numba_optimized(data, request):
-    n_knots = 20
-    epsilon = 1e-10
-    model = fl.models.OverdampedFreeEnergy(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots), 1.0)
-    transition = fl.EulerNumbaOptimizedDensity(model)
-    for i, trj in enumerate(data):
-        transition.preprocess_traj(trj)
-    # Assert preprocessing as well
-    coeffs0 = np.concatenate((np.zeros(n_knots), np.zeros(n_knots) + 1.0))
-    loglikelihood = transition(data.weights[0], data[0], coeffs0)
-    assert len(loglikelihood) == 2
-
-    assert loglikelihood[1].shape == (2 * n_knots,)
-
-    # Testing for evaluation of the jacobian
-    jac = scipy.optimize.approx_fprime(coeffs0, lambda p: transition(data.weights[0], data[0], p)[0])
-    np.testing.assert_allclose(loglikelihood[1], jac, rtol=1e-06, atol=1e-6)

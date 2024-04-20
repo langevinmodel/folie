@@ -9,8 +9,7 @@ import scipy.optimize
 import sparse
 
 from ..base import _BaseMethodsMixin
-from .numdifference import approx_fprime
-from .functions_composition import FunctionSum, FunctionTensored
+from ._numdifference import approx_fprime
 from ..domains import Domain
 
 
@@ -90,19 +89,19 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         self.fitted_ = True
         return self
 
-    def transform_x(self, x, **kwargs):
+    def transform_dx(self, x, **kwargs):
         r"""Gradient of the function with respect to input data.
         Implemented by finite difference.
         """
         return approx_fprime(x, self.__call__, self.output_shape_)
 
-    def transform_xx(self, x, *args, **kwargs):  # TODO: Check
+    def transform_d2x(self, x, *args, **kwargs):  # TODO: Check
         r"""Hessian of the function with respect to input data.
         Implemented by finite difference.
         """
-        return approx_fprime(x, self.transform_x, self.output_shape_ + (self.domain.dim,))
+        return approx_fprime(x, self.transform_dx, self.output_shape_ + (self.domain.dim,))
 
-    def transform_coeffs(self, x, *args, **kwargs):
+    def transform_dcoeffs(self, x, *args, **kwargs):
         init_coeffs = self.coefficients.copy()
 
         def f_coeffs(c, *args, **kwargs):
@@ -118,10 +117,10 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         return self.transform(x[:, : self.domain.dim], *args, **kwargs).reshape((-1, *self.output_shape_))
 
     def grad_x(self, x, *args, **kwargs):
-        return self.transform_x(x[:, : self.domain.dim], *args, **kwargs).reshape((-1, *self.output_shape_, len(x[0, : self.domain.dim])))
+        return self.transform_dx(x[:, : self.domain.dim], *args, **kwargs).reshape((-1, *self.output_shape_, len(x[0, : self.domain.dim])))
 
     def hessian_x(self, x, *args, **kwargs):
-        return self.transform_xx(x[:, : self.domain.dim], *args, **kwargs).reshape((-1, *self.output_shape_, len(x[0, : self.domain.dim]), len(x[0, : self.domain.dim])))
+        return self.transform_d2x(x[:, : self.domain.dim], *args, **kwargs).reshape((-1, *self.output_shape_, len(x[0, : self.domain.dim]), len(x[0, : self.domain.dim])))
 
     def grad_coeffs(self, x, *args, **kwargs):
         r"""Gradient of the function with respect to the coefficients.
@@ -136,22 +135,10 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         transformed : array_like
             The gradient
         """
-        return self.transform_coeffs(x[:, : self.domain.dim], *args, **kwargs).reshape((x.shape[0], *self.output_shape_, -1))
+        return self.transform_dcoeffs(x[:, : self.domain.dim], *args, **kwargs).reshape((x.shape[0], *self.output_shape_, -1))
 
     def __add__(self, other):
         return FunctionSum([self, other])
-
-    def __mul__(self, other):
-        return FunctionTensored([self, other])
-
-    def __rmul__(self, other):
-        return FunctionTensored([self, other])
-
-    def differentiate(self):
-        """
-        If available differentiate the function with respect to x and return the resulting function
-        """
-        raise NotImplementedError
 
     def copy(self):
         r"""Makes a deep copy of this function.
@@ -235,26 +222,26 @@ class ModelOverlay(Function):
     def transform(self, x, *args, **kwargs):
         return getattr(self.model, self.function_name)(x, *args, **kwargs)
 
-    def transform_x(self, x, *args, **kwargs):
-        if hasattr(self.model, self.function_name + "_x"):
-            return getattr(self.model, self.function_name + "_x")(x, *args, **kwargs)
+    def transform_dx(self, x, *args, **kwargs):
+        if hasattr(self.model, self.function_name + "_dx"):
+            return getattr(self.model, self.function_name + "_dx")(x, *args, **kwargs)
         else:
-            return super().transform_x(x, *args, **kwargs)  # If not implemented use finite difference
+            return super().transform_dx(x, *args, **kwargs)  # If not implemented use finite difference
 
-    def transform_xx(self, x, *args, **kwargs):
-        if hasattr(self.model, self.function_name + "_xx"):
-            return getattr(self.model, self.function_name + "_xx")(x, *args, **kwargs)
+    def transform_d2x(self, x, *args, **kwargs):
+        if hasattr(self.model, self.function_name + "_d2x"):
+            return getattr(self.model, self.function_name + "_d2x")(x, *args, **kwargs)
         else:
-            return super().transform_xx(x, *args, **kwargs)  # If not implemented use finite difference
+            return super().transform_d2x(x, *args, **kwargs)  # If not implemented use finite difference
 
-    def transform_coeffs(self, x, *args, **kwargs):
+    def transform_dcoeffs(self, x, *args, **kwargs):
         """
         Jacobian of the force with respect to coefficients
         """
-        if hasattr(self.model, self.function_name + "_coeffs"):
-            return getattr(self.model, self.function_name + "_coeffs")(x, *args, **kwargs)
+        if hasattr(self.model, self.function_name + "_dcoeffs"):
+            return getattr(self.model, self.function_name + "_dcoeffs")(x, *args, **kwargs)
         else:
-            return super().transform_coeffs(x, *args, **kwargs)  # If not implemented use finite difference
+            return super().transform_dcoeffs(x, *args, **kwargs)  # If not implemented use finite difference
 
     @property
     def coefficients(self):
@@ -269,3 +256,136 @@ class ModelOverlay(Function):
     @property
     def size(self):
         return np.prod(self.coefficients.shape)  # Es-ce qu'on ne devrait pas prendre plutot le gcd des deux ou équivalents
+
+
+class FunctionSum:
+    """
+    Return the sum of function
+    """
+
+    def __init__(self, functions):
+        self.functions_set = functions
+        for fu in self.functions_set:
+            if fu.output_shape_ != self.functions_set[0].output_shape_:
+                raise ValueError("Cannot sum function with different output shape")
+        # Do some samity check on the output of each functions
+
+    def resize(self, new_shape):
+        super().resize(new_shape)
+        for fu in self.functions_set:
+            fu.resize(new_shape)
+        return self
+
+    def __add__(self, other):
+        if type(other) is FunctionSum:
+            self.functions_set.extend(other.functions_set)
+            self.factors_set.extend(other.factors_set)
+        else:
+            self.functions_set.append(other)
+            self.factors_set.append(1.0)
+        return self
+
+    def __call__(self, X, *args, **kwargs):
+        return np.add.reduce([fu(X) for fu in self.functions_set])
+
+    def grad_x(self, X, **kwargs):
+        return np.add.reduce([fu.grad_x(X) for fu in self.functions_set])
+
+    def grad_coeffs(self, X, **kwargs):
+        return np.concatenate([fu.grad_coeffs(X) for fu in self.functions_set], axis=-1)
+
+    @property
+    def coefficients(self):
+        """Access the coefficients"""
+        return np.concatenate([fu.coefficients for fu in self.functions_set])
+
+    @coefficients.setter
+    def coefficients(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        curr_size = 0
+        for fu in self.functions_set:
+            fu.coefficients = vals.ravel[curr_size : curr_size + fu.size]
+            curr_size += fu.size
+
+    @property
+    def size(self):
+        return np.sum([fu.size for fu in self.functions_set])
+
+    @property
+    def shape(self):
+        return self.functions_set[0].output_shape_
+
+    @property
+    def n_output_features_(self):
+        return np.sum([fu.n_output_features_ for fu in self.functions_set])
+
+
+class FunctionOffset:
+    """
+    A composition Function to represent f(x)+g(x)v where
+    """
+
+    def __init__(self, f, g):
+        self._f = f
+        self._g = g
+        # super().__init__(output_shape=self.f.output_shape_)
+
+    def fit(self, x, v, y=None, *args, **kwargs):
+        if y is not None:
+            gv = np.einsum("t...h,th-> t...", self.g(x, *args, **kwargs).reshape((*y.shape, v.shape[1])), v)
+            y -= gv
+        self._f = self._f.fit(x, y)
+        # Mais du coup g n'est pas fit
+        return self
+
+    def __call__(self, x, v, *args, **kwargs):
+        fx = self._f(x, *args, **kwargs)
+        return fx + np.einsum("t...h,th-> t...", self._g(x, *args, **kwargs).reshape((*fx.shape, v.shape[1])), v)
+
+    def grad_x(self, x, v, *args, **kwargs):
+        dfx = self._f.grad_x(x, *args, **kwargs)
+        return dfx + np.einsum("t...he,th-> t...e", self._g.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], dfx.shape[-1])), v)
+
+    def hessian_x(self, x, v, *args, **kwargs):
+        ddfx = self._f.hessian_x(x, *args, **kwargs)
+        return ddfx + np.einsum("t...hef,th-> t...ef", self._g.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], v.shape[1], *ddfx.shape[-2:])), v)
+
+    def __getattr__(self, item):  # Anything else should be passed to f
+        if item == "f":
+            return self._f
+        elif item == "g":
+            return self._g
+        else:
+            return getattr(self._f, item)
+
+    def __setattr__(self, item, value):
+        if item.startswith("_"):
+            # If it's a private attribute, handle it normally
+            super().__setattr__(item, value)
+        else:
+            # If it's not a private attribute, delegate the assignment to the inner object
+            setattr(self._f, item, value)
+
+
+class FunctionOffsetWithCoefficient(ParametricFunction):
+    """
+    A composition function for returning f(x)+g(x)*y
+    """
+
+    def __init__(self, f, g=None, **kwargs):
+        self.f = f
+        self.g = g
+        # Check if g is a Function or a constant
+        super().__init__(self.f.domain, self.f.output_shape_)
+
+    def transform(self, x, v, *args, **kwargs):
+        return self.f(x, *args, **kwargs) + np.einsum("t...h,th-> t...", self.g(x, *args, **kwargs), v)
+
+    def transform_dx(self, x, v, *args, **kwargs):
+        return self.f.transform_dx(x, *args, **kwargs) + np.einsum("t...he,th-> t...e", self.g.transform_dx(x, *args, **kwargs), v)
+
+    def transform_dcoeffs(self, x, v, *args, **kwargs):
+        """
+        Jacobian of the force with respect to coefficients
+        """
+        return np.concatenate((self.f.transform_dcoeffs(x, *args, **kwargs), np.einsum("t...hc,th-> t...c", self.g.transform_dcoeffs(x, *args, **kwargs), v)), axis=-1)

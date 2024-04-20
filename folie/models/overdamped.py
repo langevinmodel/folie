@@ -66,13 +66,13 @@ class BaseModelOverdamped(Model):
     def _meandispl(self, x, *args, **kwargs):
         return self.force(x, *args, **kwargs)
 
-    def _meandispl_x(self, x, *args, **kwargs):
+    def _meandispl_dx(self, x, *args, **kwargs):
         return self.force.grad_x(x, *args, **kwargs)
 
-    def _meandispl_xx(self, x, *args, **kwargs):
+    def _meandispl_d2x(self, x, *args, **kwargs):
         return self.force.hessian_x(x, *args, **kwargs)
 
-    def _meandispl_coeffs(self, x, *args, **kwargs):
+    def _meandispl_dcoeffs(self, x, *args, **kwargs):
         """
         Jacobian of the force with respect to coefficients
         """

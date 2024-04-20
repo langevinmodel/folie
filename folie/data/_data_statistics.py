@@ -33,13 +33,6 @@ def sum_stats(d1, d2):
     )
 
 
-def domain(stats, Npoints=75):
-    """
-    Build an array that is representative of the domain of the data points
-    """
-    return np.linspace(stats.min, stats.max, Npoints)
-
-
 def _beta_params_from_mean_var(mean, var, uniform_points, loc=0, scale=1, optimize=True):
     # Define the objective function to minimize
     def objective(x):

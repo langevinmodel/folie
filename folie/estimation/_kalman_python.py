@@ -1,5 +1,5 @@
 """
-Somes utilities function
+This file contains functions to perform Kalman filter for Expectation Maximization estimation
 """
 
 from .._numpy import np

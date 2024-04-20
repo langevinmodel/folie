@@ -38,8 +38,6 @@ def test_statistics(data, request):
 
     assert stats.nobs == 600000
 
-    assert data.domain(75).shape == (75, 1)
-
     rep_array = data.representative_array(75, optimize=True)
 
     assert rep_array.shape == (75, 1)
@@ -58,8 +56,6 @@ def test_statistics2d(data2d, request):
     stats = data2d.stats
 
     assert stats.nobs == 100000
-
-    assert data2d.domain(75).shape == (75, 2)
 
     rep_array = data2d.representative_array(75, optimize=True)
 

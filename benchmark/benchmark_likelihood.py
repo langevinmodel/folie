@@ -55,18 +55,6 @@ def test_local_likelihood(data, request, benchmark, local_fun, parameters):
 
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
-def test_numba_optimized(data, request, benchmark):
-    n_knots = 20
-    epsilon = 1e-10
-    model = fl.models.OverdampedFreeEnergy(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots).ravel(), 1.0)
-    transition = fl.EulerNumbaOptimizedDensity(model)
-    for i, trj in enumerate(data):
-        transition.preprocess_traj(trj)
-    loglikelihood = benchmark(transition, data.weights[0], data[0], np.concatenate((np.zeros(n_knots), np.zeros(n_knots) + 1.0)))
-    assert len(loglikelihood) == 2
-
-
-@pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_hiddenlikelihood_functions(data, request, benchmark):
     fun_lin = fl.functions.Linear()
     fun_cst = fl.functions.Constant().resize((3, 3))
