@@ -165,7 +165,7 @@ class FunctionTensored:
 
 class FunctionOffset:
     """
-    A composition Function to represent f(x)+g(x)v where
+    A composition Function to represent f(x)+g(x)v where v is the bias
     """
 
     def __init__(self, f, g):

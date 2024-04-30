@@ -101,3 +101,25 @@ class ABMD_Simulator(BiasedSimulator):
         np.minimum(self.xmax, self.xstop, out=self.xmax)
         self.xmax_hist.append(np.copy(self.xmax))
         return self.k * (self.xmax - xt)
+    
+
+class ABMD_Colvar_Simulator(BiasedSimulator):
+    def __init__(self, stepper, dt, colvar, k=1, xstop=np.infty, **kwargs):
+        super().__init__(stepper, dt, **kwargs)
+        self.xmax = None
+        self.k = k
+        self.xstop = xstop
+        self.xmax_hist = []
+        self.colvar = colvar
+
+    def _bias(self, xt):
+        # q_x: gradient
+        q, q_x = self.colvar(xt)
+        if self.qmax is None:
+            self.qmax = np.copy(q)
+        else:
+            np.maximum(self.xmax, xt, out=self.xmax)
+        np.minimum(self.xmax, self.xstop, out=self.xmax)
+        self.xmax_hist.append(np.copy(self.xmax))
+        return (self.k * (self.xmax - xt)) * q_x
+    
