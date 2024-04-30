@@ -6,7 +6,7 @@ from copy import deepcopy
 import time 
 
 # Define model parameters :  force and diffusion functions 
-coeff=0.1*np.array([-48.6,16.2,0.9,-1.2,0.1]) # coefficients of the free energy same as before but translated by 3 
+coeff=0.1*np.array([0,0,-4.5,0,0.1]) # coefficients of the free energy same as before but translated by 3 
 free_energy = np.polynomial.Polynomial(coeff)
 force_coeff=np.array([-coeff[1],-2*coeff[2],-3*coeff[3],-4*coeff[4]]) #coefficients of the free energy
 force_function = fl.functions.Polynomial(deg=3,coefficients=force_coeff)
