@@ -3,13 +3,15 @@ import matplotlib.pyplot as plt
 import folie as fl
 from mpl_toolkits.mplot3d import Axes3D
 from copy import deepcopy
+import sympy as sym
+# from sympy import *
 
 x = np.linspace(-1.8,1.8,36)
 y = np.linspace(-1.8,1.8,36)
 input=np.transpose(np.array([x,y]))
 
 diff_function= fl.functions.Polynomial(deg=0,coefficients=np.asarray([0.5]) * np.eye(2,2))
-a,b = 5.0, 10.0
+a,b = 0.5, 1.0
 quartic2d= fl.functions.Quartic2D(a=a,b=b)
 exx = fl.functions.analytical.My_Quartic2D(a=a,b=b)
 
@@ -30,22 +32,30 @@ ax.set_title('Force')
 # plt.show()
 print(quartic2d.domain)
 fff=fl.functions.Quartic2DForce(exx.force, dim=2)
+
+def colvar (x,y):
+    return x+y
+
+grad_colvar=np.array([1,1])
+
+
 dt = 1e-3
 model_simu=fl.models.overdamped.Overdamped(force=quartic2d,diffusion=diff_function)
-simulator=fl.simulations.Simulator(fl.simulations.EulerStepper(model_simu), dt)
+simulator=fl.simulations.ABMD_2D_to_1DColvar_Simulator(fl.simulations.EulerStepper(model_simu), dt,colvar=colvar,grad_colvar=grad_colvar,k=25.0,qstop=1.2)
 
 # initialize positions 
 ntraj=50
 q0= np.empty(shape=[ntraj,2])
 for i in range(ntraj):
+    # q0[i]=(0.8,-0.8)
     for j in range(2):
-        q0[i][j]=0.000
+        q0[i][j]=-1.2
 
 ####################################
 ##       CALCULATE TRAJECTORY     ##
 ####################################
 
-time_steps=5000
+time_steps=10000
 data = simulator.run(time_steps, q0,save_every=1)  
 #xmax = np.concatenate(simulator.xmax_hist, axis=1).T
 
@@ -62,6 +72,9 @@ for n, trj in enumerate(data):
     axs.set_xlabel("$X(t)$")
     axs.set_ylabel("$Y(t)$")
     axs.set_title("X-Y Trajectory")
+    axs.set_xlim(-1.8,1.8)
+    axs.set_ylim(-1.8,1.8)
+    # ax.set(xlim=(-1.5, 1.5), ylim=(-1.5, 1.5))
     axs.grid()
 
 """fig, axs = plt.subplots(1,2)
@@ -103,56 +116,56 @@ for n, trj in enumerate(data):
 ####################################
 # TRAINING ON X OPTIMAL COORDINATE
 #####################################
-xdata = fl.data.trajectories.Trajectories(dt=dt) 
-s = np.empty(shape=(len(trj["x"][:,0]),1))
-for n, trj in enumerate(data):
-    for j in range(len(trj["x"][:,0])):
-        s[j]=trj["x"][:,0][j]
-    xdata.append(s)
-print(len(s))
+# xdata = fl.data.trajectories.Trajectories(dt=dt) 
+# s = np.empty(shape=(len(trj["x"][:,0]),1))
+# for n, trj in enumerate(data):
+#     for j in range(len(trj["x"][:,0])):
+#         s[j]=trj["x"][:,0][j]
+#     xdata.append(s)
+# print(len(s))
 # #### Possible models 
 # trainforce =fl.functions.Polynomial(deg=3,coefficients=np.asarray([1,1,1,1]))
 # traindiff = fl.functions.Polynomial(deg=0,coefficients=np.asarray([0.0]))
 # trainmodelx=fl.models.Overdamped(force = trainforce,diffusion=traindiff, has_bias=False)
-xfa = np.linspace(-1.3, 1.3, 75)
-exact = a*(xfa** 2 - 1.0) ** 2
-# domain = fl.MeshedDomain.create_from_range(np.linspace(data.stats.min , data.stats.max , 10).ravel())
-domain = fl.MeshedDomain.create_from_range(np.linspace(min(xfa) , max(xfa) , 10).ravel())
-trainmodelx = fl.models.OverdampedSplines1D(domain=domain)
+# xfa = np.linspace(-1.3, 1.3, 75)
+# exact = (xfa** 2 - 1.0) ** 2
+# # domain = fl.MeshedDomain.create_from_range(np.linspace(data.stats.min , data.stats.max , 10).ravel())
+# # domain = fl.MeshedDomain.create_from_range(np.linspace(min(xfa) , max(xfa) , 10).ravel())
+# # trainmodel = fl.models.OverdampedSplines1D(domain=domain)
 
-res_vec=[]
-fig, axs = plt.subplots(1, 2)
-axs[0].plot(xfa, exact, label="Exact")
+# res_vec=[]
+# fig, axs = plt.subplots(1, 2)
+# axs[0].plot(xfa, exact, label="Exact")
+# axs[1].plot(xfa, exact, label="Exact")
+# # model_simu.remove_bias()
+# for name, transitioncls in zip(
+#     ["Euler", "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
+#     [
+#         fl.EulerDensity,
+#         fl.OzakiDensity,
+#         fl.ShojiOzakiDensity,
+#         fl.ElerianDensity,
+#         fl.KesslerDensity,
+#         fl.DrozdovDensity,
+#     ],
+# ):
+#     estimator = fl.LikelihoodEstimator(transitioncls(deepcopy(trainmodelx)))
+#     res = estimator.fit_fetch(xdata)
+#     print(res.coefficients)
+#     res_vec.append(res)
+#     # res.remove_bias()
+#     axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), label=name)
+#     axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
 
-# model_simu.remove_bias()
-for name, transitioncls in zip(
-    ["Euler", "Elerian",],#"Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
-    [
-        fl.EulerDensity,
-        # fl.OzakiDensity,
-        # fl.ShojiOzakiDensity,
-        fl.ElerianDensity,
-        # fl.KesslerDensity,
-        # fl.DrozdovDensity,
-    ],
-):
-    estimator = fl.LikelihoodEstimator(transitioncls(deepcopy(trainmodelx)))
-    res = estimator.fit_fetch(xdata)
-    print(res.coefficients)
-    res_vec.append(res)
-    # res.remove_bias()
-    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), label=name)
-    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
-
-axs[0].legend()
-axs[1].legend()
+# axs[0].legend()
+# axs[1].legend()
 
 
-for i in range(len(res_vec)-1):
-    flag_force= (res_vec[i].force(xfa.reshape(-1, 1)) == res_vec[i+1].force(xfa.reshape(-1, 1))).all()
-    flag_diff= (res_vec[i].diffusion(xfa.reshape(-1, 1)) == res_vec[i+1].diffusion(xfa.reshape(-1, 1))).all()
-    print(flag_force, flag_diff)  # apparently they are 
-plt.show()
+# for i in range(len(res_vec)-1):
+#     flag_force= (res_vec[i].force(xfa.reshape(-1, 1)) == res_vec[i+1].force(xfa.reshape(-1, 1))).all()
+#     flag_diff= (res_vec[i].diffusion(xfa.reshape(-1, 1)) == res_vec[i+1].diffusion(xfa.reshape(-1, 1))).all()
+#     print(flag_force, flag_diff)  # apparently they are 
+# plt.show()
 
 
 
@@ -161,7 +174,7 @@ plt.show()
 #########################################
 
 # Choose unit versor of direction 
-u = np.array([1,1])
+u = grad_colvar
 u_norm= (1/np.linalg.norm(u,2))*u
 w = np.empty(shape=(len(trj["x"]),1))
 
@@ -178,10 +191,9 @@ for n, trj in enumerate(data):
     axs.set_title("trajectory projected along $u =$"  + str(u) + " direction")
     axs.grid()
 
-
-##############################################################
-##          MODEL TRAINING ON PROJECTED COORDINATE          ##
-##############################################################
+#######################################
+##          MODEL TRAINING           ##
+#######################################
 
 fig, axs = plt.subplots(1, 2)
 axs[0].set_title("Force")
@@ -192,37 +204,38 @@ axs[1].set_title("Diffusion")
 axs[1].set_xlabel("$x$")
 axs[1].set_ylabel("$D(x)$")
 axs[1].grid()
-
 #### Possible models 
-# trainforce =fl.functions.Polynomial(deg=3,coefficients=np.asarray([1,1,1,1]))
-# traindiff = fl.functions.Polynomial(deg=0,coefficients=np.asarray([0.0]))
-# trainmodel=fl.models.Overdamped(force = trainforce,diffusion=traindiff, has_bias=False)
-xfa = np.linspace(-1.6, 1.6, 75)
-domain = fl.MeshedDomain.create_from_range(np.linspace(data.stats.min , data.stats.max , 10).ravel())
-domain = fl.MeshedDomain.create_from_range(np.linspace(min(xfa) , max(xfa) , 10).ravel())
+
+xfa = np.linspace(-1.3, 1.3, 75)
+exact = (xfa** 2 - 1.0) ** 2
+domain = fl.MeshedDomain.create_from_range(np.linspace(proj_data.stats.min , proj_data.stats.max , 40).ravel())
+# domain = fl.MeshedDomain.create_from_range(np.linspace(min(xfa) , max(xfa) , 10).ravel())
 trainmodel = fl.models.OverdampedSplines1D(domain=domain)
 
-
 res_vec=[]
-# model_simu.remove_bias()
+fig, axs = plt.subplots(1, 2)
+axs[0].plot(xfa, exact, label="Exact")
+axs[1].plot(xfa, exact, label="Exact")
+model_simu.remove_bias()
 for name, transitioncls in zip(
-    ["Euler", "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
+    ["Euler"],#, "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
     [
         fl.EulerDensity,
-        fl.OzakiDensity,
-        fl.ShojiOzakiDensity,
-        fl.ElerianDensity,
-        fl.KesslerDensity,
-        fl.DrozdovDensity,
+        # fl.OzakiDensity,
+        # fl.ShojiOzakiDensity,
+        # fl.ElerianDensity,
+        # fl.KesslerDensity,
+        # fl.DrozdovDensity,
     ],
 ):
     estimator = fl.LikelihoodEstimator(transitioncls(deepcopy(trainmodel)))
     res = estimator.fit_fetch(proj_data)
     print(res.coefficients)
     res_vec.append(res)
-    # res.remove_bias()
+    res.remove_bias()
     axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), label=name)
     axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
+
 axs[0].legend()
 axs[1].legend()
 
