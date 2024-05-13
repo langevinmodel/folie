@@ -5,6 +5,7 @@ ABMD biased dynamics
 
 Estimation of an overdamped Langevin in presence of biased dynamics.
 """
+
 import numpy as np
 import folie as fl
 import matplotlib.pyplot as plt
@@ -51,7 +52,7 @@ for name, transitioncls in zip(
         fl.DrozdovDensity,
     ],
 ):
-    estimator = fl.LikelihoodEstimator(transitioncls(fl.models.OrnsteinUhlenbeck(has_bias=True)), n_jobs=20)
+    estimator = fl.LikelihoodEstimator(transitioncls(fl.models.OrnsteinUhlenbeck(has_bias=True)), n_jobs=4)
     res = estimator.fit_fetch(data)
     print(res.coefficients)
     res.remove_bias()
@@ -59,4 +60,4 @@ for name, transitioncls in zip(
     # axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
 # axs[0].legend()
 # axs[1].legend()
-# plt.show()
+plt.show()

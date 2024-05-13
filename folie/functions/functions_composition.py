@@ -194,9 +194,14 @@ class FunctionOffset:
         return ddfx + np.einsum("t...hef,th-> t...ef", self._g.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], v.shape[1], *ddfx.shape[-2:])), v)
 
     def __getattr__(self, item):  # Anything else should be passed to f
+        if "_f" not in vars(self):
+            print(vars(self))
+            raise AttributeError
         if item == "f":
             return self._f
         elif item == "g":
+            if "_g" not in vars(self):
+                raise AttributeError
             return self._g
         else:
             return getattr(self._f, item)

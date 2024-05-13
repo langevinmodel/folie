@@ -63,6 +63,17 @@ class BaseModelOverdamped(Model):
     def preprocess_traj(self, trj, **kwargs):
         return trj
 
+    def add_bias(self, bias=True):
+        self.meandispl = ModelOverlay(self, "_meandispl_biased", output_shape=self.force.output_shape_)
+        self.is_biased = True
+
+    def remove_bias(self):
+        if self.is_biased:
+            self.meandispl = ModelOverlay(self, "_meandispl", output_shape=self.force.output_shape_)
+            self.is_biased = False
+        else:
+            print("Model is not biased")
+
     def _meandispl(self, x, *args, **kwargs):
         return self.force(x, *args, **kwargs)
 
@@ -73,6 +84,24 @@ class BaseModelOverdamped(Model):
         return self.force.hessian_x(x, *args, **kwargs)
 
     def _meandispl_coeffs(self, x, *args, **kwargs):
+        """
+        Jacobian of the force with respect to coefficients
+        """
+        return self.force.grad_coeffs(x, *args, **kwargs)
+
+    def _meandispl_biased(self, x, bias, *args, **kwargs):
+        fx = self.force(x, *args, **kwargs)
+        return fx + np.einsum("t...h,th-> t...", self.diffusion(x, *args, **kwargs).reshape((*fx.shape, bias.shape[1])), bias)
+
+    def _meandispl_biased_x(self, x, bias, *args, **kwargs):
+        dfx = self.force.grad_x(x, *args, **kwargs)
+        return dfx + np.einsum("t...he,th-> t...e", self.diffusion.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], bias.shape[1], dfx.shape[-1])), bias)
+
+    def _meandispl_biased_xx(self, x, bias, *args, **kwargs):
+        ddfx = self.force.hessian_x(x, *args, **kwargs)
+        return ddfx + np.einsum("t...hef,th-> t...ef", self.diffusion.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], bias.shape[1], *ddfx.shape[-2:])), bias)
+
+    def _meandispl_biased_coeffs(self, x, bias, *args, **kwargs):
         """
         Jacobian of the force with respect to coefficients
         """
@@ -208,20 +237,6 @@ class Overdamped(BaseModelOverdamped):
     @coefficients_diffusion.setter
     def coefficients_diffusion(self, vals):
         self.diffusion.coefficients = vals
-
-    def add_bias(self, bias=True):
-        if isinstance(bias, bool) and bias:
-            self.force = FunctionOffset(self.force, self.diffusion)
-        elif isinstance(bias, ParametricFunction):
-            self.force = FunctionOffsetWithCoefficient(self.force, bias)
-        self.is_biased = True
-
-    def remove_bias(self):
-        if self.is_biased:
-            self.force = self.force.f
-            self.is_biased = False
-        else:
-            print("Model is not biased")
 
 
 #  Set of quick interface to more common models
