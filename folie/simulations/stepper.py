@@ -40,11 +40,14 @@ class ExactStepper(Stepper):
 class EulerStepper(Stepper):
     def run_step_1D(self, x, dt, dW, bias=0.0):
         sig_sq_dt = np.sqrt(self.model.diffusion(x) * dt)
-        return (x.T + (self.model.meandispl(x, bias)) * dt + sig_sq_dt * dW.T).T  # Weird transpose for broadcasting  (I added a Transposition to dW in order to do the element-wise product of sid_sq_dt*dW, before it was calculation the matrix product returning a matrix of shape (ntrajs,ntrajs))
+        return (x.T + (self.model.meandispl(x, bias)) * dt + sig_sq_dt * dW.T).T  # Weird transpose for broadcasting  (I added a transposition to dW in order to do the element-wise product of sid_sq_dt*dW, before it computed the matrix product returning a matrix of shape (ntrajs,ntrajs))
     
     def run_step_ND(self, x, dt, dW, bias=0.0):  # New function
         sig_sq_dt =np.sqrt(self.model.diffusion(x) * dt)  # Work only for diagonal diffusion that should a cholesky instead
+        # return x + self.model.meandispl(x, bias) * dt + np.einsum("ijk,ik->ij", sig_sq_dt, dW) 
+        # My mod attempt to fix error: " einstein sum subscripts string contains too many subscripts for operand 1"
         return x + self.model.meandispl(x, bias) * dt + np.einsum("ijk,ik->ij", sig_sq_dt, dW) 
+
 
 
 class MilsteinStepper(Stepper):
