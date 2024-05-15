@@ -29,17 +29,16 @@ model_simu = fl.models.overdamped.Overdamped(force_function,diffusion=diff_funct
 simulator = fl.simulations.ABMD_Simulator(fl.simulations.EulerStepper(model_simu), 1e-3, k=1.0, xstop=6.0)
 
 # initialize positions 
-ntraj=50
+ntraj=30
 q0= np.empty(ntraj)
 for i in range(len(q0)):
     q0[i]=0
 # Calculate Trajectory
-time_steps=50000
-data = simulator.run(time_steps, q0, ntraj)
+time_steps=10000
+data = simulator.run(time_steps, q0, save_every=1)
 xmax = np.concatenate(simulator.xmax_hist, axis=1).T
 
 # Plot the resulting trajectories
-# sphinx_gallery_thumbnail_number = 1
 fig, axs = plt.subplots(1,2)
 for n, trj in enumerate(data):
     axs[0].plot(trj["x"])
@@ -48,41 +47,38 @@ for n, trj in enumerate(data):
     axs[1].set_ylabel("$x(t)$")
     axs[1].grid()
     
-plt.show()
+fig, axs = plt.subplots(1, 2)
+axs[0].set_title("Force")
+axs[0].set_xlabel("$x$")
+axs[0].set_ylabel("$F(x)$")
+axs[0].grid()
 
+axs[1].set_title("Diffusion Coefficient") # i think should be diffusion coefficient
+axs[1].set_xlabel("$x$")
+axs[1].set_ylabel("$D(x)$") 
+axs[1].grid()
 
-#fig, axs = plt.subplots(1, 2)
-#axs[0].set_title("Force")
-#axs[0].set_xlabel("$x$")
-#axs[0].set_ylabel("$F(x)$")
-#axs[0].grid()
-#
-#axs[1].set_title("Force") # i think should be diffusion coefficient
-#axs[1].set_xlabel("$x$")
-#axs[1].set_ylabel("$D(x)$") 
-#axs[1].grid()
-#
-#xfa = np.linspace(-7.0, 7.0, 75)
-#model_simu.remove_bias()
-#axs[0].plot(xfa, model_simu.force(xfa.reshape(-1, 1)), label="Exact")
-#axs[1].plot(xfa, model_simu.diffusion(xfa.reshape(-1, 1)), label="Exact")
-#for name, transitioncls in zip(
-#    ["Euler", "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
-#    [
-#        fl.EulerDensity,
-#        fl.OzakiDensity,
-#        fl.ShojiOzakiDensity,
-#        fl.ElerianDensity,
-#        fl.KesslerDensity,
-#        fl.DrozdovDensity,
-#    ],
-#):
-#    estimator = fl.LikelihoodEstimator(transitioncls(fl.models.Overdamped(force_function,has_bias=True)))
-#    res = estimator.fit_fetch(data)
-#    print(res.coefficients)
-#    res.remove_bias()
-#    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), label=name)
-#    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
-#axs[0].legend()
-#axs[1].legend()
-#plt.show() """
+xfa = np.linspace(-7.0, 7.0, 75)
+model_simu.remove_bias()
+axs[0].plot(xfa, model_simu.force(xfa.reshape(-1, 1)), label="Exact")
+axs[1].plot(xfa, model_simu.diffusion(xfa.reshape(-1, 1)), label="Exact")
+for name, transitioncls in zip(
+   ["Euler", "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
+   [
+       fl.EulerDensity,
+       fl.OzakiDensity,
+       fl.ShojiOzakiDensity,
+       fl.ElerianDensity,
+       fl.KesslerDensity,
+       fl.DrozdovDensity,
+   ],
+):
+   estimator = fl.LikelihoodEstimator(transitioncls(fl.models.Overdamped(force_function,has_bias=True))) #diffusion= diff_function,
+   res = estimator.fit_fetch(data)
+   print(name, res.coefficients)
+   res.remove_bias()
+   axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), label=name)
+   axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
+axs[0].legend()
+axs[1].legend()
+plt.show() 
