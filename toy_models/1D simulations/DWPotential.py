@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import folie as fl
+
 coeff=0.1*np.array([0,0,-4.5,0,0.1])
 free_energy = np.polynomial.Polynomial(coeff)
 force_coeff=np.array([-coeff[1],-2*coeff[2],-3*coeff[3],-4*coeff[4]])
@@ -70,8 +71,8 @@ for name, transitioncls in zip(
        fl.DrozdovDensity,
    ],
 ):
-   estimator = fl.LikelihoodEstimator(transitioncls(copy.deepcopy(trainmodel)))
-   res = estimator.fit_fetch(copy.deepcopy(data))
+   estimator = fl.LikelihoodEstimator(transitioncls(trainmodel))
+   res = estimator.fit_fetch(data)
    print(res.coefficients)
    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), label=name)
    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
