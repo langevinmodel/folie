@@ -90,6 +90,7 @@ for n, trj in enumerate(data):
 #########################################
 
 # Choose unit versor of direction 
+
 u = np.array([1,1])
 u_norm= (1/np.linalg.norm(u,2))*u
 w = np.empty_like(trj["x"][:,0])
