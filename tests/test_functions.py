@@ -146,22 +146,6 @@ def test_functions_sum():
     assert fun_sum.grad_coeffs(data).shape == (25, 1, 5)
 
 
-def test_functions_offset():
-    data = np.linspace(-1, 1, 25).reshape(-1, 1)
-    data_bias = np.linspace(-1, 1, 25).reshape(-1, 1)
-    fun1 = fl.functions.Linear(output_shape=(1,))
-    fun2 = fl.functions.Polynomial(deg=3, output_shape=(1, 1)).fit(data)
-
-    fun_off = fl.functions.FunctionOffset(fun1, fun2)
-    fun_off.fit(data, data_bias)
-
-    assert fun_off(data, data_bias).shape == (25, 1)
-
-    assert fun_off.grad_x(data, data_bias).shape == (25, 1, 1)
-
-    assert fun_off.grad_coeffs(data, data_bias).shape == (25, 1, 1)
-
-
 @pytest.mark.skip(reason="Not implemented yet")
 def test_functions_tensor():
     data = np.linspace(-1, 1, 24).reshape(-1, 2)

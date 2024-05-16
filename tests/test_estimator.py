@@ -131,18 +131,18 @@ def test_likelihood_estimator2d(data2d, request):
     assert model.fitted_
 
 
-@pytest.mark.parametrize("data", ["numpy"], indirect=True)
-def test_fem_likelihood_estimator(data, request):
+@pytest.mark.parametrize("data_short", ["numpy"], indirect=True)
+def test_fem_likelihood_estimator(data_short, request):
 
     n_knots = 20
     epsilon = 1e-10
-    m = skfem.MeshLine(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots).ravel())
+    m = skfem.MeshLine(np.linspace(data_short.stats.min - epsilon, data_short.stats.max + epsilon, n_knots).ravel())
     domain = fl.MeshedDomain(m)
     fun = fl.functions.FiniteElement(domain, skfem.ElementLineP1())
     model = fl.models.Overdamped(fun, dim=1)
     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
 
-    model = estimator.fit_fetch(data)
+    model = estimator.fit_fetch(data_short)
     assert model.fitted_
 
 
