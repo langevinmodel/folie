@@ -106,8 +106,4 @@ for n, trj in enumerate(data):
     axs.set_title("trajectory projected along $u =$"  + str(u) + " direction")
     axs.grid()
 
-fig, pp =plt.subplots()
-for n, trj in enumerate(proj_data):
-    pp.plot(trj["x"])
-pp.set_title("proj stuff")
 plt.show()
