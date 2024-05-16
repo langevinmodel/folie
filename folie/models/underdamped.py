@@ -5,15 +5,18 @@ from ..functions import Constant, Polynomial
 
 
 class Underdamped(Overdamped):
+    """
+    Base model for underdamped Langevin equations, defined by
+
+    .. math ::
+
+    dX(t) = V(t)
+
+    dV(t) = f(X,t)dt+ gamma(X,t)V(t)dt + sigma(X,t)dW_t
+
+    """
+
     def __init__(self, force, friction, diffusion, dim=1, **kwargs):
-        """
-        Base model for underdamped Langevin equations, defined by
-
-        dX(t) = V(t)
-
-        dV(t) = f(X,t)dt+ gamma(X,t)V(t)dt + sigma(X,t)dW_t
-
-        """
 
         if friction is diffusion:
             friction = diffusion.copy()

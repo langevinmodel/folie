@@ -11,10 +11,21 @@ class BaseModelOverdamped(Model):
     _has_exact_density = False
 
     def __init__(self, dim=1, **kwargs):
-        """
-        Base model for overdamped Langevin equations, defined by
+        r"""
+        Base model for overdamped Langevin equations.
 
-        dX(t) = mu(X,t)dt + sigma(X,t)dW_t
+        The evolution equation for variable X(t) is defined as
+
+        .. math::
+
+            \mathrm{d}X(t) = F(X)\mathrm{d}t + sigma(X,t)\mathrm{d}W_t
+
+        The components of the overdamped model are the force profile F(X) as well as the diffusion :math: `D(x) = \sigma(X)\sigma(X)^\T`
+
+        When considering equilibrium model, the force and diffusion profile are related to the free energy profile V(X) via
+
+        .. math::
+            F(x) = -D(x) \nabla V(x) + \mathrm{div} D(x)
 
         """
 
@@ -114,8 +125,23 @@ class BaseModelOverdamped(Model):
 
 
 class Overdamped(BaseModelOverdamped):
-    """
+    r"""
     A class that implement a overdamped model with given functions for space dependency
+
+
+    The evolution equation for variable X(t) is defined as
+
+    .. math::
+
+        \mathrm{d}X(t) = F(X)\mathrm{d}t + sigma(X,t)\mathrm{d}W_t
+
+    The components of the overdamped model are the force profile F(X) as well as the diffusion :math: `D(x) = \sigma(X)\sigma(X)^\T`
+
+    When considering equilibrium model, the force and diffusion profile are related to the free energy profile V(X) via
+
+    .. math::
+        F(x) = -D(x) \nabla V(x) + \mathrm{div} D(x)
+
     """
 
     def __init__(self, force, diffusion=None, dim=None, has_bias=None, **kwargs):
@@ -228,7 +254,7 @@ class Overdamped(BaseModelOverdamped):
 
 
 class BrownianMotion(Overdamped):
-    """
+    r"""
     Model for (forced) Brownian Motion
     Parameters:  [mu, sigma]
 
@@ -258,7 +284,7 @@ class BrownianMotion(Overdamped):
 
 
 class OrnsteinUhlenbeck(Overdamped):
-    """
+    r"""
     Model for OU (ornstein-uhlenbeck):
     Parameters: [kappa, mu, sigma]
 
@@ -295,7 +321,7 @@ class OrnsteinUhlenbeck(Overdamped):
 
 
 def OverdampedSplines1D(domain):
-    """
+    r"""
     Generate defaut model for estimation of overdamped Langevin dynamics.
 
     Parameters

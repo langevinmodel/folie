@@ -53,12 +53,14 @@ docs = [
     "matplotlib",
     "sphinxcontrib-katex",
     "sphinx-gallery",
+    "pygraphviz",
     "torch",
     "memory_profiler",
     "mdshare",
     "nbconvert",
     "jupyter",
-    "tqdm"
+    "tqdm",
+    "furo"
 ]
 
 [build-system]
