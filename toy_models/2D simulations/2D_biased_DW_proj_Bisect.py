@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 import folie as fl
 from mpl_toolkits.mplot3d import Axes3D
 from copy import deepcopy
-import sympy as sym
-# from sympy import *
+import time 
 
+checkpoint1= time.time()
 x = np.linspace(-1.8,1.8,36)
 y = np.linspace(-1.8,1.8,36)
 input=np.transpose(np.array([x,y]))
@@ -29,9 +29,7 @@ U,V = np.meshgrid(ff[:,0],ff[:,1])
 fig, ax =plt.subplots()
 ax.quiver(x,y,U,V)
 ax.set_title('Force')
-# plt.show()
-print(quartic2d.domain)
-fff=fl.functions.Quartic2DForce(exx.force, dim=2)
+
 ##Definition of the Collective variable function of old coordinates 
 def colvar (x,y):
     gradient = np.array([1,1])
@@ -41,11 +39,10 @@ dt = 1e-3
 model_simu=fl.models.overdamped.Overdamped(force=quartic2d,diffusion=diff_function)
 simulator=fl.simulations.ABMD_2D_to_1DColvar_Simulator(fl.simulations.EulerStepper(model_simu), dt,colvar=colvar,k=25.0,qstop=1.2)
 
-# initialize positions 
-ntraj=50
+# Choose number of trajectories and initialize positions 
+ntraj=20
 q0= np.empty(shape=[ntraj,2])
 for i in range(ntraj):
-    # q0[i]=(0.8,-0.8)
     for j in range(2):
         q0[i][j]=-1.2
 
@@ -72,16 +69,8 @@ for n, trj in enumerate(data):
     axs.set_title("X-Y Trajectory")
     axs.set_xlim(-1.8,1.8)
     axs.set_ylim(-1.8,1.8)
-    # ax.set(xlim=(-1.5, 1.5), ylim=(-1.5, 1.5))
     axs.grid()
 
-"""fig, axs = plt.subplots(1,2)
-for n, trj in enumerate(data):
-    axs[0].plot(trj["x"][:,0],trj["x"][:,1])
-    #axs[1].plot(xmax[:, n])
-    axs[1].set_xlabel("$timestep$")
-    axs[1].set_ylabel("$x(t)$")
-    axs[1].grid()"""
 # plot x,y Trajectories in separate subplots
 fig,bb =  plt.subplots(1,2)
 for n, trj in enumerate(data):
@@ -108,8 +97,6 @@ for n, trj in enumerate(data):
 
     bb[0].set_title("X Dynamics")
     bb[1].set_title("Y Dynamics")
-    # bb.grid()
-
 
 #########################################
 #  PROJECTION ALONG CHOSEN COORDINATE   #
@@ -136,6 +123,13 @@ for n, trj in enumerate(data):
 #######################################
 ##          MODEL TRAINING           ##
 #######################################
+checkpoint2 = time.time()
+
+domain = fl.MeshedDomain.create_from_range(np.linspace(proj_data.stats.min , proj_data.stats.max , 4).ravel())
+trainmodel = fl.models.OverdampedSplines1D(domain=domain)
+
+xfa=np.linspace(proj_data.stats.min , proj_data.stats.max, 75)
+force_exact = (xfa** 2 - 1.0) ** 2
 
 fig, axs = plt.subplots(1, 2)
 axs[0].set_title("Force")
@@ -146,19 +140,9 @@ axs[1].set_title("Diffusion")
 axs[1].set_xlabel("$x$")
 axs[1].set_ylabel("$D(x)$")
 axs[1].grid()
-#### Possible models 
-
-xfa = np.linspace(-1.3, 1.3, 75)
-exact = (xfa** 2 - 1.0) ** 2
-domain = fl.MeshedDomain.create_from_range(np.linspace(proj_data.stats.min , proj_data.stats.max , 40).ravel())
-# domain = fl.MeshedDomain.create_from_range(np.linspace(min(xfa) , max(xfa) , 10).ravel())
-trainmodel = fl.models.OverdampedSplines1D(domain=domain)
 
 res_vec=[]
-fig, axs = plt.subplots(1, 2)
-axs[0].plot(xfa, exact, label="Exact")
-axs[1].plot(xfa, exact, label="Exact")
-model_simu.remove_bias()
+names =[]
 for name, transitioncls in zip(
     ["Euler"],#, "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
     [
@@ -174,6 +158,7 @@ for name, transitioncls in zip(
     res = estimator.fit_fetch(proj_data)
     print(res.coefficients)
     res_vec.append(res)
+    names.append(name)
     res.remove_bias()
     axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), label=name)
     axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
@@ -181,9 +166,11 @@ for name, transitioncls in zip(
 axs[0].legend()
 axs[1].legend()
 
+for i in range(len(res_vec)):
+    print(names[i],res_vec[i].coefficients)  # apparently they are 
+checkpoint3 = time.time()
 
-for i in range(len(res_vec)-1):
-    flag_force= (res_vec[i].force(xfa.reshape(-1, 1)) == res_vec[i+1].force(xfa.reshape(-1, 1))).all()
-    flag_diff= (res_vec[i].diffusion(xfa.reshape(-1, 1)) == res_vec[i+1].diffusion(xfa.reshape(-1, 1))).all()
-    print(flag_force, flag_diff)  # apparently they are 
+print('Training time =',checkpoint3-checkpoint2, 'seconds')
+print('Overall time =',checkpoint3-checkpoint1, 'seconds')
+
 plt.show()
