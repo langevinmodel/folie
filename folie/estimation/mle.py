@@ -57,7 +57,7 @@ class LikelihoodEstimator(Estimator):
     """
 
     def __init__(self, transition, **kwargs):
-        super().__init__(transition.model)
+        super().__init__(transition.model, **kwargs)
         self.transition = transition
 
     def fit(self, data, minimizer=None, coefficients0=None, use_jac=True, callback=None, minimize_kwargs={"method": "L-BFGS-B"}, **kwargs):
@@ -83,7 +83,7 @@ class LikelihoodEstimator(Estimator):
         if coefficients0 is None:
             # TODO, check depending of the order of the model
             if isinstance(self.model, BaseModelOverdamped):
-                KramersMoyalEstimator(self.model).fit(data)
+                KramersMoyalEstimator(self.model, n_jobs=self.n_jobs).fit(data)
             coefficients0 = self.model.coefficients
         if minimizer is None:
             coefficients0 = np.asarray(coefficients0)
@@ -121,7 +121,7 @@ class ELBOEstimator(LikelihoodEstimator):
     """
 
     def __init__(self, model=None, transition=None, **kwargs):
-        super().__init__(model)
+        super().__init__(model, **kwargs)
 
     def _log_likelihood_negative(self, coefficients, data, **kwargs):
         return self._loop_over_trajs(self.transition.loglikelihood_w_correction, data.weights, data, coefficients, **kwargs)[0]
@@ -149,7 +149,7 @@ class EMEstimator(LikelihoodEstimator):
         verbose_interval=10,
         **kwargs,
     ):
-        super().__init__(transition)
+        super().__init__(transition, **kwargs)
         self.verbose = verbose
         self.verbose_interval = verbose_interval
 
