@@ -112,16 +112,6 @@ def test_direct_estimator_biased(data_biased, request, fct, parameters):
     assert model.fitted_
 
 
-@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
-def test_direct_estimator_underdamped(data, request):
-    fun_lin = fl.functions.Linear()
-    fun_cst = fl.functions.Constant()
-    model = fl.models.Underdamped(fun_lin, fun_lin.copy(), fun_cst)
-    estimator = fl.UnderdampedKramersMoyalEstimator(model)
-    model = estimator.fit_fetch(data)
-    assert model.fitted_
-
-
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_likelihood_estimator(data, request):
     fun_lin = fl.functions.Linear()
@@ -163,17 +153,6 @@ def test_likelihood_estimator_biased(data_biased, request):
     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
     model = estimator.fit_fetch(data_biased)
     model.remove_bias()
-    assert model.fitted_
-
-
-@pytest.mark.parametrize("data", ["numpy"], indirect=True)
-def test_numba_likelihood_estimator(data, request):
-    n_knots = 20
-    epsilon = 1e-10
-    model = fl.models.OverdampedFreeEnergy(np.linspace(data.stats.min - epsilon, data.stats.max + epsilon, n_knots), 1.0)
-    estimator = fl.LikelihoodEstimator(fl.EulerNumbaOptimizedDensity(model))
-
-    model = estimator.fit_fetch(data, coefficients0=np.concatenate((np.zeros(n_knots), np.zeros(n_knots) + 1.0)))
     assert model.fitted_
 
 

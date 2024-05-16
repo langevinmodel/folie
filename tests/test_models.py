@@ -53,7 +53,7 @@ def test_overdamped_w_exactdensityND(model):
     # assert (model.exact_step(np.zeros((1, 1)), 1e-3, 0.1) != 0.0).any()
 
 
-@pytest.mark.parametrize("model", [fl.models.OverdampedSplines1D(fl.MeshedDomain1D.create_from_range(np.linspace(-1, 1, 7))), fl.models.OverdampedFreeEnergy(np.linspace(-2, 2, 5), 1.0)])
+@pytest.mark.parametrize("model", [fl.models.OverdampedSplines1D(fl.MeshedDomain1D.create_from_range(np.linspace(-1, 1, 7)))])
 def test_overdamped_various(model):
     x = np.linspace(-1, 1, 15).reshape(-1, 1)
 

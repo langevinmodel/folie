@@ -10,7 +10,7 @@ from sklearn.exceptions import ConvergenceWarning
 
 
 from ..base import Estimator
-from .direct_estimation import KramersMoyalEstimator, UnderdampedKramersMoyalEstimator
+from .direct_estimation import KramersMoyalEstimator
 from ..models import BaseModelOverdamped
 
 
@@ -44,31 +44,6 @@ class EstimatedResult(object):
     def __str__(self):
         """String representation of the class (for pretty printing the results)"""
         return f"\ncoefficients      | {self.coefficients} \n" f"sample size | {self.sample_size} \n" f"likelihood  | {self.log_like} \n" f"AIC         | {self.aic}\n" f"BIC         | {self.bic}"
-
-
-class CallbackFunctor:
-    """
-    Callback for scipy minimize in order to store history if wanted
-    """
-
-    def __init__(self):
-        """
-        obj_fun is a provided function to extract value from OptimizedResult
-        """
-        self.history = [np.inf]
-        self.sols = []
-        self.num_calls = 0
-
-    def __call__(self, res):
-        fun_val = res.fun
-        self.num_calls += 1
-        if fun_val < self.history[-1]:
-            self.sols.append(res.x)
-            self.history.append(fun_val)
-
-    def save_sols(self, filename):
-        sols = np.array([sol for sol in self.sols])
-        np.savetxt(filename, sols)
 
 
 class LikelihoodEstimator(Estimator):

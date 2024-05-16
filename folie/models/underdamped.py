@@ -37,15 +37,15 @@ class Underdamped(Overdamped):
         fx = self.force(x, *args, **kwargs)
         return fx - np.einsum("t...h,th-> t...", self.friction(x, *args, **kwargs).reshape((*fx.shape, v.shape[1])), v)
 
-    def _meandispl_x(self, x, v, *args, **kwargs):
+    def _meandispl_dx(self, x, v, *args, **kwargs):
         dfx = self.force.grad_x(x, *args, **kwargs)
         return dfx - np.einsum("t...he,th-> t...e", self.friction.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], dfx.shape[-1])), v)
 
-    def _meandispl_xx(self, x, v, *args, **kwargs):
+    def _meandispl_d2x(self, x, v, *args, **kwargs):
         ddfx = self.force.hessian_x(x, *args, **kwargs)
         return ddfx - np.einsum("t...hef,th-> t...ef", self.friction.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], v.shape[1], *ddfx.shape[-2:])), v)
 
-    def _meandispl_coeffs(self, x, v, *args, **kwargs):
+    def _meandispl_dcoeffs(self, x, v, *args, **kwargs):
         """
         Jacobian of the force with respect to coefficients
         """
