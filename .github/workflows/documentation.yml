@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - id: install_pandoc_graphivz
-      run: sudo apt-get install pandoc graphivz
+      run: sudo apt-get install pandoc graphviz
     - id: deployment
       uses: sphinx-notes/pages@v3
       with:
