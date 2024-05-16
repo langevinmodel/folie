@@ -45,6 +45,7 @@ extensions = [
     "sphinx.ext.inheritance_diagram",
     "sphinx.ext.githubpages",
     "sphinx.ext.linkcode",
+    "sphinx.ext.mathjax",
 ]
 
 numpydoc_show_class_members = False
@@ -70,7 +71,7 @@ autodoc_default_options = {"inherited-members": True, "members": True, "member-o
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "alabaster"
+html_theme = "furo"
 html_static_path = ["_static"]
 
 

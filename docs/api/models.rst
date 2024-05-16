@@ -18,7 +18,5 @@ Available models of Langevin equation
 
    OrnsteinUhlenbeck
 
-   OverdampedFreeEnergy
-
    :template: function.rst
    OverdampedSplines1D
