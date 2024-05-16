@@ -41,10 +41,8 @@ for i in range(ntraj):
 # Calculate Trajectory
 time_steps=1000
 data = simulator.run(time_steps, q0,save_every=1)  
-#xmax = np.concatenate(simulator.xmax_hist, axis=1).T
 
 # Plot the resulting trajectories
-# sphinx_gallery_thumbnail_number = 1
 fig, axs = plt.subplots()
 for n, trj in enumerate(data):
     axs.plot(trj["x"][:,0],trj["x"][:,1])

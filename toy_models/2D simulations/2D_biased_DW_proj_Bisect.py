@@ -52,7 +52,6 @@ for i in range(ntraj):
 
 time_steps=10000
 data = simulator.run(time_steps, q0,save_every=1)  
-#xmax = np.concatenate(simulator.xmax_hist, axis=1).T
 
 # Plot the resulting trajectories
 fig, axs = plt.subplots()
