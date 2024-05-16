@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import folie as fl
 from mpl_toolkits.mplot3d import Axes3D
 
+""" Script for simulation of 2D double well and projection along user provided direction, No fitting is carried out   """
 x = np.linspace(-1.8,1.8,36)
 y = np.linspace(-1.8,1.8,36)
 input=np.transpose(np.array([x,y]))
@@ -26,9 +27,6 @@ U,V = np.meshgrid(ff[:,0],ff[:,1])
 fig, ax =plt.subplots()
 ax.quiver(x,y,U,V)
 ax.set_title('Force')
-# plt.show()
-print(quartic2d.domain)
-fff=fl.functions.Quartic2DForce(exx.force, dim=2)
 
 model_simu=fl.models.overdamped.Overdamped(force=quartic2d,diffusion=diff_function)
 simulator=fl.simulations.Simulator(fl.simulations.EulerStepper(model_simu), 1e-3)
@@ -41,7 +39,6 @@ for i in range(ntraj):
         q0[i][j]=0.000
 
 # Calculate Trajectory
-""" in folie/simulations/__init__.py REMEBER TO CHANGE Simulator CLASS line 33 the dW term in x = self.stepper.run_step(x, self.dt, dW) instruction as commented"""
 time_steps=1000
 data = simulator.run(time_steps, q0,save_every=1)  
 #xmax = np.concatenate(simulator.xmax_hist, axis=1).T
@@ -62,13 +59,6 @@ for n, trj in enumerate(data):
     axs.set_title("X-Y Trajectory")
     axs.grid()
 
-"""fig, axs = plt.subplots(1,2)
-for n, trj in enumerate(data):
-    axs[0].plot(trj["x"][:,0],trj["x"][:,1])
-    #axs[1].plot(xmax[:, n])
-    axs[1].set_xlabel("$timestep$")
-    axs[1].set_ylabel("$x(t)$")
-    axs[1].grid()"""
 # plot Trajectories 
 fig,bb =  plt.subplots(1,2)
 for n, trj in enumerate(data):
@@ -95,7 +85,7 @@ for n, trj in enumerate(data):
 
     bb[0].set_title("X Dynamics")
     bb[1].set_title("Y Dynamics")
-    # bb.grid()
+
 
 #########################################
 #  PROJECTION ALONG CHOSEN COORDINATE  #
