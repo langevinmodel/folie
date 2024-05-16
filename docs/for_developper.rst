@@ -126,3 +126,15 @@ using the citation key as defined in the references file.
 The documentation website is hosted via GitHub pages. Please see the
 `README <https://github.com/langevinmodel/folie/blob/main/README.md>`__ on GitHub for instructions on how to build
 it.
+
+
+
+Organisation of the examples folder
+----------------------------------------
+
+
+folie use sphinx gallery to automatically generate plot of the examples. To be inclued into the Generals examples list, the script shoub be nammed as plot_*.py and be placed in to the examples foler.
+
+The tutorials folder contain more complex examples on the form of Jupyter notebooks, anything in the tutorials folder will be inclued into the corresponding documentation section. The name of the snippset will be the title of the jupyter notebook.
+
+The statistical_performances folder aims to contains Jupyter notebook that explore more systematically the peformance of the estimation with respect to number of data, choice of the estimator and so forth.
