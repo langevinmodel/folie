@@ -105,15 +105,15 @@ for n, trj in enumerate(data):
 # Choose unit versor of direction 
 u = np.array([1,1])
 u_norm= (1/np.linalg.norm(u,2))*u
-w = np.empty(shape=(len(trj["x"]),1))
-
+w = np.empty_like(trj["x"][:,0])
+b = np.empty_like(trj["x"][:,0])
 proj_data = fl.data.trajectories.Trajectories(dt=dt) # create new Trajectory object in which to store the projected trajectory dictionaries
-
 fig, axs =plt.subplots()
 for n, trj in enumerate(data):
     for i in range(len(trj["x"])):
         w[i]=np.dot(trj["x"][i],u_norm)
-    proj_data.append(w)
+        b[i]=np.dot(trj["bias"][i],u_norm)
+    proj_data.append(fl.Trajectory(1e-3,deepcopy(w.reshape(len(trj["x"][:,0]),1)), bias=deepcopy(b.reshape(len(trj["bias"][:,0]),1))))
     axs.plot(proj_data[n]["x"])
     axs.set_xlabel("$timesteps$")
     axs.set_ylabel("$w(t)$")
@@ -143,20 +143,24 @@ axs[1].grid()
 
 res_vec=[]
 names =[]
+KM_Estimator =fl.KramersMoyalEstimator(deepcopy(trainmodel))
+res_KM = KM_Estimator.fit_fetch(deepcopy(proj_data))
+res_vec.append(res_KM)
+names.append("KramersMoyal")
+axs[0].plot(xfa, res_KM.force(xfa.reshape(-1, 1)), label="KM")
+axs[1].plot(xfa, res_KM.diffusion(xfa.reshape(-1, 1)), label="KM")
 for name, transitioncls in zip(
-    ["Euler"],#, "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
+    ["Euler", "Elerian", "Kessler", "Drozdov"],
+
     [
         fl.EulerDensity,
-        # fl.OzakiDensity,
-        # fl.ShojiOzakiDensity,
-        # fl.ElerianDensity,
-        # fl.KesslerDensity,
-        # fl.DrozdovDensity,
+        fl.ElerianDensity,
+        fl.KesslerDensity,
+        fl.DrozdovDensity,
     ],
 ):
     estimator = fl.LikelihoodEstimator(transitioncls(deepcopy(trainmodel)))
-    res = estimator.fit_fetch(proj_data)
-    print(res.coefficients)
+    res = estimator.fit_fetch(deepcopy(proj_data))
     res_vec.append(res)
     names.append(name)
     res.remove_bias()
@@ -167,7 +171,7 @@ axs[0].legend()
 axs[1].legend()
 
 for i in range(len(res_vec)):
-    print(names[i],res_vec[i].coefficients)  # apparently they are 
+    print(names[i],res_vec[i].coefficients)  
 checkpoint3 = time.time()
 
 print('Training time =',checkpoint3-checkpoint2, 'seconds')
