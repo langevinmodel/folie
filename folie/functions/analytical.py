@@ -21,7 +21,17 @@ class PotentialFunction(Function):
 
     def transform(self, x, *args, **kwargs):
         return self.force(x)
-    
+
+    def force(self, X):  # This is -grad(potential).  That should return an array of size (X.shape[0], dim).
+        pass
+
+    def potential_plot(self, *args):
+        """
+        Get argument on the form of potential_plot(x,y) where x and y are result of np.meshgrid
+        """
+        return self.potential(np.column_stack(args))
+
+
 class ConstantForce(PotentialFunction):
     """
     Constant force potential
@@ -146,54 +156,53 @@ class Quartic2D(PotentialFunction):
     def potential(self, X):
         return self.a * (X[:, 0] ** 2 - 1.0) ** 2 + 0.5 * self.b * X[:, 1] ** 2
 
-    def force(self, X):
+    def force(self, X):  # This is -grad(potential).  That should return an array of size (X.shape[0], dim).
         F = np.zeros(X.shape)
         F[:, 0] = -4 * self.a * X[:, 0] * (X[:, 0] ** 2 - 1.0)
         F[:, 1] = -self.b * X[:, 1]
         return F
 
-class Quartic2DForce(PotentialFunction):
-    """ Likely useless"""
-    def __init__(self,force_function,dim=2):
-        self.force_function=force_function
-        self.dim=dim
-        super().__init__()
+    def force_x_comp(self, x):  # Convenient function for getting x component of the force
+        return -8 * x**3 + 8 * x
+
+    def force_y_comp(self, y):  # Convenient function for getting y component of the force
+        return -4 * y
 
 
 class My_Quartic2D(PotentialFunction):
-     """
-     same as Quartic2D but made to plot the potential energy surface
-     both potential and force now require a 2d meshgrid as input 
-     """
-     def __init__(self, a=2, b=1.0,dim=2):
+    """
+    same as Quartic2D but made to plot the potential energy surface
+    both potential and force now require a 2d meshgrid as input
+    """
+
+    def __init__(self, a=2, b=1.0, dim=2):
 
         #  self.a = a * np.ones((dim,))  # Initialize parameters
         #  self.b = b * np.ones((dim,))
-        self.a=a
-        self.b=b
+        self.a = a
+        self.b = b
         self.dim = dim  # That should probabibly be 2
         super().__init__()
 
-     @property
-     def coefficients(self):
-         return np.array([self.a,self.b])  # Get access to parameters
+    @property
+    def coefficients(self):
+        return np.array([self.a, self.b])  # Get access to parameters
 
-     @coefficients.setter
-     def coefficients(self, val):
-         self.a, self.b = val  # Set parameters
+    @coefficients.setter
+    def coefficients(self, val):
+        self.a, self.b = val  # Set parameters
 
-     def potential(self,x, y): # Requires 2D meshgrid as input 
+    def potential(self, x, y):  # Requires 2D meshgrid as input
         #  return 2*x**2 - x*y + 2*y**2
-         return self.a*(x**2-1)**2 + 0.5*self.b*(y**2)
-     
+        return self.a * (x**2 - 1) ** 2 + 0.5 * self.b * (y**2)
 
-     def force(self, x,y): #This is -grad(potential).  That should return an array of size (X.shape[0], dim).
-         X=np.vstack((x,y)).T
-         F= np.zeros(X.shape)
-         F[:, 0] = -4 * self.a * X[:, 0] * (X[:, 0] ** 2 - 1.0)
-         F[:, 1] = self.b * X[:, 1]
-         return F
-     
+    def force(self, x, y):  # This is -grad(potential).  That should return an array of size (X.shape[0], dim).
+        X = np.vstack((x, y)).T
+        F = np.zeros(X.shape)
+        F[:, 0] = -4 * self.a * X[:, 0] * (X[:, 0] ** 2 - 1.0)
+        F[:, 1] = self.b * X[:, 1]
+        return F
+
 
 class ThreeWell(PotentialFunction):
     """
