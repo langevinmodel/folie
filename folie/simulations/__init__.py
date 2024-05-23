@@ -9,7 +9,9 @@ from .._numpy import np
 from ..data import Trajectories, Trajectory
 from .stepper import ExactStepper, EulerStepper, MilsteinStepper, VECStepper
 import sympy as sym
+
 # np.random.seed(3)
+
 
 class Simulator:
     def __init__(self, stepper, dt, seed=None, keep_dim=None):
@@ -72,8 +74,8 @@ class BiasedSimulator(Simulator):
         bias_t = np.empty((ntrajs, nsteps // save_every, dim))
         for n in range(nsteps):
             bias = self._bias(x)
-            dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, dim)) # mod to mimic the Simulator class
-            x = self.stepper.run_step(x, self.dt, dW, bias=bias)    
+            dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, dim))  # mod to mimic the Simulator class
+            x = self.stepper.run_step(x, self.dt, dW, bias=bias)
             if n % save_every == 0:
                 x_val[:, n // save_every, :] = x
                 bias_t[:, n // save_every, :] = bias
@@ -101,8 +103,10 @@ class ABMD_Simulator(BiasedSimulator):
             np.maximum(self.xmax, xt, out=self.xmax)
         np.minimum(self.xmax, self.xstop, out=self.xmax)
         self.xmax_hist.append(np.copy(self.xmax))
-    
-class ABMD_2D_to_1DColvar_Simulator(BiasedSimulator): # user must provide both colvar function and its gradient in colvar element
+        return self.k * (self.xmax - xt)
+
+
+class ABMD_2D_to_1DColvar_Simulator(BiasedSimulator):  # user must provide both colvar function and its gradient in colvar element
     def __init__(self, stepper, dt, colvar, k=1, qstop=np.infty, **kwargs):
         super().__init__(stepper, dt, **kwargs)
         self.qmax = None
@@ -112,7 +116,7 @@ class ABMD_2D_to_1DColvar_Simulator(BiasedSimulator): # user must provide both c
         self.colvar = colvar
 
     def _bias(self, xt):
-        q, grad_q = self.colvar(xt[:,0],xt[:,1])
+        q, grad_q = self.colvar(xt[:, 0], xt[:, 1])
         if self.qmax is None:
             self.qmax = np.copy(q)
         else:
@@ -120,4 +124,4 @@ class ABMD_2D_to_1DColvar_Simulator(BiasedSimulator): # user must provide both c
         np.minimum(self.qmax, self.qstop, out=self.qmax)
         self.qmax_hist.append(np.copy(self.qmax))
 
-        return (self.k * (self.qmax - q)).reshape(len(q),1) * grad_q
+        return (self.k * (self.qmax - q)).reshape(len(q), 1) * grad_q
