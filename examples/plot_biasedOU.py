@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 model_simu = fl.models.OrnsteinUhlenbeck(0.0, 1.2, 2.0)
 simulator = fl.simulations.ABMD_Simulator(fl.simulations.EulerStepper(model_simu), 1e-3, k=10.0, xstop=6.0)
-data = simulator.run(5000, np.zeros((25,)), 25)
+data = simulator.run(5000, np.zeros((25,)), 1)
 xmax = np.concatenate(simulator.xmax_hist, axis=1).T
 
 # Plot the resulting trajectories
@@ -30,7 +30,7 @@ axs[0].set_xlabel("$x$")
 axs[0].set_ylabel("$F(x)$")
 axs[0].grid()
 
-axs[1].set_title("Force")
+axs[1].set_title("Diffusion")
 axs[1].set_xlabel("$x$")
 axs[1].set_ylabel("$D(x)$")
 axs[1].grid()

@@ -47,10 +47,11 @@ class EulerStepper(Stepper):
         return x + self.model.meandispl(x, bias) * dt + np.einsum("ijk,ik->ij", sig_sq_dt, dW)
 
 
+
 class MilsteinStepper(Stepper):
     def run_step_1D(self, x, dt, dW, bias=0.0):
         sig_sq_dt = np.sqrt(self.model.diffusion(x) * dt)
-        return (x.T + (self.model.meandispl(x, bias)) * dt + sig_sq_dt * dW + 0.25 * self.model.diffusion.grad_x(x)[..., 0] * (dW**2 - 1) * dt).T
+        return (x.T + (self.model.meandispl(x, bias)) * dt + sig_sq_dt * dW.T + 0.25 * self.model.diffusion.grad_x(x)[..., 0] * ((dW.T)**2 - 1) * dt).T  # same problem of dW.T as in EulerStepper class
 
 
 class VECStepper(Stepper):

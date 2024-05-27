@@ -22,6 +22,16 @@ class PotentialFunction(Function):
     def transform(self, x, *args, **kwargs):
         return self.force(x)
 
+    def force(self, X):  # This is -grad(potential).  That should return an array of size (X.shape[0], dim).
+        pass
+
+    def potential_plot(self, *args):
+        """
+        Get argument on the form of potential_plot(x,y) where x and y are result of np.meshgrid
+        """
+        shapes=[a.shape[0] for a in args]
+        return self.potential(np.column_stack([a.ravel() for a in args])).reshape(*shapes)
+
 
 class ConstantForce(PotentialFunction):
     """
@@ -147,11 +157,19 @@ class Quartic2D(PotentialFunction):
     def potential(self, X):
         return self.a * (X[:, 0] ** 2 - 1.0) ** 2 + 0.5 * self.b * X[:, 1] ** 2
 
-    def force(self, X):
+    def force(self, X):  # This is -grad(potential).  That should return an array of size (X.shape[0], dim).
         F = np.zeros(X.shape)
         F[:, 0] = -4 * self.a * X[:, 0] * (X[:, 0] ** 2 - 1.0)
         F[:, 1] = -self.b * X[:, 1]
         return F
+
+    def force_x_comp(self, x):  # Convenient function for getting x component of the force
+        return -8 * x**3 + 8 * x
+
+    def force_y_comp(self, y):  # Convenient function for getting y component of the force
+        return -4 * y
+
+
 
 
 class ThreeWell(PotentialFunction):
