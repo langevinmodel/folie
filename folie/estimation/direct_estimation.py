@@ -82,7 +82,7 @@ class KramersMoyalEstimator(Estimator):
             self.model.force.fit(X, bias, y=dx / dt, sample_weight=None, **extra_kwargs)
         else:
             bias = 0.0
-            self.model.force.fit(X, y=dx, sample_weight=None, **extra_kwargs)
+            self.model.force.fit(X, y=dx / dt, sample_weight=None, **extra_kwargs)
         dx -= self.model.force(X, bias, **extra_kwargs) * dt
         if dim <= 1:
             dx_sq = dx**2

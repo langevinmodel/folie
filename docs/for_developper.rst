@@ -23,9 +23,11 @@ Building an estimator of Langevin dynamics
 Likelihood estimation: using Transition density
 --------------------------------------------------
 
+The list of implemented transition density and their relations
 
 .. inheritance-diagram:: folie.EulerDensity folie.OzakiDensity folie.ShojiOzakiDensity folie.ElerianDensity folie.KesslerDensity folie.DrozdovDensity
     :top-classes: folie.estimation.transitionDensity.TransitionDensity
+    :parts: 1
 
 
 
@@ -33,6 +35,12 @@ Writing a new estimator
 -----------------------------------
 
 Estimator should generically inherit from :class`Estimator` and implement a fit method. Since most estimator of folie are flexible they generally take as argument the model to be estimated, but if your estimator is model specific you are not force to follow this approach.
+
+
+.. inheritance-diagram:: folie.estimation
+    :top-classes: folie.base.Estimator
+    :parts: 1
+
 
 Model of Langevin Dynamics
 =============================
@@ -67,10 +75,23 @@ model._mycomponent_coeffs()
 
 This allows to have an unified interface to components of a model, irrespective of theirs definitions as model methods or as folie functions.
 
+
+.. inheritance-diagram:: folie.models
+    :top-classes: folie.base.Model
+    :parts: 1
+
+
 Writing a new function
 ---------------------------------
 Functions are the core part of folie for the description of spatial dependences. 
 Functions can be parametric functions (i.e. with coefficients to be optimized) or non-parametric.
+
+
+.. inheritance-diagram:: folie.functions
+    :parts: 1
+
+
+
 
 
 Documenting the code
