@@ -59,7 +59,7 @@ master_doc = "index"
 # The suffix of source filenames.
 source_suffix = ".rst"
 
-exclude_patterns = ["_build", "_templates", "auto_examples/*.ipynb", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints", "*.ipynb"]
+exclude_patterns = ["_build", "_templates", "auto_examples/*.ipynb", "auto_examples/*/*.ipynb", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints", "*.ipynb"]
 
 
 # -- Autosummary settings -----------------------------------------------------
@@ -91,10 +91,10 @@ sphinx_gallery_conf = {
     "backreferences_dir": os.path.join("api/generated"),
     "reference_url": {"folie": None},
     # path to your examples scripts
-    "examples_dirs": "../examples",
+    "examples_dirs": ["../examples"],
     "ignore_pattern": "profile_",
     # path where to save gallery generated examples
-    "gallery_dirs": "auto_examples",
+    "gallery_dirs": ["auto_examples"],
 }
 
 nbsphinx_execute = "never"

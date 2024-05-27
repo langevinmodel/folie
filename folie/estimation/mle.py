@@ -83,7 +83,7 @@ class LikelihoodEstimator(Estimator):
         if coefficients0 is None:
             # TODO, check depending of the order of the model
             if isinstance(self.model, BaseModelOverdamped):
-                KramersMoyalEstimator(self.model, n_jobs=self.n_jobs).fit(data)
+                KramersMoyalEstimator(self.model, n_jobs=self.n_jobs).fit(data, **kwargs)
             coefficients0 = self.model.coefficients
         if minimizer is None:
             coefficients0 = np.asarray(coefficients0)

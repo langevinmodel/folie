@@ -20,6 +20,16 @@ def data(request):
 
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
+def test_direct_optimization(data, request, benchmark):
+    bf = fl.functions.Linear()
+    model = fl.models.Overdamped(bf)
+    estimator = fl.KramersMoyalEstimator(model)
+    fitted_estimator = benchmark(estimator.fit, data, coefficients0=[1.0, 1.0])
+    model = fitted_estimator.fetch_model()
+    assert model.fitted_
+
+
+@pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_likelihood_optimization(data, request, benchmark):
     bf = fl.functions.Linear()
     model = fl.models.Overdamped(bf)
@@ -30,10 +40,11 @@ def test_likelihood_optimization(data, request, benchmark):
 
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
-def test_likelihood_optimization_parallel(data, request, benchmark):
+@pytest.mark.parametrize("n_jobs", [1, 2, 4, -1])
+def test_likelihood_optimization_parallel(data, request, n_jobs, benchmark):
     bf = fl.functions.Linear()
     model = fl.models.Overdamped(bf)
-    estimator = fl.LikelihoodEstimator(fl.EulerDensity(model), n_jobs=-1)
+    estimator = fl.LikelihoodEstimator(fl.EulerDensity(model), n_jobs=n_jobs)
     fitted_estimator = benchmark(estimator.fit, data, coefficients0=[1.0, 1.0])
     model = fitted_estimator.fetch_model()
     assert model.fitted_

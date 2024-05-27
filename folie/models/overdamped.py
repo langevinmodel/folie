@@ -78,15 +78,21 @@ class BaseModelOverdamped(Model):
         return trj
 
     def add_bias(self, bias=True):
-        self.meandispl = ModelOverlay(self, "_meandispl_biased", output_shape=self.force.output_shape_)
+        if self.dim <= 1:
+            output_shape_force = ()
+        else:
+            output_shape_force = (self.dim,)
+        self.meandispl = ModelOverlay(self, "_meandispl_biased", output_shape=output_shape_force)
         self.is_biased = True
 
     def remove_bias(self):
         if self.is_biased:
-            self.meandispl = ModelOverlay(self, "_meandispl", output_shape=self.force.output_shape_)
+            if self.dim <= 1:
+                output_shape_force = ()
+            else:
+                output_shape_force = (self.dim,)
+            self.meandispl = ModelOverlay(self, "_meandispl", output_shape=output_shape_force)
             self.is_biased = False
-        else:
-            print("Model is not biased")
 
     def _meandispl(self, x, *args, **kwargs):
         return self.force(x, *args, **kwargs)
@@ -141,6 +147,17 @@ class BaseModelOverdamped(Model):
         """Set parameters, used by fitter to move through param space"""
         self.force.coefficients = vals
 
+    @property
+    def coefficients(self):
+        """Access the coefficients"""
+        return np.concatenate((self.meandispl.coefficients.ravel(), self.diffusion.coefficients.ravel()))
+
+    @coefficients.setter
+    def coefficients(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        self.meandispl.coefficients = vals.ravel()[: self.force.size]
+        self.diffusion.coefficients = vals.ravel()[self.force.size : self.force.size + self.diffusion.size]
+
 
 class Overdamped(BaseModelOverdamped):
     r"""
@@ -180,7 +197,7 @@ class Overdamped(BaseModelOverdamped):
         """
         if dim is None:
             dim = force.domain.dim
-        super().__init__(dim=dim)
+        super().__init__(dim=dim, **kwargs)
         if dim > 1:
             force_shape = (dim,)
             diffusion_shape = (dim, dim)
@@ -212,17 +229,6 @@ class Overdamped(BaseModelOverdamped):
             trj["cells_idx"] = cells_idx
             trj["loc_x"] = loc_x
         return trj
-
-    @property
-    def coefficients(self):
-        """Access the coefficients"""
-        return np.concatenate((self.meandispl.coefficients.ravel(), self.diffusion.coefficients.ravel()))
-
-    @coefficients.setter
-    def coefficients(self, vals):
-        """Set parameters, used by fitter to move through param space"""
-        self.meandispl.coefficients = vals.ravel()[: self.force.size]
-        self.diffusion.coefficients = vals.ravel()[self.force.size : self.force.size + self.diffusion.size]
 
 
 #  Set of quick interface to more common models
