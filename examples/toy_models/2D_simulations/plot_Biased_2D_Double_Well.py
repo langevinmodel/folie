@@ -14,12 +14,10 @@ input=np.transpose(np.array([x,y]))
 diff_function= fl.functions.Polynomial(deg=0,coefficients=np.asarray([0.5]) * np.eye(2,2))
 a,b = 0.5, 1.0
 quartic2d= fl.functions.Quartic2D(a=a,b=b)
-exx = fl.functions.analytical.My_Quartic2D(a=a,b=b)
-
 X,Y =np.meshgrid(x,y)
 
 # Plot potential surface 
-pot = exx.potential(X,Y)
+pot = quartic2d.potential_plot(X,Y)
 fig = plt.figure()
 ax = plt.axes(projection='3d')
 ax.plot_surface(X,Y,pot, rstride=1, cstride=1,cmap='jet', edgecolor = 'none')
