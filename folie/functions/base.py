@@ -57,7 +57,7 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         r"""Transforms the input data."""
         pass
 
-    def fit(self, x, *args, y=None, estimator=linear_model.LinearRegression(copy_X=False, fit_intercept=False), sample_weight=None, **kwargs):
+    def fit(self, x, *args, y=None, estimator=linear_model.LinearRegression(copy_X=False, fit_intercept=False), sample_weight=None, data_extra_kwargs={}, **kwargs):
         """
         Fit coefficients of the function using linear regression.
         Use as features the derivative of the function with respect to the coefficients
@@ -81,10 +81,10 @@ class Function(_BaseMethodsMixin, TransformerMixin):
             y = np.zeros((x.shape[0] * self.output_size_))
         else:
             y = y.ravel()
-        Fx = self.grad_coeffs(x, *args, **kwargs).reshape((x.shape[0] * self.output_size_, -1))
+        Fx = self.grad_coeffs(x, *args, **data_extra_kwargs).reshape((x.shape[0] * self.output_size_, -1))
         if isinstance(Fx, sparse.SparseArray):
             Fx = Fx.tocsr()
-        reg = estimator.fit(Fx, y, sample_weight=sample_weight)
+        reg = estimator.fit(Fx, y, sample_weight=sample_weight, **kwargs)
         self.coefficients = reg.coef_
         self.fitted_ = True
         return self
@@ -246,12 +246,12 @@ class ModelOverlay(Function):
     @property
     def coefficients(self):
         """Access the coefficients"""
-        return getattr(self.model, "coefficients_" + self.function_name)
+        return getattr(self.model, "coefficients" + self.function_name)
 
     @coefficients.setter
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
-        setattr(self.model, "coefficients_" + self.function_name, vals)
+        setattr(self.model, "coefficients" + self.function_name, vals)
 
     @property
     def size(self):

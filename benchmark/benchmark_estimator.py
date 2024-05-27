@@ -19,11 +19,21 @@ def data(request):
     return trj_list
 
 
-@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_likelihood_optimization(data, request, benchmark):
     bf = fl.functions.Linear()
     model = fl.models.Overdamped(bf)
     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
+    fitted_estimator = benchmark(estimator.fit, data, coefficients0=[1.0, 1.0])
+    model = fitted_estimator.fetch_model()
+    assert model.fitted_
+
+
+@pytest.mark.parametrize("data", ["numpy"], indirect=True)
+def test_likelihood_optimization_parallel(data, request, benchmark):
+    bf = fl.functions.Linear()
+    model = fl.models.Overdamped(bf)
+    estimator = fl.LikelihoodEstimator(fl.EulerDensity(model), n_jobs=-1)
     fitted_estimator = benchmark(estimator.fit, data, coefficients0=[1.0, 1.0])
     model = fitted_estimator.fetch_model()
     assert model.fitted_

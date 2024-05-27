@@ -1,6 +1,7 @@
 from .._numpy import np
 from .base import ParametricFunction
 from ..domains import Domain
+from numpy.polynomial import Polynomial
 
 
 class Constant(ParametricFunction):
@@ -65,7 +66,7 @@ class Polynomial(ParametricFunction):
     The polynomial function
     """
 
-    def __init__(self, deg=None, polynom=np.polynomial.Polynomial(1), domain=None, output_shape=(), coefficients=None):
+    def __init__(self, deg=None, polynom=Polynomial(1), domain=None, output_shape=(), coefficients=None):
         if deg is None:
             deg = polynom.degree()
         self.degree = deg + 1

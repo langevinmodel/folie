@@ -77,17 +77,18 @@ class KramersMoyalEstimator(Estimator):
                 dx_sq = dx**2
             else:
                 dx_sq = dx[..., None] * dx[:, None, ...]
-            self.model.diffusion.fit(X, y=dx_sq / dt, **extra_kwargs)  # We need to estimate the diffusion first in order to have the prefactor of the bias
+            self.model.diffusion.fit(X, y=dx_sq / dt, data_extra_kwargs=extra_kwargs, **kwargs)  # We need to estimate the diffusion first in order to have the prefactor of the bias
             bias = np.concatenate([trj["bias"] for trj in data], axis=0)
-            self.model.force.fit(X, bias, y=dx / dt, sample_weight=None, **extra_kwargs)
+            self.model.meandispl.fit(X, bias, y=dx / dt, sample_weight=None, data_extra_kwargs=extra_kwargs, **kwargs)
         else:
             bias = 0.0
-            self.model.force.fit(X, y=dx / dt, sample_weight=None, **extra_kwargs)
-        dx -= self.model.force(X, bias, **extra_kwargs) * dt
+            self.model.meandispl.fit(X, y=dx / dt, sample_weight=None, data_extra_kwargs=extra_kwargs, **kwargs)
+        # print(self.model.meandispl.coefficients)
+        dx -= self.model.meandispl(X, bias, **extra_kwargs) * dt
         if dim <= 1:
             dx_sq = dx**2
         else:
             dx_sq = dx[..., None] * dx[:, None, ...]
-        self.model.diffusion.fit(X, y=dx_sq / dt, **extra_kwargs)
+        self.model.diffusion.fit(X, y=dx_sq / dt, data_extra_kwargs=extra_kwargs, **kwargs)
         self.model.fitted_ = True
         return self
