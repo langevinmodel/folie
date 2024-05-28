@@ -10,7 +10,7 @@ from ..domains import Domain
 class BaseModelOverdamped(Model):
     _has_exact_density = False
 
-    def __init__(self, dim=1, **kwargs):
+    def __init__(self, dim=1, has_bias=False, **kwargs):
         r"""
         Base model for overdamped Langevin equations.
 
@@ -45,6 +45,9 @@ class BaseModelOverdamped(Model):
 
         self.meandispl = ModelOverlay(self, "_meandispl", output_shape=output_shape_force)
 
+        if has_bias:
+            self.add_bias(has_bias)
+
     # ==============================
     # Exact Transition Density and Simulation Step, override when available
     # ==============================
@@ -75,15 +78,21 @@ class BaseModelOverdamped(Model):
         return trj
 
     def add_bias(self, bias=True):
-        self.meandispl = ModelOverlay(self, "_meandispl_biased", output_shape=self.force.output_shape_)
+        if self.dim <= 1:
+            output_shape_force = ()
+        else:
+            output_shape_force = (self.dim,)
+        self.meandispl = ModelOverlay(self, "_meandispl_biased", output_shape=output_shape_force)
         self.is_biased = True
 
     def remove_bias(self):
         if self.is_biased:
-            self.meandispl = ModelOverlay(self, "_meandispl", output_shape=self.force.output_shape_)
+            if self.dim <= 1:
+                output_shape_force = ()
+            else:
+                output_shape_force = (self.dim,)
+            self.meandispl = ModelOverlay(self, "_meandispl", output_shape=output_shape_force)
             self.is_biased = False
-        else:
-            print("Model is not biased")
 
     def _meandispl(self, x, *args, **kwargs):
         return self.force(x, *args, **kwargs)
@@ -99,6 +108,16 @@ class BaseModelOverdamped(Model):
         Jacobian of the force with respect to coefficients
         """
         return self.force.grad_coeffs(x, *args, **kwargs)
+
+    @property
+    def coefficients_meandispl(self):
+        """Access the coefficients"""
+        return self.force.coefficients
+
+    @coefficients_meandispl.setter
+    def coefficients_meandispl(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        self.force.coefficients = vals
 
     def _meandispl_biased(self, x, bias, *args, **kwargs):
         fx = self.force(x, *args, **kwargs)
@@ -119,38 +138,25 @@ class BaseModelOverdamped(Model):
         return self.force.grad_coeffs(x, *args, **kwargs)
 
     @property
-    def coefficients_meandispl(self):
+    def coefficients_meandispl_biased(self):
         """Access the coefficients"""
         return self.force.coefficients
 
-    @coefficients_meandispl.setter
-    def coefficients_meandispl(self, vals):
+    @coefficients_meandispl_biased.setter
+    def coefficients_meandispl_biased(self, vals):
         """Set parameters, used by fitter to move through param space"""
         self.force.coefficients = vals
 
-    # ==============================
-    # Direct acces to parameters (Not Implemented By Default)
-    # ==============================
-
     @property
-    def coefficients_force(self):
+    def coefficients(self):
         """Access the coefficients"""
-        return self._coefficients[: self._n_coeffs_force]
+        return np.concatenate((self.meandispl.coefficients.ravel(), self.diffusion.coefficients.ravel()))
 
-    @coefficients_force.setter
-    def coefficients_force(self, vals):
+    @coefficients.setter
+    def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
-        self._coefficients[: self._n_coeffs_force] = vals.ravel()
-
-    @property
-    def coefficients_diffusion(self):
-        """Access the coefficients"""
-        return self._coefficients[self._n_coeffs_force :]
-
-    @coefficients_diffusion.setter
-    def coefficients_diffusion(self, vals):
-        """Set parameters, used by fitter to move through param space"""
-        self._coefficients[self._n_coeffs_force :] = vals.ravel()
+        self.meandispl.coefficients = vals.ravel()[: self.force.size]
+        self.diffusion.coefficients = vals.ravel()[self.force.size : self.force.size + self.diffusion.size]
 
 
 class Overdamped(BaseModelOverdamped):
@@ -173,7 +179,7 @@ class Overdamped(BaseModelOverdamped):
 
     """
 
-    def __init__(self, force, diffusion=None, dim=None, has_bias=None, **kwargs):
+    def __init__(self, force, diffusion=None, dim=None, **kwargs):
         r"""
         Initialize an overdamped Langevin model
 
@@ -191,7 +197,7 @@ class Overdamped(BaseModelOverdamped):
         """
         if dim is None:
             dim = force.domain.dim
-        super().__init__(dim=dim)
+        super().__init__(dim=dim, **kwargs)
         if dim > 1:
             force_shape = (dim,)
             diffusion_shape = (dim, dim)
@@ -203,18 +209,6 @@ class Overdamped(BaseModelOverdamped):
             self.diffusion = force.copy().resize(diffusion_shape)
         else:
             self.diffusion = diffusion.resize(diffusion_shape)
-        # loc_dim = dim if dim > 0 else 1
-        # X = np.linspace([-1] * loc_dim, [1] * loc_dim, 5)  # TODO: Ne marche pas si on a un mesh
-        # if not self.force.fitted_ and not kwargs.get("force_is_fitted", False):
-        #     self.force.fit(X)
-        # if not self.diffusion.fitted_ and not kwargs.get("diffusion_is_fitted", False):
-
-        #     diff_target = np.concatenate([np.eye(loc_dim)[None, ...]] * 5).reshape(5, *diffusion_shape)
-        #     self.diffusion.fit(X, diff_target)
-        if has_bias is not None:
-            self.add_bias(has_bias)
-
-        # TODO: Ensuite il faut trouver le domain du modèle, et vérifier s'il sont tous compatible
 
     @BaseModelOverdamped.dim.setter
     def dim(self, dim):
@@ -235,33 +229,6 @@ class Overdamped(BaseModelOverdamped):
             trj["cells_idx"] = cells_idx
             trj["loc_x"] = loc_x
         return trj
-
-    @property
-    def coefficients(self):
-        """Access the coefficients"""
-        return np.concatenate((self.force.coefficients.ravel(), self.diffusion.coefficients.ravel()))
-
-    @coefficients.setter
-    def coefficients(self, vals):
-        """Set parameters, used by fitter to move through param space"""
-        self.force.coefficients = vals.ravel()[: self.force.size]
-        self.diffusion.coefficients = vals.ravel()[self.force.size : self.force.size + self.diffusion.size]
-
-    @property
-    def coefficients_force(self):
-        return self.force.coefficients
-
-    @coefficients_force.setter
-    def coefficients_force(self, vals):
-        self.force.coefficients = vals
-
-    @property
-    def coefficients_diffusion(self):
-        return self.diffusion.coefficients
-
-    @coefficients_diffusion.setter
-    def coefficients_diffusion(self, vals):
-        self.diffusion.coefficients = vals
 
 
 #  Set of quick interface to more common models
@@ -327,11 +294,11 @@ class OrnsteinUhlenbeck(Overdamped):
         var = (1 - np.exp(2 * kappa * dt)) * (sigma / (-2 * kappa))
         return norm.pdf(xt.ravel(), loc=mu.ravel(), scale=np.sqrt(var).ravel())
 
-    def exact_step(self, x, dt, dZ, t=0.0):
+    def exact_step(self, x, dt, dW, t=0.0):
         theta, kappa, sigma = self.coefficients
         mu = -theta / kappa + (x.T + theta / kappa).T * np.exp(kappa * dt)
         var = (1 - np.exp(2 * kappa * dt)) * (sigma / (-2 * kappa))
-        return mu * dt + np.sqrt(var * dt) * dZ
+        return mu + np.sqrt(var) * dW
 
 
 def OverdampedSplines1D(domain):

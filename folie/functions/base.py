@@ -246,12 +246,12 @@ class ModelOverlay(Function):
     @property
     def coefficients(self):
         """Access the coefficients"""
-        return getattr(self.model, "coefficients_" + self.function_name)
+        return getattr(self.model, "coefficients" + self.function_name)
 
     @coefficients.setter
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
-        setattr(self.model, "coefficients_" + self.function_name, vals)
+        setattr(self.model, "coefficients" + self.function_name, vals)
 
     @property
     def size(self):

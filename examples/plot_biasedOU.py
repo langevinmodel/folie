@@ -5,6 +5,7 @@ ABMD biased dynamics
 
 Estimation of an overdamped Langevin in presence of biased dynamics.
 """
+
 import numpy as np
 import folie as fl
 import matplotlib.pyplot as plt
@@ -40,8 +41,18 @@ xfa = np.linspace(-7.0, 7.0, 75)
 model_simu.remove_bias()
 axs[0].plot(xfa, model_simu.force(xfa.reshape(-1, 1)), label="Exact")
 axs[1].plot(xfa, model_simu.diffusion(xfa.reshape(-1, 1)), label="Exact")
-for name, transitioncls in zip(
+
+name = "KramersMoyal"
+estimator = fl.KramersMoyalEstimator(fl.models.OrnsteinUhlenbeck(has_bias=True))
+res = estimator.fit_fetch(data)
+print(name, res.coefficients, res.is_biased)
+res.remove_bias()
+axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), "--", label=name)
+axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), "--", label=name)
+
+for name, marker, transitioncls in zip(
     ["Euler", "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
+    ["+", "x", "P", "1", "2", "3"],
     [
         fl.EulerDensity,
         fl.OzakiDensity,
@@ -53,10 +64,10 @@ for name, transitioncls in zip(
 ):
     estimator = fl.LikelihoodEstimator(transitioncls(fl.models.OrnsteinUhlenbeck(has_bias=True)))
     res = estimator.fit_fetch(data)
-    print(res.coefficients)
+    print(name, res.coefficients, res.is_biased)
     res.remove_bias()
-    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), label=name)
-    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
+    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), marker, label=name)
+    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), marker, label=name)
 axs[0].legend()
 axs[1].legend()
 plt.show()
