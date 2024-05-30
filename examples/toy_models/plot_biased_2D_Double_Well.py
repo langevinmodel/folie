@@ -148,16 +148,16 @@ axs[1].set_xlabel("$x$")
 axs[1].set_ylabel("$D(x)$")
 axs[1].grid()
 
-res_vec = []
-names = []
+
 KM_Estimator = fl.KramersMoyalEstimator(deepcopy(trainmodel))
-res_KM = KM_Estimator.fit_fetch(deepcopy(proj_data))
-res_vec.append(res_KM)
-names.append("KramersMoyal")
-axs[0].plot(xfa, res_KM.force(xfa.reshape(-1, 1)), label="KM")
-axs[1].plot(xfa, res_KM.diffusion(xfa.reshape(-1, 1)), label="KM")
-for name, transitioncls in zip(
+res_KM = KM_Estimator.fit_fetch(proj_data)
+
+axs[0].plot(xfa, res_KM.force(xfa.reshape(-1, 1)),  marker="x",label="KramersMoyal")
+axs[1].plot(xfa, res_KM.diffusion(xfa.reshape(-1, 1)), marker="x",label="KramersMoyal")
+print("KramersMoyal ", res_KM.coefficients)
+for name,marker, transitioncls in zip(
     ["Euler", "Elerian", "Kessler", "Drozdov"],
+        ["|","1","2","3"],
     [
         fl.EulerDensity,
         fl.ElerianDensity,
@@ -167,17 +167,12 @@ for name, transitioncls in zip(
 ):
     estimator = fl.LikelihoodEstimator(transitioncls(deepcopy(trainmodel)))
     res = estimator.fit_fetch(deepcopy(proj_data))
-    res_vec.append(res)
-    names.append(name)
-    res.remove_bias()
-    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), label=name)
-    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
+    print(name, res.coefficients)
+    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)),marker=marker, label=name)
+    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)),marker=marker, label=name)
 
 axs[0].legend()
 axs[1].legend()
-
-for i in range(len(res_vec)):
-    print(names[i], res_vec[i].coefficients)
 checkpoint3 = time.time()
 
 print("Training time =", checkpoint3 - checkpoint2, "seconds")

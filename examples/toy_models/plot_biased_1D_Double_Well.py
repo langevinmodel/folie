@@ -69,8 +69,9 @@ xfa = np.linspace(-7.0, 7.0, 75)
 model_simu.remove_bias()
 axs[0].plot(xfa, model_simu.force(xfa.reshape(-1, 1)), label="Exact")
 axs[1].plot(xfa, model_simu.diffusion(xfa.reshape(-1, 1)), label="Exact")
-for name, transitioncls in zip(
+for name,marker, transitioncls in zip(
     ["Euler", "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
+    ["x", "|",".","1","2","3"],
     [
         fl.EulerDensity,
         fl.OzakiDensity,
@@ -84,8 +85,8 @@ for name, transitioncls in zip(
     res = estimator.fit_fetch(data)
     print(name, res.coefficients)
     res.remove_bias()
-    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), label=name)
-    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
+    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)),marker=marker, label=name)
+    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)),marker=marker, label=name)
 axs[0].legend()
 axs[1].legend()
 plt.show()
