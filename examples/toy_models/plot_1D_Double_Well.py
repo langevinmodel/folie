@@ -68,8 +68,9 @@ axs[0].plot(xfa, model_simu.force(xfa.reshape(-1, 1)), label="Exact")
 axs[1].plot(xfa, model_simu.diffusion(xfa.reshape(-1, 1)), label="Exact")
 trainforce = fl.functions.Polynomial(deg=3, coefficients=np.array([0, 0, 0, 0]))
 trainmodel = fl.models.Overdamped(force=trainforce, diffusion=fl.functions.Polynomial(deg=0, coefficients=np.asarray([0.9])), has_bias=False)
-for name, transitioncls in zip(
+for name,marker, transitioncls in zip(
     ["Euler", "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
+    ["x", "|",".","1","2","3"],
     [
         fl.EulerDensity,
         fl.OzakiDensity,
@@ -82,8 +83,8 @@ for name, transitioncls in zip(
     estimator = fl.LikelihoodEstimator(transitioncls(trainmodel))
     res = estimator.fit_fetch(data)
     print(res.coefficients)
-    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), label=name)
-    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)
+    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)),marker=marker, label=name)
+    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), marker=marker,label=name)
 axs[0].legend()
 axs[1].legend()
 plt.show()
