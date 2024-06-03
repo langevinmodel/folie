@@ -225,6 +225,7 @@ class ModelOverlay(Function):
 
         output_shape: tuple or array
             The output shape of the term
+
     """
 
     def __init__(self, model, function_name, output_shape=None, **kwargs):

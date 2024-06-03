@@ -83,6 +83,7 @@ Table of contents
    api/models
    api/functions
    api/estimation
+   api/analysis
 
 Indices and tables
 ==================
