@@ -23,7 +23,7 @@ def test_simple_simulation(steppercls):
 def test_simple_simulation2d(steppercls):
 
     data = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun = fl.functions.Polynomial(deg=3, domain=fl.Domain.Rd(2))  # .fit(data, y=data)
+    fun = fl.functions.Polynomial(deg=3, domain=fl.Domain.Rd(2)).fit(data, y=data)
     model = fl.models.Overdamped(fun)
 
     simu_engine = fl.Simulator(steppercls(model), 1e-3)
