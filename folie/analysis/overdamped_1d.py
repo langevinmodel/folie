@@ -15,8 +15,8 @@ def free_energy_profile_1d(model, x):
     force_val = model.force(x.reshape(-1, 1)).ravel()
     diff_val = model.diffusion(x.reshape(-1, 1)).ravel()
 
-    diff_U = -1 * (force_val - 2 * diff_val * diff_prime_val) / diff_val ** 2
-
+    diff_U = - force_val / diff_val +  diff_prime_val 
+    
     pmf = cumulative_trapezoid(diff_U, x, initial=0.0)
 
     return pmf - np.min(pmf)
