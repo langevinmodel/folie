@@ -201,7 +201,31 @@ class ParametricFunction(Function):
 
 class ModelOverlay(Function):
     """
-    A class that allow to overlay a model and make it be used as a function
+    A class that allow to overlay a model and make it be used as a function.
+
+    For example, if a model contain
+        model.mean_force =  ModelOverlay(model, "_force", output_shape=output_shape_force)
+    then we have the following mapping:
+
+        - model.mean_force(x) -> model._force(x)
+        - model.mean_force.grad_x(x) -> model._force_dx(x)
+        - model.mean_force.hessian_x(x) -> model._force_d2x(x)
+        - model.mean_force.grad_coeffs(x) -> model._force_dcoeffs(x)
+        - model.mean_force.coefficients -> model._force_coefficients
+
+    If any of the [function_name]_d* function is not implemented, it would be replaced by a numerical derivative
+
+    Parameters
+    ----------
+        model: a python class
+            This is the class to to overlay
+
+        function_name: str
+            The common part of the function name. The model should contain at least the function [function_name]
+
+        output_shape: tuple or array
+            The output shape of the term
+
     """
 
     def __init__(self, model, function_name, output_shape=None, **kwargs):

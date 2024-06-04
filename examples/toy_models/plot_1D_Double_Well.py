@@ -18,17 +18,17 @@ diff_function = fl.functions.Polynomial(deg=0, coefficients=np.asarray([0.5]))
 
 # Plot of Free Energy and Force
 x_values = np.linspace(-7, 7, 100)
-fig, axs = plt.subplots(1, 2)
-axs[0].plot(x_values, free_energy(x_values))
-axs[1].plot(x_values, force_function(x_values.reshape(len(x_values), 1)))
-axs[0].set_title("Potential")
-axs[0].set_xlabel("$x$")
-axs[0].set_ylabel("$V(x)$")
-axs[0].grid()
-axs[1].set_title("Force")
-axs[1].set_xlabel("$x$")
-axs[1].set_ylabel("$F(x)$")
-axs[1].grid()
+# fig, axs = plt.subplots(1, 2)
+# axs[0].plot(x_values, free_energy(x_values))
+# axs[1].plot(x_values, force_function(x_values.reshape(len(x_values), 1)))
+# axs[0].set_title("Potential")
+# axs[0].set_xlabel("$x$")
+# axs[0].set_ylabel("$V(x)$")
+# axs[0].grid()
+# axs[1].set_title("Force")
+# axs[1].set_xlabel("$x$")
+# axs[1].set_ylabel("$F(x)$")
+# axs[1].grid()
 
 # Define model to simulate and type of simulator to use
 dt = 1e-3
@@ -45,12 +45,12 @@ for i in range(len(q0)):
 time_steps = 10000
 data = simulator.run(time_steps, q0, save_every=1)
 
-# Plot resulting Trajectories
-fig, axs = plt.subplots()
-for n, trj in enumerate(data):
-    axs.plot(trj["x"])
-    axs.set_title("Trajectory")
-
+# # Plot resulting Trajectories
+# fig, axs = plt.subplots()
+# for n, trj in enumerate(data):
+#     axs.plot(trj["x"])
+#     axs.set_title("Trajectory")
+#
 
 fig, axs = plt.subplots(1, 2)
 axs[0].set_title("Force")
@@ -68,23 +68,27 @@ axs[0].plot(xfa, model_simu.force(xfa.reshape(-1, 1)), label="Exact")
 axs[1].plot(xfa, model_simu.diffusion(xfa.reshape(-1, 1)), label="Exact")
 trainforce = fl.functions.Polynomial(deg=3, coefficients=np.array([0, 0, 0, 0]))
 trainmodel = fl.models.Overdamped(force=trainforce, diffusion=fl.functions.Polynomial(deg=0, coefficients=np.asarray([0.9])), has_bias=False)
-for name,marker, transitioncls in zip(
+for name, marker, transitioncls in zip(
     ["Euler", "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
-    ["x", "|",".","1","2","3"],
+    ["x", "|", ".", "1", "2", "3"],
     [
         fl.EulerDensity,
-        fl.OzakiDensity,
-        fl.ShojiOzakiDensity,
-        fl.ElerianDensity,
-        fl.KesslerDensity,
-        fl.DrozdovDensity,
     ],
 ):
     estimator = fl.LikelihoodEstimator(transitioncls(trainmodel))
     res = estimator.fit_fetch(data)
-    print(res.coefficients)
-    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)),marker=marker, label=name)
-    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), marker=marker,label=name)
+    # print(res.coefficients)
+    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), marker=marker, label=name)
+    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), marker=marker, label=name)
 axs[0].legend()
 axs[1].legend()
+
+plt.figure()
+
+x_mfpt, mfpt = fl.analysis.mfpt_1d(model_simu, -5.0, [-10.0, 10.0], Npoints=500)
+plt.plot(x_mfpt, mfpt)
+x_mfpt, mfpt = fl.analysis.mfpt_1d(model_simu, 5.0, [-10.0, 10.0], Npoints=500)
+plt.plot(x_mfpt, mfpt)
+print(fl.analysis.mfpt_1d(model_simu, -5.0, [-10.0, 10.0], x_start=5.0, Npoints=500))
+print(fl.analysis.mfpt_1d(model_simu, 5.0, [-10.0, 10.0], x_start=-5.0, Npoints=500))
 plt.show()

@@ -27,6 +27,8 @@ Parameteric Functions
     sklearnTransformer
 
     FiniteElement
+    
+    ModelOverlay
 
 Non Parametric Functions
 =========================

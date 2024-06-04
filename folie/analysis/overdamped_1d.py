@@ -1,4 +1,4 @@
-""" 
+"""
 Set of analysis methods focused on 1D overdamped models
 """
 
@@ -7,33 +7,89 @@ from scipy.integrate import cumulative_trapezoid
 
 
 def free_energy_profile_1d(model, x):
-    """
-    From the force and diffusion construct the free energy profile
+    r"""
+    From the force F(x) and diffusion D(x) construct the free energy profile V(x) using the formula
+
+    .. math::
+        F(x) = -D(x) \nabla V(x) + \mathrm{div} D(x)
+
     """
     x = x.ravel()
     diff_prime_val = model.diffusion.grad_x(x.reshape(-1, 1)).ravel()
     force_val = model.force(x.reshape(-1, 1)).ravel()
     diff_val = model.diffusion(x.reshape(-1, 1)).ravel()
 
-    diff_U = - force_val / diff_val +  diff_prime_val 
-    
+    diff_U = diff_U = -force_val / diff_val + diff_prime_val
+
     pmf = cumulative_trapezoid(diff_U, x, initial=0.0)
 
     return pmf - np.min(pmf)
 
 
-def mfpt_1d(model, x_start: float, x_abs: float, Npoints=500, cumulative=False):
-    """
-    Compute Mean first passage time from x0 to x1
-    """
-    min_x = np.min(self.knots_diff)
+def mfpt_1d(model, x_end: float, x_range, Npoints=500, x_start=None):
+    r"""
+    Compute the mean first passage time from any point x within x_range to x_end, or from x_start to x_end if x_start is defined.
 
-    x_range = np.linspace(min_x, x_abs, Npoints)
+    It use numerical integration of the following formula for point from x_range[0] to x_end :cite:p:`Jungblut2016`
 
-    prob_well = cumulative_trapezoid(np.exp(-self.free_energy_profile(x_range), x_range), initial=0.0)
-    x_int = np.linspace(x_start, x_abs, Npoints)
-    if cumulative:
-        res = cumulative_trapezoid(np.exp(self.free_energy_profile(x_int)) * np.interp(x_int, x_range, prob_well) / self.diffusion(x_int, 0.0) ** 2, x_int, initial=0.0)
-        return res
+    .. math::
+        MFPT(x,x_{end}) = \int_x^{x_{end}} \mathrm{d}y \frac{e^{\beta V(y)}}{D(y)} \int_{x\_range[0]}^y \mathrm{d} z e^{-\beta V(y)}
+
+    and for point from x_end to x_range[1]
+
+    .. math::
+
+        MFPT(x,x_{end}) = \int^x_{x_{end}} \mathrm{d}y \frac{e^{\beta V(y)}}{D(y)} \int^{x\_range[1]}_y \mathrm{d} z e^{-\beta V(y)}
+
+    Parameters
+    ------------
+
+        model:
+            A fitted overdamped model
+
+        x_end: float
+            The point to reach
+
+        x_start: float, default to None
+            If this is not None it return the MFPT from x_start to x_end, otherwise it return the mean first passage from any point within x_range to x_end
+
+        x_range:
+            A range of integration, It should be big enough to be able to compute the normalisation factor of the steady state probability.
+
+        Npoints: int, default=500
+            Number of point to use for
+
+    References
+    --------------
+
+    .. footbibliography::
+
+    """
+
+    if x_start is not None:
+        if x_start < x_end:
+            int_range = np.linspace(x_range[0], x_end, Npoints)
+            prob_well = cumulative_trapezoid(np.exp(-free_energy_profile_1d(model, int_range)), int_range, initial=0.0)
+        else:
+            int_range = np.linspace(x_end, x_range[1], Npoints)
+            prob_well = cumulative_trapezoid(np.exp(-free_energy_profile_1d(model, int_range)), int_range, initial=0.0)
+            prob_well -= prob_well[-1]
+
+        x_int = np.linspace(x_start, x_end, Npoints)
+        return np.trapz(np.exp(free_energy_profile_1d(model, x_int)) * np.interp(x_int, int_range, prob_well) / model.diffusion(x_int.reshape(-1, 1)).ravel(), x_int)
+
     else:
-        return np.trapz(np.exp(self.free_energy_profile(x_int)) * np.interp(x_int, x_range, prob_well) / self.diffusion(x_int, 0.0) ** 2, x_int)
+        # Compute lower part
+        int_range = np.linspace(x_range[0], x_end, Npoints)
+        prob_well = cumulative_trapezoid(np.exp(-free_energy_profile_1d(model, int_range)), int_range, initial=0.0)
+
+        x_int_lower = np.linspace(x_end, x_range[0], Npoints)
+        res_lower = -1 * cumulative_trapezoid(np.exp(free_energy_profile_1d(model, x_int_lower)) * np.interp(x_int_lower, int_range, prob_well) / model.diffusion(x_int_lower.reshape(-1, 1)).ravel(), x_int_lower, initial=0.0)
+
+        int_range = np.linspace(x_end, x_range[1], Npoints)
+        prob_well = -1 * cumulative_trapezoid(np.exp(-free_energy_profile_1d(model, int_range)), int_range, initial=0.0)
+        prob_well -= prob_well[-1]
+        # return (int_range, prob_well)
+        x_int_upper = np.linspace(x_end, x_range[1], Npoints)
+        res_upper = cumulative_trapezoid(np.exp(free_energy_profile_1d(model, x_int_upper)) * np.interp(x_int_upper, int_range, prob_well) / model.diffusion(x_int_upper.reshape(-1, 1)).ravel(), x_int_upper, initial=0.0)
+        return np.hstack((x_int_lower[::-1], x_int_upper)), np.hstack((res_lower[::-1], res_upper))

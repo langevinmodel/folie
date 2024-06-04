@@ -41,11 +41,12 @@ extensions = [
     "nbsphinx",
     "numpydoc",
     "sphinx_gallery.gen_gallery",
-    "sphinx_gallery.load_style",
+    # "sphinx_gallery.load_style",
     "sphinx.ext.inheritance_diagram",
     "sphinx.ext.githubpages",
     "sphinx.ext.linkcode",
     "sphinx.ext.mathjax",
+    "sphinxcontrib.bibtex",
 ]
 
 numpydoc_show_class_members = False

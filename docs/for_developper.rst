@@ -57,21 +57,25 @@ A model in folie represent a model of Langevin evolution. As such, it is mainly 
 
 Most of the time, the  spatial dependencies of the model are described by folie functions and can simply be set as model attributes.
 
-When more complicated behavior are necessary (for exemple the mean displacement of a Langevin model is the sum of its force and its friction times the velocity), the is a mecanism of ModelOverlay.
+When more complicated behavior are necessary (for exemple the mean displacement of a Langevin model is the sum of its force and its friction times the velocity), the is a mecanism of :py:class:`~folie.functions.ModelOverlay`.
 
-ModelOverlay is a particular type of functions. This is an interface for model methods adn as such it allow for easy composition of functions.
+:py:class:`~folie.functions.ModelOverlay` is a particular type of functions. This is an interface for model methods adn as such it allow for easy composition of functions.
 
-model.mycomponent = ModelOverlay("_mycomponent")
+.. code-block:: python
 
-allow to access to the method of the models as if there was function attributes.
+	model.mycomponent = ModelOverlay("_mycomponent")
 
-then using ModelOverlay, we can use
+allow to access to the method of the models as if there was function attributes. This means that we can use
 
-model.mycomponent.grad_coeffs() 
+.. code-block:: python
+
+	model.mycomponent.grad_coeffs() 
 
 as a call to
 
-model._mycomponent_coeffs()
+.. code-block:: python
+
+	model._mycomponent_coeffs()
 
 This allows to have an unified interface to components of a model, irrespective of theirs definitions as model methods or as folie functions.
 

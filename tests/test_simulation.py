@@ -19,6 +19,21 @@ def test_simple_simulation(steppercls):
     assert trj_data[0]["x"].shape == (50, 1)
 
 
+@pytest.mark.parametrize("steppercls", [fl.simulations.EulerStepper])
+def test_simple_simulation2d(steppercls):
+
+    fun = fl.functions.Polynomial(deg=3, domain=fl.Domain.Rd(2))
+    model = fl.models.Overdamped(fun)
+
+    simu_engine = fl.Simulator(steppercls(model), 1e-3)
+
+    trj_data = simu_engine.run(50, np.zeros((5, 2)))
+
+    assert len(trj_data) == 5
+
+    assert trj_data[0]["x"].shape == (50, 2)
+
+
 @pytest.mark.parametrize("steppercls", [fl.simulations.VECStepper])
 def test_underdamped_simulation(steppercls):
 

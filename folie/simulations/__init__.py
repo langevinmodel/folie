@@ -8,7 +8,6 @@ ABMD simulation is adapted from pyoptLE
 from .._numpy import np
 from ..data import Trajectories, Trajectory
 from .stepper import ExactStepper, EulerStepper, MilsteinStepper, VECStepper
-import sympy as sym
 
 # np.random.seed(3)
 
