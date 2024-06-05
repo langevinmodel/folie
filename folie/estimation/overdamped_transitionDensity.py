@@ -65,12 +65,12 @@ class EulerDensity(TransitionDensity):
         :param dt: float, the time step between x and xt
         :return: probability (same dimension as x and xt)
         """
-        sig2t = (self._model.diffusion(x, **kwargs)).ravel() * dt
+        sig2t = 2 * (self._model.diffusion(x, **kwargs)).ravel() * dt
         mut = x.ravel() + self._model.meandispl(x, bias, **kwargs).ravel() * dt
         if not self.use_jac:
             return gaussian_likelihood_1D(xt, mut, sig2t), np.zeros(2)
 
-        jacV = (self._model.diffusion.grad_coeffs(x, **kwargs)) * dt
+        jacV = 2 * (self._model.diffusion.grad_coeffs(x, **kwargs)) * dt
         return gaussian_likelihood_derivative_1D(xt, mut, sig2t, self._model.meandispl.grad_coeffs(x, bias, **kwargs) * dt, jacV)
 
     def _logdensityND(self, x, xt, dt, bias=0.0, **kwargs):
@@ -84,11 +84,11 @@ class EulerDensity(TransitionDensity):
 
         # TODO: Add correction terms
         E = x + self._model.meandispl(x, bias, **kwargs) * dt
-        V = (self._model.diffusion(x, **kwargs)) * dt
+        V = 2 * (self._model.diffusion(x, **kwargs)) * dt
         if not self.use_jac:
             ll = gaussian_likelihood_ND(xt, E, V)
             return ll, np.zeros(2)
-        jacV = (self._model.diffusion.grad_coeffs(x, **kwargs)) * dt
+        jacV = 2 * (self._model.diffusion.grad_coeffs(x, **kwargs)) * dt
         jacE = self._model.meandispl.grad_coeffs(x, bias, **kwargs) * dt
         return gaussian_likelihood_derivative_ND(xt, E, V, jacE, jacV)
 
@@ -107,7 +107,7 @@ class EulerDensity(TransitionDensity):
         """
 
         E2 = self._model.friction(x[:, : self._model.dim_x], **kwargs) * dt
-        V = (self._model.diffusion(x[:, : self._model.dim_x], **kwargs)) * dt
+        V = 2 * (self._model.diffusion(x[:, : self._model.dim_x], **kwargs)) * dt
         invV = np.linalg.inv(V)
         dh = self._model.dim_h
         dhdh = sigh[:, :dh, :dh] - sigh[:, :dh, dh:] - sigh[:, dh:, :dh] + sigh[:, dh:, dh:]
@@ -128,7 +128,7 @@ class EulerDensity(TransitionDensity):
 
         l_jac_E = -0.5 * np.einsum("tijc,tji->tc", jEV[:, :, dh:, :], dhh) - 0.5 * np.einsum("tijc,tji->tc", VjE[:, dh:, ...], hdh) + np.einsum("tijc,tji->tc", EVjE, hh)
 
-        jacV = self._model.diffusion.grad_coeffs(x[:, : self._model.dim_x], **kwargs) * dt
+        jacV = 2 * self._model.diffusion.grad_coeffs(x[:, : self._model.dim_x], **kwargs) * dt
         jacinvV = -np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV)
         EjVE = np.einsum("tdh,tdfc,tfg-> thgc", E2, jacinvV, E2)
         EjV = np.einsum("tdh,tdfc-> thfc", E2, jacinvV)
@@ -154,7 +154,7 @@ class EulerDensity(TransitionDensity):
             trj["xt"][:, : self._model.dim_x],
             self._model.force(trj["x"][:, : self._model.dim_x], trj["bias"][:, : self._model.dim_x]) * trj["dt"],
             self._model.friction(trj["x"][:, : self._model.dim_x]) * trj["dt"],
-            self._model.diffusion(trj["x"][:, : self._model.dim_x]) * trj["dt"],
+            2 * self._model.diffusion(trj["x"][:, : self._model.dim_x]) * trj["dt"],
             mu0,
             sig0,
         )
@@ -181,7 +181,7 @@ class OzakiDensity(TransitionDensity):
         :param dt: float, the time step between x and xt
         :return: probability (same dimension as x and xt)
         """
-        sig = self._model.diffusion(x, **kwargs).ravel()
+        sig = 2 * self._model.diffusion(x, **kwargs).ravel()
         mu = self._model.meandispl(x, bias, **kwargs).ravel()
         mu_x = self._model.meandispl.grad_x(x, bias, **kwargs).ravel()
         temp = mu * (np.exp(mu_x * dt) - 1) / mu_x
@@ -209,19 +209,19 @@ class ShojiOzakiDensity(TransitionDensity):
         :param dt: float, the time step between x and xt
         :return: probability (same dimension as x and xt)
         """
-        sig = np.sqrt(self._model.diffusion(x, **kwargs).ravel())
+        sig = np.sqrt(2 * self._model.diffusion(x, **kwargs).ravel())
         mu = self._model.meandispl(x, bias, **kwargs).ravel()
 
-        Mt = 0.5 * sig ** 2 * self._model.meandispl.hessian_x(x, bias, **kwargs).ravel()  # + self._model.meandispl_t(x)  #Time homogenous model
+        Mt = 0.5 * sig**2 * self._model.meandispl.hessian_x(x, bias, **kwargs).ravel()  # + self._model.meandispl_t(x)  #Time homogenous model
         Lt = self._model.meandispl.grad_x(x, bias, **kwargs).ravel()
         if (Lt == 0).any():  # TODO: need to fix this
             B = sig * np.sqrt(dt)
-            A = x.ravel() + mu * dt + Mt * dt ** 2 / 2
+            A = x.ravel() + mu * dt + Mt * dt**2 / 2
         else:
             B = sig * np.sqrt((np.exp(2 * Lt * dt) - 1) / (2 * Lt))
 
             elt = np.exp(Lt * dt) - 1
-            A = x.ravel() + mu / Lt * elt + Mt / (Lt ** 2) * (elt - Lt * dt)
+            A = x.ravel() + mu / Lt * elt + Mt / (Lt**2) * (elt - Lt * dt)
 
         return gaussian_likelihood_1D(xt, A, B)
 
@@ -245,17 +245,17 @@ class ElerianDensity(EulerDensity):
         :param dt: float, the time step between x and xt
         :return: probability (same dimension as x and xt)
         """
-        sig_x = self._model.diffusion.grad_x(x, **kwargs).ravel()
+        sig_x = 2 * self._model.diffusion.grad_x(x, **kwargs).ravel()
         if isinstance(x, np.ndarray) and (sig_x == 0).any:
             return super()._logdensity1D(x=x, xt=xt, dt=dt, bias=bias, **kwargs)[0]
 
-        sig = self._model.diffusion(x, **kwargs).ravel()
+        sig = 2 * self._model.diffusion(x, **kwargs).ravel()
         mu = self._model.meandispl(x, bias, **kwargs).ravel()
 
         A = sig * sig_x * dt * 0.5
         B = -0.5 * sig / sig_x + x.ravel() + mu * dt - A
         z = (xt.ravel() - B) / A
-        C = 1.0 / (sig_x ** 2 * dt)
+        C = 1.0 / (sig_x**2 * dt)
 
         scz = np.sqrt(C * z)
         cpz = -0.5 * (C + z)
@@ -286,17 +286,17 @@ class KesslerDensity(TransitionDensity):
         :param dt: float, the time of observing Xt
         :return: probability (same dimension as x and xt)
         """
-        sig = self._model.diffusion(x, **kwargs).ravel()
-        sig_x = self._model.diffusion.grad_x(x, **kwargs).ravel()
-        sig_xx = self._model.diffusion.hessian_x(x, **kwargs).ravel()
+        sig = 2 * self._model.diffusion(x, **kwargs).ravel()
+        sig_x = 2 * self._model.diffusion.grad_x(x, **kwargs).ravel()
+        sig_xx = 2 * self._model.diffusion.hessian_x(x, **kwargs).ravel()
         mu = self._model.meandispl(x, bias, **kwargs).ravel()
         mu_x = self._model.meandispl.grad_x(x, bias, **kwargs).ravel()
         mu_xx = self._model.meandispl.hessian_x(x, bias, **kwargs).ravel()
         x = x.ravel()
-        d = dt ** 2 / 2
+        d = dt**2 / 2
         E = x + mu * dt + (mu * mu_x + 0.5 * sig * mu_xx) * d
 
-        V = x ** 2 + (2 * mu * x + sig) * dt + (2 * mu * (mu_x * x + mu + 0.5 * sig_x) + sig * (mu_xx * x + 2 * mu_x + 0.5 * sig_xx)) * d - E ** 2
+        V = x**2 + (2 * mu * x + sig) * dt + (2 * mu * (mu_x * x + mu + 0.5 * sig_x) + sig * (mu_xx * x + 2 * mu_x + 0.5 * sig_xx)) * d - E**2
         V = np.abs(V)
         return gaussian_likelihood_1D(xt, E, V)
 
@@ -317,14 +317,14 @@ class DrozdovDensity(TransitionDensity):
         :param dt: float, the time of observing Xt
         :return: probability (same dimension as x and xt)
         """
-        sig = self._model.diffusion(x, **kwargs).ravel()
-        sig_x = self._model.diffusion.grad_x(x, **kwargs).ravel()
-        sig_xx = self._model.diffusion.hessian_x(x, **kwargs).ravel()
+        sig = 2 * self._model.diffusion(x, **kwargs).ravel()
+        sig_x = 2 * self._model.diffusion.grad_x(x, **kwargs).ravel()
+        sig_xx = 2 * self._model.diffusion.hessian_x(x, **kwargs).ravel()
         mu = self._model.meandispl(x, bias, **kwargs).ravel()
         mu_x = self._model.meandispl.grad_x(x, bias, **kwargs).ravel()
         mu_xx = self._model.meandispl.hessian_x(x, bias, **kwargs).ravel()
 
-        d = dt ** 2 / 2
+        d = dt**2 / 2
         E = x.ravel() + mu * dt + (mu * mu_x + 0.5 * sig * mu_xx) * d
 
         V = sig * dt + (mu * sig_x + 2 * mu_x * sig + sig * sig_xx) * d
