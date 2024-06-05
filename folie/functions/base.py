@@ -204,7 +204,11 @@ class ModelOverlay(Function):
     A class that allow to overlay a model and make it be used as a function.
 
     For example, if a model contain
+
+    .. code-block:: python
+
         model.mean_force =  ModelOverlay(model, "_force", output_shape=output_shape_force)
+
     then we have the following mapping:
 
         - model.mean_force(x) -> model._force(x)

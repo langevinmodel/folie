@@ -168,11 +168,11 @@ class Overdamped(BaseModelOverdamped):
 
     .. math::
 
-        \mathrm{d}X(t) = F(X)\mathrm{d}t + \sigma(X,t)\mathrm{d}W_t
+        \mathrm{d}X(t) = F(X)\mathrm{d}t + \sigma(X)\mathrm{d}W_t
 
-    The components of the overdamped model are the force profile F(X) as well as the diffusion :math: `D(x) =  \frac{1}{2} \sigma(X)\sigma(X)^\T`
+    The components of the overdamped model are the force profile F(X) as well as the diffusion :math:`D(x) =  \frac{1}{2} \sigma(X)\sigma(X)^T`
 
-    When considering equilibrium model, the force and diffusion profile are related to the free energy profile V(X) via
+    When considering equilibrium models, the force and diffusion profile are related to the free energy profile V(X) via
 
     .. math::
         F(x) = -D(x) \nabla V(x) + \mathrm{div} D(x)
@@ -181,13 +181,12 @@ class Overdamped(BaseModelOverdamped):
 
     def __init__(self, force, diffusion=None, dim=None, **kwargs):
         r"""
-        Initialize an overdamped Langevin model
-
         Parameters
         ----------
         force, diffusion : Functions
-            Functions for the spatial dependance of the force and position.
+            Functions for the spatial dependance of the force :math:`F(x)` and diffusion :math:`D(x)`.
             If diffusion is not given it default to the copy of force
+
         dim : int
             Dimension of the model. By default it is the dimension of the domain of the force
         has_bias: None, bool
@@ -237,18 +236,33 @@ class Overdamped(BaseModelOverdamped):
 class BrownianMotion(Overdamped):
     r"""
     Model for (forced) Brownian Motion
-    Parameters:  [mu, sigma]
+    Parameters:  :math:`[\mu, \sigma]`
 
-    dX(t) = mu(X,t)dt + sigma(X,t)dW_t
+    .. math::
+        dX(t) = \mu(X)dt + \sigma(X)dW_t
 
     where:
-        mu(X,t)    = mu   (constant)
-        sigma(X,t) = sqrt(sigma)   (constant, >0)
+        :math:`\mu(X)    = \mu`
+
+        :math:`\sigma(X) = \sqrt{2\sigma}`
     """
 
     _has_exact_density = True
 
     def __init__(self, mu=0, sigma=1.0, dim=1, **kwargs):
+        """
+        Parameters
+        ----------
+
+            mu: float or ndarray of shape (dim,)
+
+            sigma: float or ndarray of shape (dim,dim)
+                constant, >0
+
+            dim: int
+                Wanted dimension of the model
+
+        """
         super().__init__(Constant(domain=Domain.Rd(dim)), Constant(domain=Domain.Rd(dim)), dim=dim, **kwargs)
         self.force.coefficients = mu * np.ones(dim)
         self.diffusion.coefficients = sigma * np.eye(dim)
@@ -267,22 +281,33 @@ class BrownianMotion(Overdamped):
 class OrnsteinUhlenbeck(Overdamped):
     r"""
     Model for OU (ornstein-uhlenbeck):
-    Parameters: [kappa, mu, sigma]
+    Parameters: :math:`[\kappa, \mu, \sigma]`
 
-    dX(t) = mu(X,t)*dt + sigma(X,t)*dW_t
+    .. math::
+        dX(t) = \mu(X,t)*dt + \sigma(X,t)*dW_t
 
     where:
-        mu(X,t)    = theta - kappa* X
-        sigma(X,t) = sqrt(sigma)
+        :math:`\mu(X,t)    = \theta - \kappa X`
+
+        :math:`\sigma(X,t) = \sqrt{2 \sigma}`
     """
 
     _has_exact_density = True
 
     def __init__(self, theta=0, kappa=1.0, sigma=1.0, dim=1, **kwargs):
-        # Init by passing functions to the model
-        # X = np.linspace(-1, 1, 5).reshape(-1, 1)
-        # .fit(X, -1 * np.linspace(-1, 1, 5))
-        # .fit(X, np.ones(5))
+        r"""
+        Parameters
+        ----------
+
+            theta, kappa: float or ndarray of shape (dim,)
+
+            sigma: float or ndarray of shape (dim,dim)
+                constant, >0
+
+            dim: int
+                Wanted dimension of the model
+
+        """
         super().__init__(Polynomial(1, domain=Domain.Rd(dim)), Constant(domain=Domain.Rd(dim)), dim=dim, **kwargs)
         self.force.coefficients = np.concatenate([theta * np.eye(dim), -kappa * np.eye(dim)], axis=0)
         self.diffusion.coefficients = sigma * np.eye(dim)
@@ -291,13 +316,13 @@ class OrnsteinUhlenbeck(Overdamped):
     def exact_density(self, x0: float, xt: float, t0: float, dt: float = 0.0) -> float:
         theta, kappa, sigma = self.coefficients
         mu = -theta / kappa + (x0 + theta / kappa) * np.exp(kappa * dt)
-        var = (1 - np.exp(2 * kappa * dt)) * (sigma / (-2 * kappa))
+        var = (1 - np.exp(2 * kappa * dt)) * (sigma / (-kappa))
         return norm.pdf(xt.ravel(), loc=mu.ravel(), scale=np.sqrt(var).ravel())
 
     def exact_step(self, x, dt, dW, t=0.0):
         theta, kappa, sigma = self.coefficients
         mu = -theta / kappa + (x.T + theta / kappa).T * np.exp(kappa * dt)
-        var = (1 - np.exp(2 * kappa * dt)) * (sigma / (-2 * kappa))
+        var = (1 - np.exp(2 * kappa * dt)) * (sigma / (-kappa))
         return mu + np.sqrt(var) * dW
 
 
@@ -308,8 +333,7 @@ def OverdampedSplines1D(domain):
     Parameters
     -------------
 
-        knots: int of array
-            Either the number of knots to use in the spline or a list of knots.
-            The more knots the more precise the model but it will be more expensive to run and require more data for precise estimation.
+        domain:
+            Range of the model. Number of points will be used as number of knots
     """
     return Overdamped(BSplinesFunction(domain), dim=1)

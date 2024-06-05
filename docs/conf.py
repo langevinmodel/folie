@@ -25,12 +25,15 @@ except ImportError as exc:
     print(exc)
     raise
 
-release = __version__
+version = __version__.split("+")[0]
+release = __version__  # The full version, including alpha/beta/rc tags
+
+html_title = f"folie {version}"  # Use short version number
+
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-bibtex_bibfiles = ["references.bib"]
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -48,6 +51,9 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinxcontrib.bibtex",
 ]
+
+bibtex_bibfiles = ["references.bib"]
+
 
 numpydoc_show_class_members = False
 autoclass_content = "both"
@@ -89,13 +95,11 @@ intersphinx_mapping = {
 # sphinx-gallery configuration
 sphinx_gallery_conf = {
     "doc_module": "folie",
-    "backreferences_dir": os.path.join("api/generated"),
+    "backreferences_dir": "api/generated",
     "reference_url": {"folie": None},
-    # path to your examples scripts
-    "examples_dirs": ["../examples"],
+    "examples_dirs": ["../examples"],  # path to your examples scripts
     "ignore_pattern": "profile_",
-    # path where to save gallery generated examples
-    "gallery_dirs": ["auto_examples"],
+    "gallery_dirs": ["auto_examples"],  # path where to save gallery generated examples
 }
 
 nbsphinx_execute = "never"
