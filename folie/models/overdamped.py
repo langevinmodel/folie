@@ -168,9 +168,9 @@ class Overdamped(BaseModelOverdamped):
 
     .. math::
 
-        \mathrm{d}X(t) = F(X)\mathrm{d}t + sigma(X,t)\mathrm{d}W_t
+        \mathrm{d}X(t) = F(X)\mathrm{d}t + \sigma(X,t)\mathrm{d}W_t
 
-    The components of the overdamped model are the force profile F(X) as well as the diffusion :math: `D(x) = \sigma(X)\sigma(X)^\T`
+    The components of the overdamped model are the force profile F(X) as well as the diffusion :math: `D(x) =  \frac{1}{2} \sigma(X)\sigma(X)^\T`
 
     When considering equilibrium model, the force and diffusion profile are related to the free energy profile V(X) via
 

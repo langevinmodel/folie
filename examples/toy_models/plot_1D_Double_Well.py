@@ -45,12 +45,12 @@ for i in range(len(q0)):
 time_steps = 10000
 data = simulator.run(time_steps, q0, save_every=1)
 
-# # Plot resulting Trajectories
-# fig, axs = plt.subplots()
-# for n, trj in enumerate(data):
-#     axs.plot(trj["x"])
-#     axs.set_title("Trajectory")
-#
+# Plot resulting Trajectories
+fig, axs = plt.subplots()
+for n, trj in enumerate(data):
+    axs.plot(trj["x"])
+    axs.set_title("Trajectory")
+
 
 fig, axs = plt.subplots(1, 2)
 axs[0].set_title("Force")
@@ -68,11 +68,17 @@ axs[0].plot(xfa, model_simu.force(xfa.reshape(-1, 1)), label="Exact")
 axs[1].plot(xfa, model_simu.diffusion(xfa.reshape(-1, 1)), label="Exact")
 trainforce = fl.functions.Polynomial(deg=3, coefficients=np.array([0, 0, 0, 0]))
 trainmodel = fl.models.Overdamped(force=trainforce, diffusion=fl.functions.Polynomial(deg=0, coefficients=np.asarray([0.9])), has_bias=False)
+
 for name, marker, transitioncls in zip(
     ["Euler", "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
     ["x", "|", ".", "1", "2", "3"],
     [
         fl.EulerDensity,
+        fl.OzakiDensity,
+        fl.ShojiOzakiDensity,
+        fl.ElerianDensity,
+        fl.KesslerDensity,
+        fl.DrozdovDensity,
     ],
 ):
     estimator = fl.LikelihoodEstimator(transitioncls(trainmodel))
@@ -80,15 +86,28 @@ for name, marker, transitioncls in zip(
     # print(res.coefficients)
     axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), marker=marker, label=name)
     axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), marker=marker, label=name)
+
+
+name = "Kramers Moyal"
+res = fl.KramersMoyalEstimator(trainmodel).fit_fetch(data)
+axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), "--", label=name)
+axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), "--", label=name)
+
+
 axs[0].legend()
 axs[1].legend()
 
+# Compute MFPT from one well to another
 plt.figure()
 
 x_mfpt, mfpt = fl.analysis.mfpt_1d(model_simu, -5.0, [-10.0, 10.0], Npoints=500)
-plt.plot(x_mfpt, mfpt)
+plt.plot(x_mfpt, mfpt, label="Right to left")
 x_mfpt, mfpt = fl.analysis.mfpt_1d(model_simu, 5.0, [-10.0, 10.0], Npoints=500)
-plt.plot(x_mfpt, mfpt)
-print(fl.analysis.mfpt_1d(model_simu, -5.0, [-10.0, 10.0], x_start=5.0, Npoints=500))
-print(fl.analysis.mfpt_1d(model_simu, 5.0, [-10.0, 10.0], x_start=-5.0, Npoints=500))
+plt.plot(x_mfpt, mfpt, label="Left to right")
+
+x_mfpt, mfpt = fl.analysis.mfpt_1d(res, -5.0, [-10.0, 10.0], Npoints=500)
+plt.plot(x_mfpt, mfpt, label="Right to left Estimation")
+x_mfpt, mfpt = fl.analysis.mfpt_1d(res, 5.0, [-10.0, 10.0], Npoints=500)
+plt.plot(x_mfpt, mfpt, label="Left to right Estimation")
+plt.legend()
 plt.show()

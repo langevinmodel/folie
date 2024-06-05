@@ -93,6 +93,6 @@ class KramersMoyalEstimator(Estimator):
             dx_sq = dx**2
         else:
             dx_sq = dx[..., None] * dx[:, None, ...]
-        self.model.diffusion.fit(X, y=dx_sq / dt, estimator=estimator, **kwargs)
+        self.model.diffusion.fit(X, y=0.5 * dx_sq / dt, estimator=estimator, **kwargs)
         self.model.fitted_ = True
         return self
