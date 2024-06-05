@@ -30,7 +30,10 @@ class PotentialFunction(Function):
         # else:
         #     return -np.matmul("...ij,...i->...j",self.diffusion(X)
 
-    def grad_V(self, X):  # This is -grad(potential).  That should return an array of size (X.shape[0], dim).
+    def grad_V(self, X):  # This is grad(potential).  That should return an array of size (X.shape[0], dim).
+        """
+        This is grad(potential).  That should return an array of size (X.shape[0], dim).
+        """
         pass
 
     def potential_plot(self, *args):
@@ -63,7 +66,7 @@ class ConstantForce(PotentialFunction):
         return np.dot(x, self.a)
 
     def grad_V(self, X):
-        return -self.a * np.ones_like(X)
+        return self.a * np.ones_like(X)
 
 
 class Quadratic(PotentialFunction):
@@ -88,7 +91,7 @@ class Quadratic(PotentialFunction):
         return 0.5 * self.a * np.sum(x**2, axis=1)
 
     def grad_V(self, X):
-        return -1 * self.a * X
+        return self.a * X
 
 
 class Quartic(PotentialFunction):
@@ -115,7 +118,7 @@ class Quartic(PotentialFunction):
         return np.sum(self.a * ((x - self.x0) * (x - self.x1)) ** 2, axis=1)
 
     def grad_V(self, x):
-        return -2 * self.a * ((x - self.x0) * (x - 1.0)) * (2 * x - self.x0 - self.x1)
+        return 2 * self.a * ((x - self.x0) * (x - 1.0)) * (2 * x - self.x0 - self.x1)
 
 
 class Cosine(PotentialFunction):
@@ -140,7 +143,7 @@ class Cosine(PotentialFunction):
         return self.a * (1 - np.cos(x[:, 0]))
 
     def grad_V(self, X):
-        return -self.a * np.sin(X)
+        return self.a * np.sin(X)
 
 
 class Quartic2D(PotentialFunction):
@@ -167,8 +170,8 @@ class Quartic2D(PotentialFunction):
 
     def grad_V(self, X):  # This is -grad(potential).  That should return an array of size (X.shape[0], dim).
         F = np.zeros(X.shape)
-        F[:, 0] = -4 * self.a * X[:, 0] * (X[:, 0] ** 2 - 1.0)
-        F[:, 1] = -self.b * X[:, 1]
+        F[:, 0] = 4 * self.a * X[:, 0] * (X[:, 0] ** 2 - 1.0)
+        F[:, 1] = self.b * X[:, 1]
         return F
 
     def force_x_comp(self, x):  # Convenient function for getting x component of the force
@@ -223,7 +226,7 @@ class ThreeWell(PotentialFunction):
             dU[:, 1] += self.Ac[n] * (self.b[n] * (x - self.x0[n]) + 2 * self.c[n] * (y - self.y0[n])) * np.exp(self.a[n] * (x - self.x0[n]) ** 2 + self.b[n] * (x - self.x0[n]) * (y - self.y0[n]) + self.c[n] * (y - self.y0[n]) ** 2)
         dU[:, 0] += 8 * x**3 / 10
         dU[:, 1] += 8 * (y - 1.0 / 3) ** 3 / 10
-        return -dU
+        return dU
 
 
 def EntropicSwitch():
@@ -269,7 +272,7 @@ class MullerBrown(PotentialFunction):
         for n in range(4):
             dU[:, 0] += self.Ac[n] * (2 * self.a[n] * (x - self.x0[n]) + self.b[n] * (y - self.y0[n])) * np.exp(self.a[n] * (x - self.x0[n]) ** 2 + self.b[n] * (x - self.x0[n]) * (y - self.y0[n]) + self.c[n] * (y - self.y0[n]) ** 2)
             dU[:, 1] += self.Ac[n] * (self.b[n] * (x - self.x0[n]) + 2 * self.c[n] * (y - self.y0[n])) * np.exp(self.a[n] * (x - self.x0[n]) ** 2 + self.b[n] * (x - self.x0[n]) * (y - self.y0[n]) + self.c[n] * (y - self.y0[n]) ** 2)
-        return -dU
+        return dU
 
 
 class RuggedMullerBrown(PotentialFunction):
@@ -318,7 +321,7 @@ class RuggedMullerBrown(PotentialFunction):
             dU[:, 1] += self.Ac[n] * (self.b[n] * (x - self.x0[n]) + 2 * self.c[n] * (y - self.y0[n])) * np.exp(self.a[n] * (x - self.x0[n]) ** 2 + self.b[n] * (x - self.x0[n]) * (y - self.y0[n]) + self.c[n] * (y - self.y0[n]) ** 2)
         dU[:, 0] += 2 * self.k * np.pi * self.gamma * np.cos(2 * self.k * np.pi * x) * np.sin(2 * self.k * np.pi * y)
         dU[:, 1] += 2 * self.k * np.pi * self.gamma * np.sin(2 * self.k * np.pi * x) * np.cos(2 * self.k * np.pi * y)
-        return -dU
+        return dU
 
 
 class LogExpPot(PotentialFunction):
@@ -368,7 +371,7 @@ class LogExpPot(PotentialFunction):
             dU[:, 0] += self.a[n] * (x - self.x0[n]) * np.exp(-0.5 * (self.a[n] * (x - self.x0[n]) ** 2 + self.b[n] * (y - self.y0[n]) ** 2))
             dU[:, 1] += self.b[n] * (y - self.y0[n]) * np.exp(-0.5 * (self.a[n] * (x - self.x0[n]) ** 2 + self.b[n] * (y - self.y0[n]) ** 2))
             norm += np.exp(-0.5 * (self.a[n] * (x - self.x0[n]) ** 2 + self.b[n] * (y - self.y0[n]) ** 2))
-        return -1 * np.divide(dU, norm[:, None], out=np.zeros_like(dU), where=norm[:, None] != 0)
+        return np.divide(dU, norm[:, None], out=np.zeros_like(dU), where=norm[:, None] != 0)
 
 
 class ValleyRidgePotential(PotentialFunction):
@@ -417,10 +420,10 @@ class ValleyRidgePotential(PotentialFunction):
         """
         x = X[:, 0]
         y = X[:, 1]
-        F = np.zeros(X.shape)
-        F[:, 0] = 4 * self.V * x * (self.xs**2 - x**2) / self.xs**4 + self.A * y**2 - self.C * y**4
-        F[:, 1] = 2 * self.A * y * (x - self.xi) - 4 * y**3 * (self.B + self.C * x)
-        return F
+        dU = np.zeros(X.shape)
+        dU[:, 0] = 4 * self.V * x * (self.xs**2 - x**2) / self.xs**4 + self.A * y**2 - self.C * y**4
+        dU[:, 1] = 2 * self.A * y * (x - self.xi) - 4 * y**3 * (self.B + self.C * x)
+        return dU
 
 
 class SimpleValleyRidgePotential(PotentialFunction):
@@ -441,7 +444,9 @@ class SimpleValleyRidgePotential(PotentialFunction):
         """
         Compute muller brown potential
         """
-        pot = 8 * X[:, 0] ** 3 / 3.0 - 4 * X[:, 0] ** 2 + 0.5 * X[:, 1] ** 2 + X[:, 0] * X[:, 1] ** 2 * (X[:, 1] ** 2 - 2)
+        x = X[:, 0]
+        y = X[:, 1]
+        pot = 8 * x**3 / 3.0 - 4 * x**2 + 0.5 * y**2 + x * y**2 * (y**2 - 2)
         return self.a * pot
 
     def grad_V(self, X):
@@ -450,7 +455,7 @@ class SimpleValleyRidgePotential(PotentialFunction):
         """
         x = X[:, 0]
         y = X[:, 1]
-        F = np.zeros(X.shape)
-        F[:, 0] = 8 * x * (1 - x) + y**2 * (2 - y**2)
-        F[:, 1] = y * (4 * x * (1 - y**2) - 1)
-        return self.a * F
+        dU = np.zeros(X.shape)
+        dU[:, 0] = 8 * x * (1 - x) + y**2 * (2 - y**2)
+        dU[:, 1] = y * (4 * x * (1 - y**2) - 1)
+        return self.a * dU
