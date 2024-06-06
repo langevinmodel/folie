@@ -4,6 +4,8 @@ Set of utilities function for PCCA++ clustering
 Adapted from deeptime https://github.com/deeptime-ml/deeptime
 """
 
+import numpy as np
+
 
 def _pcca_connected_isa(eigenvectors, n_clusters):
     """
