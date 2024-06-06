@@ -96,3 +96,35 @@ def solve_mfpt_fem(model, mesh, element, solver=None, bc="facets"):
     states[product_dofs] = 1.0
     u_sol = skfem.solve(*skfem.condense(A, b, u, D=boundary_dofs), solver=solver)  # Doitêtre égal à -1
     return u_sol, states, basis
+
+
+def reduced_matrix(L, M, basis, n_states, verbose=True, clip_matrix=False):
+    """
+    Compute the reduced matrix using PCCA++
+    """
+    from _pcca_utils import _pcca_connected
+
+    eigsv, x_im = eigs(L, M=M, k=n_states + 1, which="SM")  #
+    ind_sort = np.argsort(np.real(eigsv))[::-1]
+    x_left = np.real(x_im[:, ind_sort])[:, :n_states]
+    eigvals = eigsv[ind_sort]
+    if verbose:
+        print("Eigenvalues", eigvals)
+        print("Spectral ratio", np.abs(eigvals[n_states]) / np.abs(eigvals[n_states - 1]))
+
+    eigen_vect_on_quad_point = np.empty((basis.nelems, len(basis.W), n_states))
+    for n in range(n_states):
+        eigen_vect_on_quad_point[..., n] = basis.interpolate(x_left[:, n])
+
+    memberships_on_quad = _pcca_connected(eigen_vect_on_quad_point[..., 1:].reshape(-1, n_states - 1)).reshape(eigen_vect_on_quad_point.shape)
+    memberships = np.empty_like(x_left)
+    for n in range(n_states):
+        memberships[:, n] = basis.project(memberships_on_quad[:, :, n])
+
+    invG_membership = np.linalg.inv(memberships.T @ M @ memberships)
+    L_reduced = invG_membership @ memberships.T @ L @ memberships
+    if clip_matrix:
+        L_reduced = np.clip(L_reduced, 0.0, np.max(L_reduced))
+        for n in range(L_reduced.shape[0]):
+            L_reduced[n, n] = -np.sum(L_reduced[n, :])
+    return L_reduced
