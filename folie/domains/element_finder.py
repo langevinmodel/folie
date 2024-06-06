@@ -97,7 +97,7 @@ def points_to_facets_dist(points, triangles):
     for i in range(3):
         seg_start = triangles[:, i]
         seg_end = triangles[:, (i + 1) % 3]
-        dist_to_segments = points_to_segment_dist(points, seg_start, seg_end)
+        dist_to_segments = points_to_segment_dist(points.T, seg_start.T, seg_end.T)
         distances = np.minimum(distances, dist_to_segments)
 
     min_distances = np.min(distances, axis=1)
