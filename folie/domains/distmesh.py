@@ -1,5 +1,5 @@
 # Per-Olof Persson's code distmesh2D rewritten to Python and simplified
-# File has been copied from https://github.com/mar1akc/transition_path_theory_FEM_distmesh
+# File has been adapted from https://github.com/mar1akc/transition_path_theory_FEM_distmesh
 import numpy as np
 import matplotlib.pyplot as plt
 import math
@@ -16,6 +16,14 @@ def ddiff(d1, d2):
     return np.maximum(d1, -d2)
 
 
+def dintersect(d1, d2):
+    return np.maximum(d1, d2)
+
+
+def dunion(d1, d2):
+    return np.minimum(d1, d2)
+
+
 def dcircle(p, xc, yc, r):
     return np.sqrt((p[:, 0] - xc) ** 2 + (p[:, 1] - yc) ** 2) - r
 
@@ -28,14 +36,6 @@ def drectangle(p, x1, x2, y1, y2):
     d1 = np.minimum(-y1 + p[:, 1], y2 - p[:, 1])
     d2 = np.minimum(d1, -x1 + p[:, 0])
     return -np.minimum(d2, x2 - p[:, 0])
-
-
-def dintersect(d1, d2):
-    return np.maximum(d1, d2)
-
-
-def dunion(d1, d2):
-    return np.minimum(d1, d2)
 
 
 def dline(p, x1, y1, x2, y2):
@@ -92,14 +92,14 @@ def fixmesh(pts, tri):
     return pts, tri
 
 
-def distmesh2D(fd, fh, h0, bbox, pfix):
+def distmesh2D(fd, fh, h0, bbox, pfix, **kwargs):
     """
     Generate 2D Mesh from a distance function.
 
     Parameters
     -------------
         fd: callable
-            Distance function d([x,y]). Point are inside the mesh if the distance function is positive
+            Distance function d([x,y]). Point are inside the mesh if the distance function is negative
         fh: callable
             Scaled edge length function h(x,y). Allow to modulate local mesh size
         h0: float
@@ -135,6 +135,7 @@ def distmesh2D(fd, fh, h0, bbox, pfix):
         print(mesh)
         mesh.write("mesh.vtk")
     """
+    dim = 2
     # parameters
     dptol = 0.001
     ttol = 0.1
@@ -142,7 +143,7 @@ def distmesh2D(fd, fh, h0, bbox, pfix):
     deltat = 0.2
     geps = 0.001 * h0
     deps = math.sqrt(np.finfo(float).eps) * h0
-    MAXcount = 5000
+    MAXcount = kwargs.get("MAXcount", 5000)
     densityctrlfreq = 30
     jshow = 200  # display progress every jshow iterations
 
@@ -195,7 +196,7 @@ def distmesh2D(fd, fh, h0, bbox, pfix):
         L = np.sqrt(np.sum(barvec**2, axis=1))  # L = Bar lengths
         L = np.reshape(L, (Nbars, 1))
         hbars = fh((pts[bars[:, 0], :] + pts[bars[:, 1], :]) / 2)
-        L0 = hbars * Fscale * np.sqrt(sum(L**2) / np.sum(hbars**2))  # L0 = Desired lengths
+        L0 = hbars * Fscale * (sum(L**dim) / np.sum(hbars**dim)) ** ((1.0).dim)  # L0 = Desired lengths
         L0 = np.reshape(L0, (Nbars, 1))
 
         # density control: remove points if they are too close
@@ -211,24 +212,18 @@ def distmesh2D(fd, fh, h0, bbox, pfix):
             continue
 
         F = np.maximum(L0 - L, np.zeros_like(L0))
-        Fvec = np.matmul(F / L, np.ones((1, 2))) * barvec  # Bar forces (x,y components)
-        I = bars[:, 0]
-        J = np.zeros_like(I)
-        V = Fvec[:, 0]
-        F00 = sparse.coo_matrix((V, (I, J)), shape=(Npts, 2)).toarray()
-        I = bars[:, 0]
-        J = np.ones_like(I)
-        V = Fvec[:, 1]
-        F01 = sparse.coo_matrix((V, (I, J)), shape=(Npts, 2)).toarray()
-        I = bars[:, 1]
-        J = np.zeros_like(I)
-        V = -Fvec[:, 0]
-        F10 = sparse.coo_matrix((V, (I, J)), shape=(Npts, 2)).toarray()
-        I = bars[:, 1]
-        J = np.ones_like(I)
-        V = -Fvec[:, 1]
-        F11 = sparse.coo_matrix((V, (I, J)), shape=(Npts, 2)).toarray()
-        Ftot = F00 + F01 + F10 + F11
+        Fvec = np.matmul(F / L, np.ones((1, dim))) * barvec  # Bar forces (x,y components)
+        Ftot = np.zeros_like(pts)
+        for ndim in range(dim):
+            I = bars[:, 0]
+            J = ndim * np.ones_like(I, dtype=int)
+            V = Fvec[:, ndim]
+            Ftot += sparse.coo_matrix((V, (I, J)), shape=(Npts, dim)).toarray()
+            I = bars[:, 1]
+            J = ndim * np.ones_like(I, dtype=int)
+            V = Fvec[:, ndim]
+            Ftot -= sparse.coo_matrix((V, (I, J)), shape=(Npts, dim)).toarray()
+
         Ftot[0:nfix, :] = 0  # force = 0 at fixed points
         pts = pts + deltat * Ftot  # Update node positions
 
@@ -251,7 +246,10 @@ def distmesh2D(fd, fh, h0, bbox, pfix):
         idx = np.argwhere(d < -geps)  # find interior nodes
         Nidx = np.size(idx)
         idx = np.reshape(idx, (Nidx,))
-        displacement = np.amax(np.sqrt(np.sum(deltat * Ftot[idx, :] ** 2, axis=1)) / h0)  # mamimal displacement, scaled
+        if Nidx > 0:
+            displacement = np.amax(np.sqrt(np.sum(deltat * Ftot[idx, :] ** 2, axis=1)) / h0)  # mamimal displacement, scaled
+        else:
+            displacement = 0.0
         if np.remainder(count, jshow) == 0:
             print("count = ", count, "displacement = ", displacement)
 

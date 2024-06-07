@@ -96,3 +96,75 @@ class KramersMoyalEstimator(Estimator):
         self.model.diffusion.fit(X, y=dx_sq / dt, estimator=estimator, **kwargs)
         self.model.fitted_ = True
         return self
+
+
+from .._numpy import np
+
+
+from ..base import Estimator
+from sklearn import linear_model
+
+
+class KoopmanEstimator(Estimator):
+    r"""Estimator for the Koopman generator
+
+    Parameters
+    ----------
+    model : Model, optional, default=None
+        A model which can be used for initialization. In case an estimator is capable of online learning, i.e.,
+        capable of updating models, this can be used to resume the estimation process.
+    """
+
+    def __init__(self, model, **kwargs):
+        super().__init__(model, **kwargs)
+
+    def preprocess_traj(self, trj, **kwargs):
+        """
+        Basic preprocessing
+        """
+        if "xt" not in trj:  # ie, not preprocessing yet
+            trj["xt"] = trj["x"][1:]
+            trj["x"] = trj["x"][:-1]
+            if "bias" in trj:
+                trj["bias"] = trj["bias"][:-1]
+            else:
+                trj["bias"] = np.zeros((1, trj["x"].shape[1]))
+            self._model.preprocess_traj(trj, **kwargs)
+        return trj
+
+    def fit(self, data, estimator=linear_model.LinearRegression(copy_X=False, fit_intercept=False), **kwargs):
+        r"""Fits data to the estimator's internal :class:`Model` and overwrites it. This way, every call to
+        :meth:`fetch_model` yields an autonomous model instance.
+
+        Parameters
+        ----------
+        data : array_like
+            Data that is used to fit a model.
+
+        estimator: sklearn compatible estimator
+            Defaut to sklearn.linear_model.LinearRegression(copy_X=False, fit_intercept=False) but any compatible estimator can be used.
+            Estimator should have a coef attibutes after fitting
+
+        **kwargs
+            Additional kwargs.
+
+        Returns
+        -------
+        self : Estimator
+            Reference to self.
+        """
+        estimator.n_jobs = self.n_jobs
+        for trj in data:
+            self.preprocess_traj(trj)
+
+        dt = data[0]["dt"]
+
+        X = np.concatenate([trj["x"] for trj in data], axis=0)
+        for key in ["cells_idx", "loc_x"]:
+            if key in data[0]:
+                kwargs[key] = np.concatenate([trj[key] for trj in data], axis=0)
+        # Take weight into account as well
+        dx = np.concatenate([self.model.basis.grad_coeff(trj["xt"]) - self.model.basis.grad_coeff(trj["x"]) for trj in data], axis=0)
+        self.model.basis.fit(X, y=dx / dt, sample_weight=None, estimator=estimator, **kwargs)
+        self.model.fitted_ = True
+        return self

@@ -4,7 +4,7 @@ from scipy.spatial import ConvexHull, Delaunay
 
 
 def non_uniform_line(x_start, x_end, num_elements, ratio):
-    """
+    r"""
     Creates a 1D non-uniform grid by placing num_elements nodes in
     geometric progression between x_start and x_end with ratio ratio.
 
@@ -14,14 +14,14 @@ def non_uniform_line(x_start, x_end, num_elements, ratio):
     """
 
     # Create grid points between 0 and 1
-    h = (ratio - 1) / (ratio ** num_elements - 1)
+    h = (ratio - 1) / (ratio**num_elements - 1)
     x = np.append([0], h * np.cumsum(ratio ** np.arange(num_elements)))
 
     return x_start + x * (x_end - x_start)
 
 
 def data_driven_line(data, bins=10, x_start=None, x_end=None):
-    """
+    r"""
     Creates a 1D grid using histogram estimation.
 
     Args:
@@ -40,7 +40,7 @@ def data_driven_line(data, bins=10, x_start=None, x_end=None):
 
 
 def centroid_driven_line(data, bins=100):
-    """
+    r"""
     Creates a mesh line based on centroids of the data, to get more cell around point with more datas
 
     Args:
@@ -55,7 +55,7 @@ def centroid_driven_line(data, bins=100):
 
 
 def get_intersect(a1, a2, b1, b2):
-    """
+    r"""
     Returns the point of intersection of the lines passing through a2,a1 and b2,b1.
     a1: [x, y] a point on the first line
     a2: [x, y] another point on the first line
@@ -73,7 +73,7 @@ def get_intersect(a1, a2, b1, b2):
 
 
 def remove_one_point(boundary_vertices, ratio_limit=0.01, verbose=False):
-    """
+    r"""
     Remove one points from the smallest
     """
     length = np.power(boundary_vertices[1:] - boundary_vertices[:-1], 2).sum(axis=1)
@@ -95,7 +95,7 @@ def remove_one_point(boundary_vertices, ratio_limit=0.01, verbose=False):
 
 
 def centroid_driven_mesh(data, bins=100, boundary_vertices=None, simplify_hull=0.01, verbose=False):
-    """
+    r"""
     Creates a mesh line based on centroids of the data, to get more cell around point with more datas
 
     Args:
@@ -115,6 +115,81 @@ def centroid_driven_mesh(data, bins=100, boundary_vertices=None, simplify_hull=0
     # For ND, do Delaunay triangulation of the space
     tri = Delaunay(vertices)
     return vertices, tri.simplices
+
+
+def reduce_data_size(X, bins=10, state_level=0.0):
+
+    _, dim = X.shape
+    if dim != 2:
+        raise ValueError("Only apply to 2d data")
+    X_min = np.min(X, axis=0)
+    X_max = np.max(X, axis=0)
+
+    H, xedges, yedges = np.histogram2d(X[:, 0], X[:, 1], bins=bins)
+    xcenters = (xedges[:-1] + xedges[1:]) / 2
+    ycenters = (yedges[:-1] + yedges[1:]) / 2
+    inds = np.nonzero(H > state_level)
+    X = np.column_stack((xcenters[inds[0]], ycenters[inds[1]]))
+    bbox = [X_min[0], X_max[0], X_min[1], X_max[1]]
+    return X, bbox
+
+
+def generate_density_based_mesh(X, bins=10, state_level=1.0, k_max=4, metric="minkowski", Ninit_vertices=1000, pfix=[], alpha=1.5):
+    r"""
+    Density based mesh. get mesh as an union of ball arounf random points with edge length related to local densiy of points
+
+    Parameters
+    ------------
+
+        X is the set of points within the state
+
+        state_level is the minimal number of points per bins in the reduction
+
+        N_max is the max number of points to be considered
+
+        kmax is the number of neighbours taken for construction of the spanning graph
+
+        alpha, strenght if the mesh size dependance in local density of points. alpha=0 is no dependance
+    """
+
+    from sklearn.neighbors import NearestNeighbors
+    from scipy.sparse.csgraph import minimum_spanning_tree, connected_components
+    from .distmesh import distmesh2D, huniform
+
+    X, bbox = reduce_data_size(X, bins, state_level)
+    state_nbrs = NearestNeighbors(n_neighbors=k_max, algorithm="ball_tree", metric=metric).fit(X)
+
+    # TODO : Check connected components
+    connectivity_graph = state_nbrs.kneighbors_graph(mode="distance")
+    n_comps, labels = connected_components(connectivity_graph)
+    if n_comps > 1:
+        print("WARNING there is {} connected components, increase k_max or split the set of points".format(n_comps))
+
+    spanning_tree = minimum_spanning_tree(connectivity_graph)
+    state_radius = (spanning_tree + spanning_tree.T).max(axis=1).toarray()[:, 0]  # Find radius in order to get connected graph
+
+    def dfunc(x):
+        x = np.asarray(x)
+        if x.ndim == 1:
+            x = x.reshape(1, -1)
+        if x.size == 0:
+            return x[:, 0]
+        dist, inds = state_nbrs.kneighbors(x)
+        # print(dist)
+        d = dist[:, :k_max] - state_radius[inds[:, :k_max]]  # Remove distance to point
+        return d.min(axis=1)
+
+    def hdensity(x):  # Rescaler ça pour ne pas avoir de diminution trop brusque (pas plus de 1.2*0.5)
+        if x.size == 0:
+            return x[:, 0:1]
+        dist, _ = state_nbrs.kneighbors(x)
+        res = np.power(dist[:, k_max - 1 : k_max], alpha)
+        return res / np.sqrt(np.mean(res**2))  #  Normalize in order to change only relative size
+
+    h0 = np.sqrt(np.abs(bbox[0] - bbox[1]) * np.abs(bbox[2] - bbox[3]) * 0.5 * np.sqrt(3) / Ninit_vertices)
+    print(bbox, h0)
+    pts, tri = distmesh2D(dfunc, hdensity, h0, bbox, pfix)
+    return pts, tri, X, dfunc
 
 
 if __name__ == "__main__":  # pragma: no cover
