@@ -14,7 +14,7 @@ def non_uniform_line(x_start, x_end, num_elements, ratio):
     """
 
     # Create grid points between 0 and 1
-    h = (ratio - 1) / (ratio**num_elements - 1)
+    h = (ratio - 1) / (ratio ** num_elements - 1)
     x = np.append([0], h * np.cumsum(ratio ** np.arange(num_elements)))
 
     return x_start + x * (x_end - x_start)
@@ -117,7 +117,7 @@ def centroid_driven_mesh(data, bins=100, boundary_vertices=None, simplify_hull=0
     return vertices, tri.simplices
 
 
-def reduce_data_size(X, bins=10, state_level=0.0):
+def reduce_data_size_2d(X, bins=10, state_level=0.0):
 
     _, dim = X.shape
     if dim != 2:
@@ -126,6 +126,23 @@ def reduce_data_size(X, bins=10, state_level=0.0):
     X_max = np.max(X, axis=0)
 
     H, xedges, yedges = np.histogram2d(X[:, 0], X[:, 1], bins=bins)
+    xcenters = (xedges[:-1] + xedges[1:]) / 2
+    ycenters = (yedges[:-1] + yedges[1:]) / 2
+    inds = np.nonzero(H > state_level)
+    X = np.column_stack((xcenters[inds[0]], ycenters[inds[1]]))
+    bbox = [X_min[0], X_min[1], X_max[0], X_max[1]]
+    return X, bbox
+
+
+def reduce_data_size_3d(X, bins=10, state_level=0.0):
+
+    _, dim = X.shape
+    if dim != 3:
+        raise ValueError("Only apply to 3d data")
+    X_min = np.min(X, axis=0)
+    X_max = np.max(X, axis=0)
+
+    H, xedges, yedges = np.histogramnd(X[:, 0], bins=bins)
     xcenters = (xedges[:-1] + xedges[1:]) / 2
     ycenters = (yedges[:-1] + yedges[1:]) / 2
     inds = np.nonzero(H > state_level)
@@ -154,7 +171,9 @@ def generate_density_based_mesh(X, bins=10, state_level=1.0, k_max=4, metric="mi
 
     from sklearn.neighbors import NearestNeighbors
     from scipy.sparse.csgraph import minimum_spanning_tree, connected_components
-    from .distmesh import distmesh2D, huniform
+    from distmesh import distmesh2d, distmeshnd
+
+    dim = X.shape[1]
 
     X, bbox = reduce_data_size(X, bins, state_level)
     state_nbrs = NearestNeighbors(n_neighbors=k_max, algorithm="ball_tree", metric=metric).fit(X)
@@ -184,12 +203,67 @@ def generate_density_based_mesh(X, bins=10, state_level=1.0, k_max=4, metric="mi
             return x[:, 0:1]
         dist, _ = state_nbrs.kneighbors(x)
         res = np.power(dist[:, k_max - 1 : k_max], alpha)
-        return res / np.sqrt(np.mean(res**2))  #  Normalize in order to change only relative size
+        return res / np.sqrt(np.mean(res ** 2))  # Normalize in order to change only relative size
 
-    h0 = np.sqrt(np.abs(bbox[0] - bbox[1]) * np.abs(bbox[2] - bbox[3]) * 0.5 * np.sqrt(3) / Ninit_vertices)
-    print(bbox, h0)
-    pts, tri = distmesh2D(dfunc, hdensity, h0, bbox, pfix)
+    if dim == 2:
+        h0 = np.sqrt(np.abs(bbox[0] - bbox[1]) * np.abs(bbox[2] - bbox[3]) * 0.5 * np.sqrt(3) / Ninit_vertices)
+        print(bbox, h0)
+        pts, tri = distmesh2d(dfunc, hdensity, h0, bbox, pfix)
+    else:
+        h0 = np.sqrt(np.abs(bbox[0] - bbox[1]) * np.abs(bbox[2] - bbox[3]) * 0.5 * np.sqrt(3) / Ninit_vertices)
+        print(bbox, h0)
+        pts, tri = distmeshnd(dfunc, hdensity, h0, bbox, pfix)
     return pts, tri, X, dfunc
+
+
+def distmesh2D(fd, fh, h0, bbox, pfix, **kwargs):
+    """
+    Generate 2D Mesh from a distance function.
+    Use pydistmesh directly but this is here for documentation purpose
+
+    Parameters
+    -------------
+        fd: callable
+            Distance function d([x,y]). Point are inside the mesh if the distance function is negative
+        fh: callable
+            Scaled edge length function h(x,y). Allow to modulate local mesh size
+        h0: float
+            Initial edge length
+        bbox: array
+            Bounding box [xmin,xmax,ymin,ymax]
+        pfix:
+            Fixed node positions (NFIXx2). Position of fixed nodes.
+
+    Output:
+        pts: ndarray  (Nx2)
+            Node positions
+        tri: ndarray  (NTx3)
+            Triangle indices
+
+    For example, the generation of a rectange  with with elliptic hole
+    :: code-block: python
+        import distmesh
+        x1, x2, y1, y2 = 0.0, 1.0, -1.0, 1.0
+        def dfunc(p):
+            d0 = distmesh.drectangle(p, x1, x2, y1, y2)
+            dA = distmesh.dellipse(p, xa, ya, rx, ry)
+            dB = distmesh.dellipse(p, xb, yb, rx, ry)
+            d = distmesh.ddiff(d0, dunion(dA, dB))
+            return d
+
+        # h0 is the desired scaling parameter for the mesh
+        h0 = 0.04
+        Nfix = Na + Nb + Nouter
+        # bbox = [xmin,xmax,ymin,ymax]
+        bbox = [xmin, xmax, ymin, ymax]
+        pts, tri = distmesh.distmesh2d(dfunc, huniform, h0, bbox, [])
+        mesh = meshio.Mesh(pts, [("triangle", tri)])
+        print(mesh)
+        mesh.write("mesh.vtk")
+    """
+    import distmesh
+
+    return distmesh.distmesh2d(fd, fh, h0, bbox, pfix)
 
 
 if __name__ == "__main__":  # pragma: no cover
