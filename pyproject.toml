@@ -22,7 +22,6 @@ dependencies = [
     'numba >= 0.5',
     'scikit-fem>= 8.0',
     'sparse >=0.14',
-    "pydistmesh"
 ]
 dynamic = ['version']
 

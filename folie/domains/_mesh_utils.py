@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.cluster import KMeans
 from scipy.spatial import ConvexHull, Delaunay
+import skfem
 
 
 def non_uniform_line(x_start, x_end, num_elements, ratio):
@@ -14,7 +15,7 @@ def non_uniform_line(x_start, x_end, num_elements, ratio):
     """
 
     # Create grid points between 0 and 1
-    h = (ratio - 1) / (ratio ** num_elements - 1)
+    h = (ratio - 1) / (ratio**num_elements - 1)
     x = np.append([0], h * np.cumsum(ratio ** np.arange(num_elements)))
 
     return x_start + x * (x_end - x_start)
@@ -117,43 +118,10 @@ def centroid_driven_mesh(data, bins=100, boundary_vertices=None, simplify_hull=0
     return vertices, tri.simplices
 
 
-def reduce_data_size_2d(X, bins=10, state_level=0.0):
-
-    _, dim = X.shape
-    if dim != 2:
-        raise ValueError("Only apply to 2d data")
-    X_min = np.min(X, axis=0)
-    X_max = np.max(X, axis=0)
-
-    H, xedges, yedges = np.histogram2d(X[:, 0], X[:, 1], bins=bins)
-    xcenters = (xedges[:-1] + xedges[1:]) / 2
-    ycenters = (yedges[:-1] + yedges[1:]) / 2
-    inds = np.nonzero(H > state_level)
-    X = np.column_stack((xcenters[inds[0]], ycenters[inds[1]]))
-    bbox = [X_min[0], X_min[1], X_max[0], X_max[1]]
-    return X, bbox
-
-
-def reduce_data_size_3d(X, bins=10, state_level=0.0):
-
-    _, dim = X.shape
-    if dim != 3:
-        raise ValueError("Only apply to 3d data")
-    X_min = np.min(X, axis=0)
-    X_max = np.max(X, axis=0)
-
-    H, xedges, yedges = np.histogramnd(X[:, 0], bins=bins)
-    xcenters = (xedges[:-1] + xedges[1:]) / 2
-    ycenters = (yedges[:-1] + yedges[1:]) / 2
-    inds = np.nonzero(H > state_level)
-    X = np.column_stack((xcenters[inds[0]], ycenters[inds[1]]))
-    bbox = [X_min[0], X_max[0], X_min[1], X_max[1]]
-    return X, bbox
-
-
-def generate_density_based_mesh(X, bins=10, state_level=1.0, k_max=4, metric="minkowski", Ninit_vertices=1000, pfix=[], alpha=1.5):
+def mesh_on_data_support(X, bins=10, state_level=0.0, metric="minkowski", Ninit_vertices=1000, pfix=[]):
     r"""
-    Density based mesh. get mesh as an union of ball arounf random points with edge length related to local densiy of points
+    Give uniform mesh on the support of data
+    This use the distmesh algorithm :footcite:`Per-Olof Persson`
 
     Parameters
     ------------
@@ -162,58 +130,205 @@ def generate_density_based_mesh(X, bins=10, state_level=1.0, k_max=4, metric="mi
 
         state_level is the minimal number of points per bins in the reduction
 
-        N_max is the max number of points to be considered
+        bins is the discretization used to reduce the number of data points
 
-        kmax is the number of neighbours taken for construction of the spanning graph
 
-        alpha, strenght if the mesh size dependance in local density of points. alpha=0 is no dependance
+        Ninit_vertices is the max number of vertices in the mesh.
+            Final number of mesh ertices depend of the shape of the data and maximum number of vertices should be obtained for uniform data on a rectangle
+
+        alpha, strenght of the mesh size dependance in local density of points. alpha=0 is uniform dsitribution of the mesh
+            negative alpha put more point in zone of low density and positive alpha put more points in zone of high density.
+            When alpha is 1.0, the local density of mesh point should be equal to the histogram of the data
+
+    References
+    --------------
+
+    .. footbibliography::
     """
 
     from sklearn.neighbors import NearestNeighbors
     from scipy.sparse.csgraph import minimum_spanning_tree, connected_components
-    from distmesh import distmesh2d, distmeshnd
+    from scipy.integrate import cumulative_trapezoid
+    from .distmesh import distmesh2d, distmeshnd, huniform
 
     dim = X.shape[1]
 
-    X, bbox = reduce_data_size(X, bins, state_level)
-    state_nbrs = NearestNeighbors(n_neighbors=k_max, algorithm="ball_tree", metric=metric).fit(X)
-
-    # TODO : Check connected components
-    connectivity_graph = state_nbrs.kneighbors_graph(mode="distance")
-    n_comps, labels = connected_components(connectivity_graph)
-    if n_comps > 1:
-        print("WARNING there is {} connected components, increase k_max or split the set of points".format(n_comps))
-
-    spanning_tree = minimum_spanning_tree(connectivity_graph)
-    state_radius = (spanning_tree + spanning_tree.T).max(axis=1).toarray()[:, 0]  # Find radius in order to get connected graph
-
-    def dfunc(x):
-        x = np.asarray(x)
-        if x.ndim == 1:
-            x = x.reshape(1, -1)
-        if x.size == 0:
-            return x[:, 0]
-        dist, inds = state_nbrs.kneighbors(x)
-        # print(dist)
-        d = dist[:, :k_max] - state_radius[inds[:, :k_max]]  # Remove distance to point
-        return d.min(axis=1)
-
-    def hdensity(x):  # Rescaler ça pour ne pas avoir de diminution trop brusque (pas plus de 1.2*0.5)
-        if x.size == 0:
-            return x[:, 0:1]
-        dist, _ = state_nbrs.kneighbors(x)
-        res = np.power(dist[:, k_max - 1 : k_max], alpha)
-        return res / np.sqrt(np.mean(res ** 2))  # Normalize in order to change only relative size
-
-    if dim == 2:
-        h0 = np.sqrt(np.abs(bbox[0] - bbox[1]) * np.abs(bbox[2] - bbox[3]) * 0.5 * np.sqrt(3) / Ninit_vertices)
-        print(bbox, h0)
-        pts, tri = distmesh2d(dfunc, hdensity, h0, bbox, pfix)
+    if dim == 1:
+        pts = np.linspace(X.min(), X.max(), Ninit_vertices)
+        tri = None
     else:
-        h0 = np.sqrt(np.abs(bbox[0] - bbox[1]) * np.abs(bbox[2] - bbox[3]) * 0.5 * np.sqrt(3) / Ninit_vertices)
-        print(bbox, h0)
-        pts, tri = distmeshnd(dfunc, hdensity, h0, bbox, pfix)
-    return pts, tri, X, dfunc
+        X, bbox, _, _ = reduce_data_size(X, bins, state_level)
+        k_max = 2 * dim
+        state_nbrs = NearestNeighbors(n_neighbors=k_max, algorithm="ball_tree", metric=metric).fit(X)
+
+        connectivity_graph = state_nbrs.kneighbors_graph(mode="distance")
+        n_comps, labels = connected_components(connectivity_graph)
+        if n_comps > 1:
+            print("WARNING there is {} connected componentss".format(n_comps))
+
+        spanning_tree = minimum_spanning_tree(connectivity_graph)
+        state_radius = (spanning_tree + spanning_tree.T).max(axis=1).toarray()[:, 0]  # Find radius in order to get connected graph
+
+        def dfunc(x):
+            x = np.asarray(x)
+            if x.ndim == 1:
+                x = x.reshape(1, -1)
+            if x.size == 0:
+                return x[:, 0]
+            dist, inds = state_nbrs.kneighbors(x)
+            # print(dist)
+            d = dist[:, :k_max] - state_radius[inds[:, :k_max]]  # Remove distance to point
+            return d.min(axis=1)
+
+        # # L'inverse de la mesure c'est le volume du tedraedre local, donc l'arete c'est **(1/dim) de çaz
+        # def hdensity(x):  # Rescaler ça pour ne pas avoir de diminution trop brusque (pas plus de 1.2*0.5)
+        #     if x.size == 0:
+        #         return x[:, 0:1]
+        #     dists, inds = state_nbrs.kneighbors(x)
+        #     # Check for zero distance, if we have a zero distances, then its weighjs is set to 1.0 and the other one to zero
+        #     weights = np.empty_like(dists)
+        #     with np.errstate(divide="ignore"):
+        #         weights = 1.0 / dists
+        #     inf_mask = np.isinf(weights)
+        #     inf_row = np.any(inf_mask, axis=1)
+        #     weights[inf_row] = inf_mask[inf_row]
+        #     loc_density = (w[inds] * weights).sum(axis=1) / weights.sum(axis=1)  # That should give estimate of local density
+        #     return 1 / (loc_density**alpha)  # That should give inverse of local density
+
+        pfix = np.asarray(pfix).reshape(-1, dim)
+
+        # Initial number of points estimation
+
+        # Create uniform grid
+        h0 = (np.prod([np.abs(bbox[dim + n] - bbox[n]) for n in range(dim)]) / Ninit_vertices) ** 1 / dim
+        p = np.mgrid[tuple(slice(bbox[n], bbox[dim + n] + h0, h0) for n in range(dim))]
+        p = p.reshape(dim, -1).T
+        N_uni = p.shape[0]
+        # 2. Remove points outside the region, apply the rejection method
+        p = p[dfunc(p) < 0.0]  # Keep only d<0 points
+        Ninit_vertices = Ninit_vertices * N_uni / p.shape[0]
+        if dim == 2:
+            h0 = np.sqrt(np.abs(bbox[0] - bbox[2]) * np.abs(bbox[1] - bbox[3]) * 2 / np.sqrt(3) / Ninit_vertices)
+            pts, tri = distmesh2d(dfunc, huniform, h0, bbox, pfix)
+        else:
+            h0 = (np.prod([np.abs(bbox[dim + n] - bbox[n]) for n in range(dim)]) / Ninit_vertices) ** 1 / dim
+            print(Ninit_vertices, h0)
+            pts, tri = distmeshnd(dfunc, huniform, h0, bbox, pfix, fig=None)
+    return pts, tri
+
+
+def reduce_data_size(X, bins=10, N_min=0, N_min_per_bins=20, Ninit_vertices=1000):
+
+    Ndata, dim = X.shape
+    X_min = np.min(X, axis=0)
+    X_max = np.max(X, axis=0)
+
+    if dim == 1:
+        H, xedges = np.histogram(X[:, 0], bins=bins, density=True)
+        xcenters = [(xedges[:-1] + xedges[1:]) / 2]
+    else:
+        H, edges = np.histogramdd(X, bins=bins, density=True)
+        xcenters = [(xedges[:-1] + xedges[1:]) / 2 for xedges in edges]
+
+    dx = [np.diff(xc).mean() for xc in xcenters]  # Average distances between 2 centers for all directions
+
+    inds = np.nonzero(H > N_min)
+    H = H[H > N_min].ravel()
+
+    X = np.column_stack([xc[ind] for xc, ind in zip(xcenters, inds)])
+    bbox = np.array([*X_min, *X_max])
+
+    # Find max cap on H to avoid overconcentration of traingle on max points
+    H_sorted = np.sort(H.ravel())
+    Area_tot = np.prod([np.abs(bbox[dim + n] - bbox[n]) for n in range(dim)])
+    k = np.argmax(np.arange(H_sorted.shape[0])[::-1] * H_sorted + np.cumsum(H_sorted) > N_min_per_bins * Ninit_vertices**2 / (Area_tot * Ndata))
+    cap_on_H = H_sorted[k]
+    H = np.minimum(H, cap_on_H)
+
+    return X, bbox, H, dx
+
+
+def generate_density_based_mesh(X, bins=10, state_level=0.0, metric="minkowski", Ninit_vertices=1000, pfix=[], alpha=1.0, return_scaling=False):
+    r"""
+    Density based mesh. get mesh as an union of ball arounf random points with edge length related to local densiy of points
+    This use the distmesh algorithm :footcite:`Per-Olof Persson`
+
+    Parameters
+    ------------
+
+        X is the set of points within the state
+
+        state_level is the minimal number of points per bins in the reduction
+
+        bins is the discretization used to reduce the number of data points
+
+
+        Ninit_vertices is the max number of vertices in the mesh.
+            Final number of mesh ertices depend of the shape of the data and maximum number of vertices should be obtained for uniform data on a rectangle
+
+        alpha, strenght of the mesh size dependance in local density of points. alpha=0 is uniform dsitribution of the mesh
+            negative alpha put more point in zone of low density and positive alpha put more points in zone of high density.
+            When alpha is 1.0, the local density of mesh point should be equal to the histogram of the data
+
+    References
+    --------------
+
+    .. footbibliography::
+    """
+
+    from sklearn.neighbors import NearestNeighbors
+    from scipy.spatial import cKDTree
+    from scipy.integrate import cumulative_trapezoid
+    from .densitymesh import densmesh2d
+
+    dim = X.shape[1]
+
+    X, bbox, w, dx = reduce_data_size(X, bins, state_level)
+
+    if dim == 1:  # A adapter
+        dhfun = w**alpha
+
+        hdensity = np.concatenate(([dhfun[0]], dhfun, [dhfun[-1]]))
+        X = np.concatenate(([bbox[0]], X.ravel(), [bbox[1]]))
+        h_scaled = cumulative_trapezoid(hdensity, X, initial=0)
+        h_scaled /= h_scaled[-1]
+        pts = np.interp(np.linspace(0, 1, Ninit_vertices), h_scaled, X)
+        tri = None
+    else:
+        tree = cKDTree(X)  # Un KDTree pour sélectionner efficacement un sous ensemble des points sur lequel faire la regression
+        bandwidth = np.linalg.norm(dx)
+
+        def density(x):
+            d, inds = tree.query(x, k=8)
+            Kw = (1 / np.sqrt(2 * np.pi)) * w[inds] * np.exp(-0.5 * (d / bandwidth) ** 2)
+            return 1e-2 - Kw.sum(axis=1)
+
+        def grad_log_density(x):
+            d, inds = tree.query(x, k=8)
+            Kw = (1 / np.sqrt(2 * np.pi)) * w[inds] * np.exp(-0.5 * (d / bandwidth) ** 2)
+            norm = Kw.sum(axis=1)
+            num = (Kw[..., None] * (x[:, None, :] - tree.data[inds])).sum(axis=1)
+            return -2 * np.divide(num, norm[:, None], out=np.zeros_like(x), where=norm[:, None] != 0)  # This is the local average of y
+
+        pfix = np.asarray(pfix).reshape(-1, dim)
+
+        rng = np.random.default_rng()
+        u = rng.uniform(0, 1, size=Ninit_vertices)  # Selection a random gaussian
+        cumsum_weight = np.cumsum(np.asarray(w))
+        sum_weight = cumsum_weight[-1]
+        i = np.searchsorted(cumsum_weight, u * sum_weight)
+
+        inits_points = np.atleast_2d(rng.normal(tree.data[i], bandwidth))
+        if dim == 2:
+            pts, tri = densmesh2d(inits_points, grad_log_density, density, pfix)
+        else:
+            h0 = (np.prod([np.abs(bbox[dim + n] - bbox[n]) for n in range(dim)]) / Ninit_vertices) ** 1 / dim
+            print(bbox, h0)
+            pts, tri = distmeshnd(dfunc, hdensity, h0, bbox, pfix)
+    if return_scaling:
+        return pts, tri, X, grad_log_density(X)
+    else:
+        return pts, tri
 
 
 def distmesh2D(fd, fh, h0, bbox, pfix, **kwargs):
