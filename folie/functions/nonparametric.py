@@ -164,7 +164,7 @@ class logKDE(Function):
         d, inds = self.tree_.query(x @ self.inv_sqrt_cov_, k=self.kmax)
         log_kernel = self.log_gaussian_kernel(d)
         norm = (self.w[inds] * np.exp(log_kernel)).sum(axis=1)  # logsumexp(log_kernel, b=self.w[inds], axis=1)
-        grad_log_kernel = ((x @ self.inv_sqrt_cov_)[:, None, :] - self.tree_.data[inds]) / self.bandwidth_
+        grad_log_kernel = ((x @ self.inv_sqrt_cov_)[:, None, :] - self.tree_.data[inds]) @ self.inv_sqrt_cov_ / self.bandwidth_**2
         num = ((self.w[inds] * np.exp(log_kernel))[..., None] * grad_log_kernel).sum(axis=1)
         return np.divide(num, norm[:, None], out=np.zeros_like(x), where=norm[:, None] != 0)  # This is the local average of y
 
