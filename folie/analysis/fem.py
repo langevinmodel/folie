@@ -11,6 +11,13 @@ from scipy.sparse.linalg import eigs, eigsh
 from ..models import BaseModelOverdamped
 
 
+def free_energy_profile(model, mesh, x=None):
+    """
+    Compute the free energy profile from the model using the mesh for integration and evaluate on the points x.
+    If x is None, evaluate at nodals points of the mesh
+    """
+
+
 class LangevinBilinearForm:
     """
     A class to compute value of bilinear form
@@ -18,10 +25,17 @@ class LangevinBilinearForm:
 
     __name__ = "Langevin"
 
-    def __init__(self, model, verbose=False):
-        """"""
+    def __init__(self, model, log_measure=None, verbose=False):
+        """
+        Parameters
+        -----------
+            model: a fitted model
+
+            measure: A reference measure to integrate against
+        """
         self.model = model
         self.dim = model.dim
+        self.log_measure = log_measure
         if verbose:
             print("{} generator of dimension {}".format(self.__name__, self.dim))
 
@@ -35,10 +49,15 @@ class LangevinOverdamped(LangevinBilinearForm):
         To use Gibbs measure, set force to zero and adapt the basis
         """
         # TODO: Il faut reshape comme il faut
-
         X = w["x"].reshape(w["x"].shape[0], -1).T
         D = self.model.diffusion(X).T.reshape(w["x"].shape[0], w["x"].shape[0], *w["x"].shape[1:])
         F = self.model.force(X).T.reshape(*w["x"].shape)
+        if self.log_measure is not None:
+            logmx = self.log_measure(X)  # Assume than normalization is inclued into the measure
+            mx = np.exp(-logmx)
+            F = mx * (F + mul(self.log_measure.grad_x(X), D))
+            D = mx * D
+
         return -1 * (dot(grad(v), mul(D, grad(u))) - v * dot(F, grad(u)))
 
 

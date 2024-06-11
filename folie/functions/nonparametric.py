@@ -2,6 +2,8 @@ from .base import Function
 from .._numpy import np
 from sklearn.metrics.pairwise import pairwise_kernels
 from sklearn.utils.validation import check_is_fitted, check_array
+from scipy.spatial import KDTree
+from scipy.special import logsumexp
 from .base import ParametricFunction
 
 
@@ -83,6 +85,101 @@ class KernelFunction(Function):
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
         self.gamma = vals.ravel()[0]
+
+
+class logKDE(Function):
+    """
+    Allow to write the the function -log(\rho(x)) when \rho(x) is computed from Kernel Density Estimation
+    """
+
+    def __init__(self, domain, gamma=1, bins=None, rho_min=0, kmax=8):
+        super().__init__(domain, output_shape=())
+        self.dim = self.domain.dim
+        self.bw = gamma
+        self.kmax = kmax  # TODO:Adapt depending of dimension
+        self.bandwidth_ = None
+        self.bins = bins
+        self.rho_min = rho_min
+
+    def fit(self, X, y=None, sample_weights=None, **kwargs):
+        """Set reference frame associated with function values
+
+        Parameters
+        ----------
+        X : array-like of shape (n_references, n_features)
+            List of n_features-dimensional data points.  Each row
+            corresponds to a single data point.
+        y : array-like of shape (n_references, )
+            The target values of the function to interpolate.
+        gamma_range: iterable
+            List of gamma values to try for optimization
+
+        Returns
+        -------
+        self : object
+            Returns self.
+        """
+        Ndata, dim = X.shape
+        if self.bins is not None:
+            # TODO: choose number of bins automatically to have a given reduction to ~ 1000 kernel points
+            # X_min = np.min(X, axis=0)
+            # X_max = np.max(X, axis=0)
+            # # Compute volume of bbox
+            # volume_bbox = np.prod([np.abs(X_max[n] - X_min[n]) for n in range(dim)])
+            if dim == 1:
+                H, xedges = np.histogram(X[:, 0], bins=self.bins, density=True, weights=sample_weights)
+                xcenters = [(xedges[:-1] + xedges[1:]) / 2]
+            else:
+                H, edges = np.histogramdd(X, bins=self.bins, density=True, weights=sample_weights)
+                xcenters = [(xedges[:-1] + xedges[1:]) / 2 for xedges in edges]
+
+            dx = [np.diff(xc).mean() for xc in xcenters]  # Average distances between 2 centers for all directions
+            inds = np.nonzero(H > self.rho_min)
+            self.w = H[H > self.rho_min].ravel()
+            self.bandwidth_ = self.bw * np.linalg.norm(dx)
+            # Le facteur de bandwith va alors dépendre de la réduction, si on réduit pas bcp plutôt plusieurs bins et sinon peu, mais ça nous donne une échelle
+
+            X = np.column_stack([xc[ind] for xc, ind in zip(xcenters, inds)])
+        else:
+            if sample_weights is not None:
+                self.w = sample_weights
+            else:
+                self.w = np.ones(Ndata)
+            self.bandwidth_ = self.bw
+        # Compute covariances of the data and use reduced values
+        covariances = np.cov(X, rowvar=False).reshape(dim, dim)
+        self.inv_sqrt_cov_ = np.linalg.cholesky(np.linalg.inv(covariances))
+        self.log_norm = -0.5 * self.dim * np.log(2 * np.pi) - 0.5 * np.log(np.linalg.det(covariances)) - np.log(Ndata)
+
+        self.tree_ = KDTree(X @ self.inv_sqrt_cov_)  # Un KDTree pour sélectionner efficacement un sous ensemble des points sur lequel faire la regression
+        self.fitted_ = True
+        return self
+
+    def transform(self, x):
+        d, inds = self.tree_.query(x @ self.inv_sqrt_cov_, k=self.kmax)
+        log_kernel = self.log_gaussian_kernel(d)
+        return -logsumexp(log_kernel, b=self.w[inds], axis=1)
+
+    def transform_dx(self, x):
+        d, inds = self.tree_.query(x @ self.inv_sqrt_cov_, k=self.kmax)
+        log_kernel = self.log_gaussian_kernel(d)
+        norm = (self.w[inds] * np.exp(log_kernel)).sum(axis=1)  # logsumexp(log_kernel, b=self.w[inds], axis=1)
+        grad_log_kernel = ((x @ self.inv_sqrt_cov_)[:, None, :] - self.tree_.data[inds]) / self.bandwidth_
+        num = ((self.w[inds] * np.exp(log_kernel))[..., None] * grad_log_kernel).sum(axis=1)
+        return np.divide(num, norm[:, None], out=np.zeros_like(x), where=norm[:, None] != 0)  # This is the local average of y
+
+    @property
+    def coefficients(self):
+        """Access the coefficients"""
+        return np.array([self.bandwidth_])
+
+    @coefficients.setter
+    def coefficients(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        self.bandwidth_ = vals.ravel()[0]
+
+    def log_gaussian_kernel(self, d):  # This is log[ (1 / sqrt(2 pi)) *exp(-0.5 * d  ** 2))]
+        return -0.5 * (d / self.bandwidth_) ** 2 - self.dim * np.log(self.bandwidth_) + self.log_norm
 
 
 class sklearnWrapper(Function):

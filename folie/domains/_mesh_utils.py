@@ -15,7 +15,7 @@ def non_uniform_line(x_start, x_end, num_elements, ratio):
     """
 
     # Create grid points between 0 and 1
-    h = (ratio - 1) / (ratio**num_elements - 1)
+    h = (ratio - 1) / (ratio ** num_elements - 1)
     x = np.append([0], h * np.cumsum(ratio ** np.arange(num_elements)))
 
     return x_start + x * (x_end - x_start)
@@ -267,7 +267,7 @@ def reduce_data_size(X, bins=10, N_min=0, N_min_per_bins=20, Ninit_vertices=1000
     # Find max cap on H to avoid overconcentration of traingle on max points
     H_sorted = np.sort(H.ravel())
     Area_tot = np.prod([np.abs(bbox[dim + n] - bbox[n]) for n in range(dim)])
-    k = np.argmax(np.arange(H_sorted.shape[0])[::-1] * H_sorted + np.cumsum(H_sorted) > N_min_per_bins * Ninit_vertices**2 / (Area_tot * Ndata))
+    k = np.argmax(np.arange(H_sorted.shape[0])[::-1] * H_sorted + np.cumsum(H_sorted) > N_min_per_bins * Ninit_vertices ** 2 / (Area_tot * Ndata))
     cap_on_H = H_sorted[k]
     H = np.minimum(H, cap_on_H)
 
@@ -302,7 +302,6 @@ def generate_density_based_mesh(X, bins=10, state_level=0.0, metric="minkowski",
     .. footbibliography::
     """
 
-    from sklearn.neighbors import NearestNeighbors
     from scipy.spatial import cKDTree
     from scipy.integrate import cumulative_trapezoid
     from .densitymesh import densmesh2d
@@ -312,7 +311,7 @@ def generate_density_based_mesh(X, bins=10, state_level=0.0, metric="minkowski",
     X, bbox, w, dx = reduce_data_size(X, bins, state_level)
 
     if dim == 1:  # A adapter
-        dhfun = w**alpha
+        dhfun = w ** alpha
 
         hdensity = np.concatenate(([dhfun[0]], dhfun, [dhfun[-1]]))
         X = np.concatenate(([bbox[0]], X.ravel(), [bbox[1]]))
