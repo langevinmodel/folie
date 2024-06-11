@@ -117,8 +117,6 @@ def densmesh2d(p, force, support, pfix=None, fig="gcf", max_iter=1000):
     Fscale = 1.2
     deltat = 0.2
     geps = -0.001 * h0
-    deps = np.sqrt(np.finfo(np.double).eps) * h0
-
     # Extract bounding box
     if pfix is not None:
         pfix = np.array(pfix, dtype="d")

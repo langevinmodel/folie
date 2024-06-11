@@ -13,17 +13,17 @@ def get_element_finder(mesh, mapping=None):
     """
     Get correct element finder depending of the type of the mesh
     """
-    if isinstance(skfem.MeshLine):
+    if isinstance(mesh, skfem.MeshLine):
         return element_finder_line(mesh, mapping)
-    elif isinstance(skfem.MeshTri):
+    elif isinstance(mesh, skfem.MeshTri):
         return element_finder_tri(mesh, mapping)
-    elif isinstance(skfem.MeshQuad):
+    elif isinstance(mesh, skfem.MeshQuad):
         return element_finder_quad(mesh, mapping)
-    elif isinstance(skfem.MeshTet):
+    elif isinstance(mesh, skfem.MeshTet):
         return element_finder_tet(mesh, mapping)
-    elif isinstance(skfem.MeshHex):
+    elif isinstance(mesh, skfem.MeshHex):
         return element_finder_hex(mesh, mapping)
-    elif isinstance(skfem.MeshWedge1):
+    elif isinstance(mesh, skfem.MeshWedge1):
         return element_finder_wedge(mesh, mapping)
     else:
         return mesh.element_finder(mapping)

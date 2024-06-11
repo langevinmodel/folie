@@ -118,7 +118,29 @@ def centroid_driven_mesh(data, bins=100, boundary_vertices=None, simplify_hull=0
     return vertices, tri.simplices
 
 
-def mesh_on_data_support(X, bins=10, state_level=0.0, metric="minkowski", Ninit_vertices=1000, pfix=[]):
+def reduce_data_size_support(X, bins=10, N_min=0):
+
+    Ndata, dim = X.shape
+    X_min = np.min(X, axis=0)
+    X_max = np.max(X, axis=0)
+
+    if dim == 1:
+        H, xedges = np.histogram(X[:, 0], bins=bins)
+        xcenters = [(xedges[:-1] + xedges[1:]) / 2]
+    else:
+        H, edges = np.histogramdd(X, bins=bins)
+        xcenters = [(xedges[:-1] + xedges[1:]) / 2 for xedges in edges]
+
+    inds = np.nonzero(H > N_min)
+    H = H[H > N_min].ravel()
+
+    X = np.column_stack([xc[ind] for xc, ind in zip(xcenters, inds)])
+    bbox = np.array([*X_min, *X_max])
+
+    return X, bbox
+
+
+def mesh_on_data_support(X, bins=10, state_level=0.0, metric="minkowski", Ninit_vertices=1000, pfix=[], return_support_function=False):
     r"""
     Give uniform mesh on the support of data
     This use the distmesh algorithm :footcite:`Per-Olof Persson`
@@ -148,7 +170,6 @@ def mesh_on_data_support(X, bins=10, state_level=0.0, metric="minkowski", Ninit_
 
     from sklearn.neighbors import NearestNeighbors
     from scipy.sparse.csgraph import minimum_spanning_tree, connected_components
-    from scipy.integrate import cumulative_trapezoid
     from .distmesh import distmesh2d, distmeshnd, huniform
 
     dim = X.shape[1]
@@ -157,7 +178,7 @@ def mesh_on_data_support(X, bins=10, state_level=0.0, metric="minkowski", Ninit_
         pts = np.linspace(X.min(), X.max(), Ninit_vertices)
         tri = None
     else:
-        X, bbox, _, _ = reduce_data_size(X, bins, state_level)
+        X, bbox = reduce_data_size_support(X, bins, state_level)
         k_max = 2 * dim
         state_nbrs = NearestNeighbors(n_neighbors=k_max, algorithm="ball_tree", metric=metric).fit(X)
 
@@ -165,6 +186,7 @@ def mesh_on_data_support(X, bins=10, state_level=0.0, metric="minkowski", Ninit_
         n_comps, labels = connected_components(connectivity_graph)
         if n_comps > 1:
             print("WARNING there is {} connected componentss".format(n_comps))
+            # TODO: Faire quelque choose pour ne garder que la composante l plus grande
 
         spanning_tree = minimum_spanning_tree(connectivity_graph)
         state_radius = (spanning_tree + spanning_tree.T).max(axis=1).toarray()[:, 0]  # Find radius in order to get connected graph
@@ -214,7 +236,11 @@ def mesh_on_data_support(X, bins=10, state_level=0.0, metric="minkowski", Ninit_
             h0 = (np.prod([np.abs(bbox[dim + n] - bbox[n]) for n in range(dim)]) / Ninit_vertices) ** 1 / dim
             print(Ninit_vertices, h0)
             pts, tri = distmeshnd(dfunc, huniform, h0, bbox, pfix, fig=None)
-    return pts, tri
+    if return_support_function:
+
+        return pts, tri, X, dfunc
+    else:
+        return pts, tri
 
 
 def reduce_data_size(X, bins=10, N_min=0, N_min_per_bins=20, Ninit_vertices=1000):

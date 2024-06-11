@@ -44,3 +44,11 @@ class KoopmanModel(Model):
     def coefficients(self, vals):
         """Set parameters, used by fitter to move through param space"""
         self.basis.coefficients = vals.ravel()
+
+    def preprocess_traj(self, trj, **kwargs):
+        if hasattr(self.basis.domain, "localize_data"):
+            # Check if domain are compatible
+            cells_idx, loc_x = self.basis.domain.localize_data(trj["x"], **kwargs)
+            trj["cells_idx"] = cells_idx
+            trj["loc_x"] = loc_x
+        return trj

@@ -79,6 +79,8 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         """
         if y is None:
             y = np.zeros((x.shape[0] * self.output_size_))
+        elif isinstance(y, sparse.SparseArray):
+            y = y.reshape((x.shape[0] * self.output_size_, -1))
         else:
             y = y.ravel()
         Fx = self.grad_coeffs(x, *args, **kwargs).reshape((x.shape[0] * self.output_size_, -1))

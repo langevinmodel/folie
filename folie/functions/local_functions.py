@@ -56,6 +56,7 @@ class FiniteElement(ParametricFunction):
             loc_x = kwargs["loc_x"]
         except KeyError:
             cells, loc_x = self.domain.localize_data(x)
+
         phis = np.array([self.basis.elem.gbasis(self.basis.mapping, loc_x.T[..., None], k, tind=cells)[0] for k in range(self.basis.Nbfun)]).flatten()
         probes_matrix = sparse.COO(
             np.array(

@@ -123,13 +123,20 @@ class KoopmanEstimator(Estimator):
         Basic preprocessing
         """
         if "xt" not in trj:  # ie, not preprocessing yet
-            trj["xt"] = trj["x"][1:]
-            trj["x"] = trj["x"][:-1]
+
             if "bias" in trj:
                 trj["bias"] = trj["bias"][:-1]
             else:
                 trj["bias"] = np.zeros((1, trj["x"].shape[1]))
             self._model.preprocess_traj(trj, **kwargs)
+            trj["loc_xt"] = trj["loc_x"][1:]
+            trj["loc_x"] = trj["loc_x"][:-1]
+
+            trj["cells_idxt"] = trj["cells_idx"][1:]
+            trj["cells_idx"] = trj["cells_idx"][:-1]
+
+            trj["xt"] = trj["x"][1:]
+            trj["x"] = trj["x"][:-1]
         return trj
 
     def fit(self, data, estimator=linear_model.LinearRegression(copy_X=False, fit_intercept=False), **kwargs):
@@ -158,13 +165,12 @@ class KoopmanEstimator(Estimator):
             self.preprocess_traj(trj)
 
         dt = data[0]["dt"]
-
-        X = np.concatenate([trj["x"] for trj in data], axis=0)
-        for key in ["cells_idx", "loc_x"]:
-            if key in data[0]:
-                kwargs[key] = np.concatenate([trj[key] for trj in data], axis=0)
         # Take weight into account as well
-        dx = np.concatenate([self.model.basis.grad_coeff(trj["xt"]) - self.model.basis.grad_coeff(trj["x"]) for trj in data], axis=0)
-        self.model.basis.fit(X, y=dx / dt, sample_weight=None, estimator=estimator, **kwargs)
+        phi_tp = np.concatenate([self.model.basis.grad_coeffs(trj["xt"], **{key: trj[key] for key in ["cells_idxt", "loc_xt"] if key in trj}) for trj in data], axis=0)
+        phi_t = np.concatenate([self.model.basis.grad_coeffs(trj["x"], **{key: trj[key] for key in ["cells_idx", "loc_x"] if key in trj}) for trj in data], axis=0)
+
+        L = phi_t.T.dot(phi_tp).todense()
+        S = phi_t.T.dot(phi_t).todense()
+        self.model.basis.coefficients = (L - S) / dt
         self.model.fitted_ = True
         return self

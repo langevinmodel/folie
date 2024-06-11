@@ -42,6 +42,10 @@ class LangevinOverdamped(LangevinBilinearForm):
         return -1 * (dot(grad(v), mul(D, grad(u))) - v * dot(F, grad(u)))
 
 
+def grammian(u, v, w):
+    return u * v
+
+
 def build_fem_matrices(model, mesh, element=None):
     """
     Construct the necessary matrices
@@ -52,7 +56,8 @@ def build_fem_matrices(model, mesh, element=None):
         langevinform = BilinearForm(LangevinOverdamped(model))
     basis = skfem.CellBasis(mesh, element)
     A = skfem.asm(langevinform, basis)
-    return A, basis
+    M = skfem.asm(BilinearForm(grammian), basis)
+    return A, M, basis
 
 
 def solve_committor_fem(model, mesh, element=None, bc="facets", solver=None):

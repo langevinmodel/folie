@@ -145,6 +145,8 @@ class sklearnTransformer(ParametricFunction):
     """
     Take any sklearn transformer and build a fonction from it
     f(x,c) = c*transform(x)
+
+    transformer can also be a DiffusionMap object from pyDiffMap, but it should be fitted a priori
     """
 
     def __init__(self, transformer, domain, output_shape=(), coefficients=None):

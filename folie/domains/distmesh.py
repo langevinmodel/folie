@@ -35,7 +35,47 @@ def huniform(p):
     return np.ones(p.shape[0])
 
 
-def distmesh2d(fd, fh, h0, bbox, pfix=None, fig="gcf", dptol=0.001, ttol=0.1, Fscale=1.2, deltat=0.2, geps_multiplier=0.001, densityctrlfreq=30, jshow=200, max_iter=1000):
+def ddiff(d1, d2):
+    return np.maximum(d1, -d2)
+
+
+def dcircle(p, xc, yc, r):
+    return np.sqrt((p[:, 0] - xc) ** 2 + (p[:, 1] - yc) ** 2) - r
+
+
+def dellipse(p, xc, yc, rx, ry):
+    return np.sqrt(((p[:, 0] - xc) ** 2) / rx**2 + ((p[:, 1] - yc) ** 2) / ry**2) - 1
+
+
+def drectangle(p, x1, x2, y1, y2):
+    d1 = np.minimum(-y1 + p[:, 1], y2 - p[:, 1])
+    d2 = np.minimum(d1, -x1 + p[:, 0])
+    return -np.minimum(d2, x2 - p[:, 0])
+
+
+def dintersect(d1, d2):
+    return np.maximum(d1, d2)
+
+
+def dunion(d1, d2):
+    return np.minimum(d1, d2)
+
+
+def dline(p, x1, y1, x2, y2):
+    # signed distance from point p to line through (x1,y1) and  (x2,y2)
+    # normal vector to the line
+    nx = y1 - y2
+    ny = x2 - x1
+    nn = np.sqrt(nx * nx + ny * ny)
+    # return (p-(x1,x2))*n/||n||
+    return -((p[:, 0] - x1) * nx + (p[:, 1] - y1) * ny) / nn
+
+
+def dtriangle(p, x1, y1, x2, y2, x3, y3):
+    return np.maximum(dline(p, x1, y1, x2, y2), np.maximum(dline(p, x2, y2, x3, y3), dline(p, x3, y3, x1, y1)))
+
+
+def distmesh2d(fd, fh, h0, bbox, pfix=None, fig="gcf", dptol=0.001, ttol=0.1, Fscale=1.2, deltat=0.2, geps_multiplier=0.001, densityctrlfreq=30, jshow=200, max_iter=400):
     """
     distmesh2d: 2-D Mesh Generator using Distance Functions.
 
