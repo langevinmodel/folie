@@ -80,8 +80,8 @@ for name,marker, transitioncls in zip(
     ["x", "|",".","1","2","3"],
     [
         fl.EulerDensity,
-        # fl.OzakiDensity,
-        # fl.ShojiOzakiDensity,
+        fl.OzakiDensity,
+        fl.ShojiOzakiDensity,
         fl.ElerianDensity,
         fl.KesslerDensity,
         fl.DrozdovDensity,
