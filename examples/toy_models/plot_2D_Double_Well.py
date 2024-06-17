@@ -17,16 +17,17 @@ x = np.linspace(-1.8, 1.8, 36)
 y = np.linspace(-1.8, 1.8, 36)
 input = np.transpose(np.array([x, y]))
 
-diff_function = fl.functions.Polynomial(deg=0, coefficients=np.asarray([0.5]) * np.eye(2, 2))
-a, b = 5.0, 10.0
-quartic2d = fl.functions.Quartic2D(a=a, b=b)
+D=0.5
+diff_function= fl.functions.Polynomial(deg=0,coefficients=D * np.eye(2,2))
+a,b = 5, 10
+drift_quartic2d= fl.functions.Quartic2D(a=D*a,b=D*b)  # simple way to multiply D*Potential here force is the SDE force (meandispl)  ## use this when you need the drift ###
+quartic2d= fl.functions.Quartic2D(a=a,b=b)            # Real potential , here force is just -grad pot ## use this when you need the potential energy ###
 
 X, Y = np.meshgrid(x, y)
-print(X.shape, Y.shape)
 
 # Plot potential surface
 pot = quartic2d.potential_plot(X, Y)
-print(pot.shape)
+
 fig = plt.figure()
 ax = plt.axes(projection="3d")
 ax.plot_surface(X, Y, pot, rstride=1, cstride=1, cmap="jet", edgecolor="none")
@@ -38,8 +39,9 @@ fig, ax = plt.subplots()
 ax.quiver(x, y, U, V)
 ax.set_title("Force")
 
-model_simu = fl.models.overdamped.Overdamped(force=quartic2d, diffusion=diff_function)
-simulator = fl.simulations.Simulator(fl.simulations.EulerStepper(model_simu), 1e-3)
+dt= 5e-4
+model_simu = fl.models.overdamped.Overdamped(force=drift_quartic2d, diffusion=diff_function)
+simulator = fl.simulations.Simulator(fl.simulations.EulerStepper(model_simu), dt)
 
 # initialize positions
 ntraj = 30
@@ -49,7 +51,7 @@ for i in range(ntraj):
         q0[i][j] = 0.000
 
 # Calculate Trajectory
-time_steps = 1000
+time_steps = 3000
 data = simulator.run(time_steps, q0, save_every=1)
 
 # Plot the resulting trajectories

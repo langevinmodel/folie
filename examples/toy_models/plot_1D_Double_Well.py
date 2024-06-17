@@ -10,11 +10,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import folie as fl
 
-coeff = 0.1 * np.array([0, 0, -4.5, 0, 0.1])
+coeff = 0.2 * np.array([0, 0, -4.5, 0, 0.1])
 free_energy = np.polynomial.Polynomial(coeff)
-force_coeff = np.array([-coeff[1], -2 * coeff[2], -3 * coeff[3], -4 * coeff[4]])
+D = 0.5
+force_coeff = D*np.array([-coeff[1], -2 * coeff[2], -3 * coeff[3], -4 * coeff[4]])
+
 force_function = fl.functions.Polynomial(deg=3, coefficients=force_coeff)
-diff_function = fl.functions.Polynomial(deg=0, coefficients=np.asarray([0.5]))
+diff_function = fl.functions.Polynomial(deg=0, coefficients=np.array(D))
 
 # Plot of Free Energy and Force
 x_values = np.linspace(-7, 7, 100)
