@@ -5,10 +5,13 @@ from sklearn.utils.validation import check_is_fitted, check_array
 from scipy.spatial import KDTree
 from scipy.special import logsumexp
 from .base import ParametricFunction
+from ..domains import Domain
 
 
 class KernelFunction(Function):
     def __init__(self, gamma, domain, kernel="rbf", output_shape=()):
+        if isinstance(domain, int):  # In case where the dimension was gievn
+            domain = Domain.Rd(domain)
         super().__init__(domain, output_shape)
         self.kernel = kernel
         self.gamma = gamma
@@ -93,6 +96,8 @@ class logKDE(Function):
     """
 
     def __init__(self, domain, gamma=1, bins=None, rho_min=0, kmax=8):
+        if isinstance(domain, int):  # In case where the dimension was gievn
+            domain = Domain.Rd(domain)
         super().__init__(domain, output_shape=())
         self.dim = self.domain.dim
         self.bw = gamma
@@ -191,6 +196,8 @@ class sklearnWrapper(Function):
         """
         expose_params is a list of key for the parameters of the estimator to be exposed for optimisation
         """
+        if isinstance(domain, int):  # In case where the dimension was gievn
+            domain = Domain.Rd(domain)
         super().__init__(domain, output_shape)
         self.estimator = estimator
         self.exposed_params = expose_params
@@ -247,6 +254,8 @@ class sklearnTransformer(ParametricFunction):
     """
 
     def __init__(self, transformer, domain, output_shape=(), coefficients=None):
+        if isinstance(domain, int):  # In case where the dimension was gievn
+            domain = Domain.Rd(domain)
         super().__init__(domain, output_shape, coefficients)
         self.transformer = transformer
         if not check_is_fitted(self.transformer):

@@ -5,17 +5,60 @@ Set of analysis methods using Finite Element Method to solve various equation
 import numpy as np
 import skfem
 from skfem import BilinearForm
-from skfem.helpers import grad, dot, mul
+from skfem.helpers import grad, dot, mul, inv
 from scipy.sparse.linalg import eigs, eigsh
 
 from ..models import BaseModelOverdamped
 
 
-def free_energy_profile(model, mesh, x=None):
+def free_energy_profile(model, scalar_basis, x=None, v_basis=None):
+    r"""
+    From the model force F(x) and diffusion D(x) construct the free energy profile V(x) using the formula
+
+    .. math::
+        F(x) = -D(x) \nabla V(x) + \mathrm{div} D(x)
+
+    Parameters
+    ----------
+    scalar_basis: skfem basis
+        Should be a scalar basis with the same quadrature point than internal basis
+    x: ndarray, default None
+        Evaluation points. If x is None, evaluate at nodals points of the basis
     """
-    Compute the free energy profile from the model using the mesh for integration and evaluate on the points x.
-    If x is None, evaluate at nodals points of the mesh
-    """
+    if v_basis is None:
+        v_basis = scalar_basis
+    if isinstance(v_basis, skfem.ElementVector):
+
+        @skfem.LinearForm
+        def b_term(v, w):
+            X = w["x"].reshape(w["x"].shape[0], -1).T
+            F = model.force(X).T.reshape(*w["x"].shape)
+            D = model.diffusion(X).T.reshape(w["x"].shape[0], w["x"].shape[0], *w["x"].shape[1:])
+            div_D = np.einsum("...ii", model.diffusion.grad_x(X)).T.reshape(*w["x"].shape)
+            return dot(v, -mul(F, inv(D)) + div_D)
+
+        basis_product = BilinearForm(lambda u, v, w: dot(u.grad, v))
+
+    else:
+
+        @skfem.LinearForm
+        def b_term(v, w):
+            X = w["x"].reshape(w["x"].shape[0], -1).T
+            F = model.force(X).T.reshape(*w["x"].shape)
+            D = model.diffusion(X).T.reshape(w["x"].shape[0], w["x"].shape[0], *w["x"].shape[1:])
+            div_D = np.einsum("...ii", model.diffusion.grad_x(X)).T.reshape(w["x"].shape)
+            return dot(v.grad, -mul(inv(D), F) + div_D)
+
+        basis_product = BilinearForm(lambda u, v, w: dot(u.grad, v.grad))
+
+    U_coeff = skfem.solve(basis_product.assemble(scalar_basis, v_basis), b_term.assemble(v_basis))
+
+    if x is not None:  # Compute values at x
+        return scalar_basis.probes(x) @ U_coeff
+    elif x == "nodal":
+        return U_coeff[scalar_basis.nodal_dofs]
+    else:  # Give values at nodals points of the basis
+        return U_coeff
 
 
 class LangevinBilinearForm:
@@ -39,6 +82,13 @@ class LangevinBilinearForm:
         if verbose:
             print("{} generator of dimension {}".format(self.__name__, self.dim))
 
+    def grammian(self, u, v, w):
+        if self.log_measure is not None:
+            X = w["x"].reshape(w["x"].shape[0], -1).T
+            mx = np.exp(-self.log_measure(X)).reshape(w["x"].shape[1:])
+            u = u * mx
+        return u * v
+
 
 class LangevinOverdamped(LangevinBilinearForm):
     __name__ = "LangevinOverdamped"
@@ -54,34 +104,45 @@ class LangevinOverdamped(LangevinBilinearForm):
         F = self.model.force(X).T.reshape(*w["x"].shape)
         if self.log_measure is not None:
             logmx = self.log_measure(X)  # Assume than normalization is inclued into the measure
-            mx = np.exp(-logmx)
-            F = mx * (F + mul(self.log_measure.grad_x(X), D))
-            D = mx * D
+            mx = np.exp(-logmx).reshape((1, *w["x"].shape[1:]))
+            grad_log_m = self.log_measure.grad_x(X).T.reshape(*w["x"].shape)
+            F = mx * (F + mul(D, grad_log_m))
+            D = mx[None, ...] * D
 
         return -1 * (dot(grad(v), mul(D, grad(u))) - v * dot(F, grad(u)))
 
+    def reversible_form(self, u, v, w):
+        """
+        Return generator for overdamped Langevin equation
+        To use Gibbs measure, set force to zero and adapt the basis
+        """
+        X = w["x"].reshape(w["x"].shape[0], -1).T
+        D = self.model.diffusion(X).T.reshape(w["x"].shape[0], w["x"].shape[0], *w["x"].shape[1:])
+        if self.log_measure is not None:
+            logmx = self.log_measure(X)  # Assume than normalization is inclued into the measure
+            mx = np.exp(-logmx).reshape((1, *w["x"].shape[1:]))
+            D = mx[None, ...] * D
 
-def grammian(u, v, w):
-    return u * v
+        return -1 * dot(grad(v), mul(D, grad(u)))
 
 
-def build_fem_matrices(model, mesh, element=None):
+def build_fem_matrices(model, mesh, element=None, log_measure=None):
     """
     Construct the necessary matrices
     """
     if element is None:
         element = mesh.elem
     if isinstance(model, BaseModelOverdamped):
-        langevinform = BilinearForm(LangevinOverdamped(model))
+        langevinform = LangevinOverdamped(model, log_measure)
     basis = skfem.CellBasis(mesh, element)
-    A = skfem.asm(langevinform, basis)
-    M = skfem.asm(BilinearForm(grammian), basis)
+    A = skfem.asm(BilinearForm(langevinform), basis)
+    M = skfem.asm(BilinearForm(langevinform.grammian), basis)
     return A, M, basis
 
 
 def solve_committor_fem(model, mesh, element=None, bc="facets", solver=None):
     """ """
-    A, basis = build_fem_matrices(model, mesh, element)
+    A, M, basis = build_fem_matrices(model, mesh, element)
 
     if bc == "facets":
         product_dofs = basis.get_dofs({"product"})
@@ -101,7 +162,7 @@ def solve_mfpt_fem(model, mesh, element, solver=None, bc="facets"):
     """
     Compute FEM matrix and solve MFPT equation
     """
-    A, basis = build_fem_matrices(model, mesh, element)
+    A, M, basis = build_fem_matrices(model, mesh, element)
 
     if bc == "facets":
         product_dofs = basis.get_dofs({"product"})
@@ -126,9 +187,9 @@ def reduced_matrix(L, M, basis, n_states, verbose=True, clip_matrix=False):
     """
     Compute the reduced matrix using PCCA++
     """
-    from _pcca_utils import _pcca_connected
+    from ._pcca_utils import _pcca_connected
 
-    eigsv, x_im = eigs(L, M=M, k=n_states + 1, which="SM")  #
+    eigsv, x_im = eigs(L, M=M, k=n_states + 1, sigma=0.0, which="LM")  #
     ind_sort = np.argsort(np.real(eigsv))[::-1]
     x_left = np.real(x_im[:, ind_sort])[:, :n_states]
     eigvals = eigsv[ind_sort]
@@ -151,4 +212,4 @@ def reduced_matrix(L, M, basis, n_states, verbose=True, clip_matrix=False):
         L_reduced = np.clip(L_reduced, 0.0, np.max(L_reduced))
         for n in range(L_reduced.shape[0]):
             L_reduced[n, n] = -np.sum(L_reduced[n, :])
-    return L_reduced
+    return L_reduced, memberships

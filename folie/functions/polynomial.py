@@ -12,6 +12,8 @@ class Constant(ParametricFunction):
     def __init__(self, domain=None, output_shape=(), coefficients=None):
         if domain is None:
             domain = Domain.Rd(dim=1)
+        elif isinstance(domain, int):  # In case where the dimension was gievn
+            domain = Domain.Rd(domain)
         self.n_functions_features_ = 1
         super().__init__(domain, output_shape, coefficients)
 
@@ -37,6 +39,8 @@ class Linear(ParametricFunction):
     def __init__(self, domain=None, output_shape=(), coefficients=None):
         if domain is None:
             domain = Domain.Rd(dim=1)
+        elif isinstance(domain, int):  # In case where the dimension was gievn
+            domain = Domain.Rd(domain)
         self.n_functions_features_ = domain.dim
         super().__init__(domain, output_shape, coefficients)
 
@@ -73,6 +77,8 @@ class Polynomial(ParametricFunction):
         self.polynom = polynom
         if domain is None:
             domain = Domain.Rd(dim=1)
+        elif isinstance(domain, int):  # In case where the dimension was gievn
+            domain = Domain.Rd(domain)
         self.n_functions_features_ = domain.dim * self.degree
         super().__init__(domain, output_shape, coefficients)
 
@@ -124,6 +130,8 @@ class Fourier(ParametricFunction):
     def __init__(self, order=1, freq=1.0, start_order=0, domain=None, output_shape=(), coefficients=None):
         if domain is None:
             domain = Domain.Td(dim=1)
+        elif isinstance(domain, int):  # In case where the dimension was gievn
+            domain = Domain.Rd(domain)
         self.order = 2 * order + 1
         self.start_order = start_order
         self.freq = freq
