@@ -25,7 +25,7 @@ Likelihood estimation: using Transition density
 
 The list of implemented transition density and their relations
 
-.. inheritance-diagram:: folie.EulerDensity folie.OzakiDensity folie.ShojiOzakiDensity folie.ElerianDensity folie.KesslerDensity folie.DrozdovDensity
+.. inheritance-diagram:: folie.EulerDensity folie.ElerianDensity folie.KesslerDensity folie.DrozdovDensity
     :top-classes: folie.estimation.transitionDensity.TransitionDensity
     :parts: 1
 

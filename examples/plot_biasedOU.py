@@ -51,12 +51,10 @@ axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), "--", label=name)
 axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), "--", label=name)
 
 for name, marker, transitioncls in zip(
-    ["Euler", "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
-    ["+", "x", "P", "1", "2", "3"],
+    ["Euler", "Elerian", "Kessler", "Drozdov"],
+    ["+", "1", "2", "3"],
     [
         fl.EulerDensity,
-        fl.OzakiDensity,
-        fl.ShojiOzakiDensity,
         fl.ElerianDensity,
         fl.KesslerDensity,
         fl.DrozdovDensity,

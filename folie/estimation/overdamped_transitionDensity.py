@@ -165,67 +165,6 @@ class EulerDensity(TransitionDensity):
         return muh[0, self._model.dim_h :] / weight, Sigh[0, self._model.dim_h :, self._model.dim_h :] / weight  # Return µ0 and sig0
 
 
-class OzakiDensity(TransitionDensity):
-    def __init__(self, model):
-        """
-        Class which represents the Ozaki approximation transition density for a model
-        :param model: the SDE model, referenced during calls to the transition density
-        """
-        super().__init__(model)
-
-    def _logdensity1D(self, x, xt, dt: float, bias=0.0, **kwargs):
-        """
-        The transition density obtained via Ozaki expansion
-        :param x: float or array, the current value
-        :param xt: float or array, the value to transition to  (must be same dimension as x)
-        :param dt: float, the time step between x and xt
-        :return: probability (same dimension as x and xt)
-        """
-        sig = 2 * self._model.diffusion(x, **kwargs).ravel()
-        mu = self._model.meandispl(x, bias, **kwargs).ravel()
-        mu_x = self._model.meandispl.grad_x(x, bias, **kwargs).ravel()
-        temp = mu * (np.exp(mu_x * dt) - 1) / mu_x
-
-        Mt = x.ravel() + temp
-        Kt = (2 / dt) * np.log(1 + temp / x.ravel())
-        Vt = np.sqrt(sig * (np.exp(Kt * dt) - 1) / Kt)
-
-        return gaussian_likelihood_1D(xt, Mt, Vt)
-
-
-class ShojiOzakiDensity(TransitionDensity):
-    def __init__(self, model):
-        """
-        Class which represents the Shoji-Ozaki approximation transition density for a model
-        :param model: the SDE model, referenced during calls to the transition density
-        """
-        super().__init__(model)
-
-    def _logdensity1D(self, x, xt, dt: float, bias=0.0, **kwargs):
-        """
-        The transition density obtained via Shoji-Ozaki expansion
-        :param x: float or array, the current value
-        :param xt: float or array, the value to transition to  (must be same dimension as x)
-        :param dt: float, the time step between x and xt
-        :return: probability (same dimension as x and xt)
-        """
-        sig = np.sqrt(2 * self._model.diffusion(x, **kwargs).ravel())
-        mu = self._model.meandispl(x, bias, **kwargs).ravel()
-
-        Mt = 0.5 * sig**2 * self._model.meandispl.hessian_x(x, bias, **kwargs).ravel()  # + self._model.meandispl_t(x)  #Time homogenous model
-        Lt = self._model.meandispl.grad_x(x, bias, **kwargs).ravel()
-        if (Lt == 0).any():  # TODO: need to fix this
-            B = sig * np.sqrt(dt)
-            A = x.ravel() + mu * dt + Mt * dt**2 / 2
-        else:
-            B = sig * np.sqrt((np.exp(2 * Lt * dt) - 1) / (2 * Lt))
-
-            elt = np.exp(Lt * dt) - 1
-            A = x.ravel() + mu / Lt * elt + Mt / (Lt**2) * (elt - Lt * dt)
-
-        return gaussian_likelihood_1D(xt, A, B)
-
-
 class ElerianDensity(EulerDensity):
     use_jac = False
 

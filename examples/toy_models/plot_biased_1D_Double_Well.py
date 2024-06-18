@@ -13,9 +13,9 @@ from copy import deepcopy
 
 coeff = 0.2 * np.array([0, 0, -4.5, 0, 0.1])
 free_energy = np.polynomial.Polynomial(coeff)
-D= np.array([0.5])
+D = np.array([0.5])
 
-force_coeff = D*np.array([-coeff[1], -2 * coeff[2], -3 * coeff[3], -4 * coeff[4]])
+force_coeff = D * np.array([-coeff[1], -2 * coeff[2], -3 * coeff[3], -4 * coeff[4]])
 force_function = fl.functions.Polynomial(deg=3, coefficients=force_coeff)
 diff_function = fl.functions.Polynomial(deg=0, coefficients=D)
 
@@ -73,30 +73,27 @@ axs[0].plot(xfa, model_simu.force(xfa.reshape(-1, 1)), label="Exact")
 axs[1].plot(xfa, model_simu.diffusion(xfa.reshape(-1, 1)), label="Exact")
 
 domain = fl.MeshedDomain.create_from_range(np.linspace(data.stats.min, data.stats.max, 4).ravel())
-trainmodel = fl.models.Overdamped(force = fl.functions.BSplinesFunction(domain),has_bias=True)
+trainmodel = fl.models.Overdamped(force=fl.functions.BSplinesFunction(domain), has_bias=True)
 
-for name,marker, transitioncls in zip(
-    ["Euler", "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
-    ["x", "|",".","1","2","3"],
+for name, marker, transitioncls in zip(
+    ["Euler", "Elerian", "Kessler", "Drozdov"],
+    ["x", "1", "2", "3"],
     [
         fl.EulerDensity,
-        fl.OzakiDensity,
-        fl.ShojiOzakiDensity,
         fl.ElerianDensity,
         fl.KesslerDensity,
         fl.DrozdovDensity,
     ],
 ):
-    trainmodel = fl.models.Overdamped(force = fl.functions.BSplinesFunction(domain),has_bias=True)
-    estimator = fl.LikelihoodEstimator(transitioncls(trainmodel),n_jobs=4) 
-
+    trainmodel = fl.models.Overdamped(force=fl.functions.BSplinesFunction(domain), has_bias=True)
+    estimator = fl.LikelihoodEstimator(transitioncls(trainmodel), n_jobs=4)
 
     res = estimator.fit_fetch(deepcopy(data))
 
     print(name, res.coefficients)
     res.remove_bias()
-    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)),marker=marker, label=name)
-    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)),marker=marker, label=name)
+    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), marker=marker, label=name)
+    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), marker=marker, label=name)
 axs[0].legend()
 axs[1].legend()
 plt.show()

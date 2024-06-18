@@ -13,7 +13,7 @@ import folie as fl
 coeff = 0.2 * np.array([0, 0, -4.5, 0, 0.1])
 free_energy = np.polynomial.Polynomial(coeff)
 D = 0.5
-force_coeff = D*np.array([-coeff[1], -2 * coeff[2], -3 * coeff[3], -4 * coeff[4]])
+force_coeff = D * np.array([-coeff[1], -2 * coeff[2], -3 * coeff[3], -4 * coeff[4]])
 
 force_function = fl.functions.Polynomial(deg=3, coefficients=force_coeff)
 diff_function = fl.functions.Polynomial(deg=0, coefficients=np.array(D))
@@ -72,12 +72,10 @@ trainforce = fl.functions.Polynomial(deg=3, coefficients=np.array([0, 0, 0, 0]))
 trainmodel = fl.models.Overdamped(force=trainforce, diffusion=fl.functions.Polynomial(deg=0, coefficients=np.asarray([0.9])), has_bias=False)
 
 for name, marker, transitioncls in zip(
-    ["Euler", "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
-    ["x", "|", ".", "1", "2", "3"],
+    ["Euler", "Elerian", "Kessler", "Drozdov"],
+    ["x", "1", "2", "3"],
     [
         fl.EulerDensity,
-        fl.OzakiDensity,
-        fl.ShojiOzakiDensity,
         fl.ElerianDensity,
         fl.KesslerDensity,
         fl.DrozdovDensity,

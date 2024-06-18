@@ -36,10 +36,6 @@ Overdamped Transition density
 
    EulerDensity
 
-   OzakiDensity
-
-   ShojiOzakiDensity
-
    ElerianDensity
 
    KesslerDensity

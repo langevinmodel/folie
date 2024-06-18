@@ -39,11 +39,9 @@ diff_range = np.linspace(0.5, 2, 25)
 
 
 for name, transitioncls in zip(
-    ["Euler", "Ozaki", "ShojiOzaki", "Elerian", "Kessler", "Drozdov"],
+    ["Euler", "Elerian", "Kessler", "Drozdov"],
     [
         fl.EulerDensity,
-        fl.OzakiDensity,
-        fl.ShojiOzakiDensity,
         fl.ElerianDensity,
         fl.KesslerDensity,
         fl.DrozdovDensity,
