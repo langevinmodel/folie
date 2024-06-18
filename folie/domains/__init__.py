@@ -53,8 +53,8 @@ class Domain:
         if dim < 1:
             dim = 1
         range = np.empty((2, dim))
-        range[0, :] = -np.infty
-        range[1, :] = np.infty
+        range[0, :] = -np.inf
+        range[1, :] = np.inf
         return cls(range)
 
     @classmethod
