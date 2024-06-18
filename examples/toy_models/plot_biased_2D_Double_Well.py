@@ -18,9 +18,12 @@ x = np.linspace(-1.8, 1.8, 36)
 y = np.linspace(-1.8, 1.8, 36)
 input = np.transpose(np.array([x, y]))
 
-diff_function = fl.functions.Polynomial(deg=0, coefficients=np.asarray([0.5]) * np.eye(2, 2))
-a, b = 0.5, 1.0
-quartic2d = fl.functions.Quartic2D(a=a, b=b)
+D=0.5
+diff_function= fl.functions.Polynomial(deg=0,coefficients=D * np.eye(2,2))
+a,b = 5, 10
+drift_quartic2d= fl.functions.Quartic2D(a=D*a,b=D*b)  # simple way to multiply D*Potential here force is the SDE force (meandispl)  ## use this when you need the drift ###
+quartic2d= fl.functions.Quartic2D(a=a,b=b)            # Real potential , here force is just -grad pot ## use this when you need the potential energy ###
+
 X, Y = np.meshgrid(x, y)
 
 # Plot potential surface
@@ -44,7 +47,7 @@ def colvar(x, y):
 
 
 dt = 1e-3
-model_simu = fl.models.overdamped.Overdamped(force=quartic2d, diffusion=diff_function)
+model_simu = fl.models.overdamped.Overdamped(force=drift_quartic2d, diffusion=diff_function)
 simulator = fl.simulations.ABMD_2D_to_1DColvar_Simulator(fl.simulations.EulerStepper(model_simu), dt, colvar=colvar, k=25.0, qstop=1.2)
 
 # Choose number of trajectories and initialize positions
