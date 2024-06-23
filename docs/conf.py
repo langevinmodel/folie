@@ -69,6 +69,12 @@ source_suffix = ".rst"
 exclude_patterns = ["_build", "_templates", "auto_examples/*.ipynb", "auto_examples/*/*.ipynb", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints", "*.ipynb"]
 
 
+# html_context = {
+#     "current_version": version,
+#     "latest_version": version,
+#     "branches": [{"name": "fem", "url": "fem"}, {"name": version, "url": "fem"}],
+# }
+
 # -- Autosummary settings -----------------------------------------------------
 autosummary_generate = True
 
@@ -80,6 +86,24 @@ autodoc_default_options = {"inherited-members": True, "members": True, "member-o
 
 html_theme = "furo"
 html_static_path = ["_static"]
+
+html_sidebars = {
+    "**": [
+        "sidebar/brand.html",
+        "sidebar/search.html",
+        "sidebar/scroll-start.html",
+        "sidebar/navigation.html",
+        "sidebar/scroll-end.html",
+        # "github_button.html",
+        # "versioning.html",
+    ]
+}
+
+html_theme_options = {
+    "source_repository": "https://github.com/langevinmodel/folie",
+    "source_branch": "main",
+    "source_directory": "docs/",
+}
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
