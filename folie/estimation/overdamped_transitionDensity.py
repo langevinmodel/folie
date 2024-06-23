@@ -66,12 +66,12 @@ class EulerDensity(TransitionDensity):
         :return: probability (same dimension as x and xt)
         """
         sig2t = 2 * (self._model.diffusion(x, **kwargs)).ravel() * dt
-        mut = x.ravel() + self._model.meandispl(x, bias, **kwargs).ravel() * dt
+        mut = x.ravel() + self._model.drift(x, bias, **kwargs).ravel() * dt
         if not self.use_jac:
             return gaussian_likelihood_1D(xt, mut, sig2t), np.zeros(2)
 
         jacV = 2 * (self._model.diffusion.grad_coeffs(x, **kwargs)) * dt
-        return gaussian_likelihood_derivative_1D(xt, mut, sig2t, self._model.meandispl.grad_coeffs(x, bias, **kwargs) * dt, jacV)
+        return gaussian_likelihood_derivative_1D(xt, mut, sig2t, self._model.drift.grad_coeffs(x, bias, **kwargs) * dt, jacV)
 
     def _logdensityND(self, x, xt, dt, bias=0.0, **kwargs):
         """
@@ -83,17 +83,17 @@ class EulerDensity(TransitionDensity):
         """
 
         # TODO: Add correction terms
-        E = x + self._model.meandispl(x, bias, **kwargs) * dt
+        E = x + self._model.drift(x, bias, **kwargs) * dt
         V = 2 * (self._model.diffusion(x, **kwargs)) * dt
         if not self.use_jac:
             ll = gaussian_likelihood_ND(xt, E, V)
             return ll, np.zeros(2)
         jacV = 2 * (self._model.diffusion.grad_coeffs(x, **kwargs)) * dt
-        jacE = self._model.meandispl.grad_coeffs(x, bias, **kwargs) * dt
+        jacE = self._model.drift.grad_coeffs(x, bias, **kwargs) * dt
         return gaussian_likelihood_derivative_ND(xt, E, V, jacE, jacV)
 
         # invV = np.linalg.inv(V)  # TODO: Use linalg.solve instead of inv ?
-        # l_jac_E = np.einsum("ti,tic-> tc", invVE, self._model.meandispl.grad_coeffs(x, bias, **kwargs) * dt)
+        # l_jac_E = np.einsum("ti,tic-> tc", invVE, self._model.drift.grad_coeffs(x, bias, **kwargs) * dt)
         # l_jac_V = 0.5 * np.einsum("ti,tijc,tj-> tc", xt - E, np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV), xt - E) - 0.5 * np.einsum("tijc,tji->tc", jacV, invV)
         # return ll, np.concatenate((l_jac_E, l_jac_V), axis=-1)
 
@@ -142,7 +142,7 @@ class EulerDensity(TransitionDensity):
         """
         self._model.coefficients = coefficients
         like, jac = self._hiddenvariance(x=trj["x"], xt=trj["xt"], sigh=trj["sig_h"], dt=trj["dt"])
-        return like.sum() / weight, -np.hstack((np.zeros(self._model.force.size), jac.sum(axis=0) / weight))
+        return like.sum() / weight, -np.hstack((np.zeros(self._model.pos_drift.size), jac.sum(axis=0) / weight))
 
     def e_step(self, weight, trj, coefficients, mu0, sig0):
         """
@@ -152,7 +152,7 @@ class EulerDensity(TransitionDensity):
         self._model.coefficients = coefficients
         muh, Sigh = filtersmoother(
             trj["xt"][:, : self._model.dim_x],
-            self._model.force(trj["x"][:, : self._model.dim_x], trj["bias"][:, : self._model.dim_x]) * trj["dt"],
+            self._model.pos_drift(trj["x"][:, : self._model.dim_x], trj["bias"][:, : self._model.dim_x]) * trj["dt"],
             self._model.friction(trj["x"][:, : self._model.dim_x]) * trj["dt"],
             2 * self._model.diffusion(trj["x"][:, : self._model.dim_x]) * trj["dt"],
             mu0,
@@ -189,7 +189,7 @@ class ElerianDensity(EulerDensity):
             return super()._logdensity1D(x=x, xt=xt, dt=dt, bias=bias, **kwargs)[0]
 
         sig = 2 * self._model.diffusion(x, **kwargs).ravel()
-        mu = self._model.meandispl(x, bias, **kwargs).ravel()
+        mu = self._model.drift(x, bias, **kwargs).ravel()
 
         A = sig * sig_x * dt * 0.5
         B = -0.5 * sig / sig_x + x.ravel() + mu * dt - A
@@ -228,9 +228,9 @@ class KesslerDensity(TransitionDensity):
         sig = 2 * self._model.diffusion(x, **kwargs).ravel()
         sig_x = 2 * self._model.diffusion.grad_x(x, **kwargs).ravel()
         sig_xx = 2 * self._model.diffusion.hessian_x(x, **kwargs).ravel()
-        mu = self._model.meandispl(x, bias, **kwargs).ravel()
-        mu_x = self._model.meandispl.grad_x(x, bias, **kwargs).ravel()
-        mu_xx = self._model.meandispl.hessian_x(x, bias, **kwargs).ravel()
+        mu = self._model.drift(x, bias, **kwargs).ravel()
+        mu_x = self._model.drift.grad_x(x, bias, **kwargs).ravel()
+        mu_xx = self._model.drift.hessian_x(x, bias, **kwargs).ravel()
         x = x.ravel()
         d = dt**2 / 2
         E = x + mu * dt + (mu * mu_x + 0.5 * sig * mu_xx) * d
@@ -259,9 +259,9 @@ class DrozdovDensity(TransitionDensity):
         sig = 2 * self._model.diffusion(x, **kwargs).ravel()
         sig_x = 2 * self._model.diffusion.grad_x(x, **kwargs).ravel()
         sig_xx = 2 * self._model.diffusion.hessian_x(x, **kwargs).ravel()
-        mu = self._model.meandispl(x, bias, **kwargs).ravel()
-        mu_x = self._model.meandispl.grad_x(x, bias, **kwargs).ravel()
-        mu_xx = self._model.meandispl.hessian_x(x, bias, **kwargs).ravel()
+        mu = self._model.drift(x, bias, **kwargs).ravel()
+        mu_x = self._model.drift.grad_x(x, bias, **kwargs).ravel()
+        mu_xx = self._model.drift.hessian_x(x, bias, **kwargs).ravel()
 
         d = dt**2 / 2
         E = x.ravel() + mu * dt + (mu * mu_x + 0.5 * sig * mu_xx) * d

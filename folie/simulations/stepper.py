@@ -40,17 +40,17 @@ class ExactStepper(Stepper):
 class EulerStepper(Stepper):
     def run_step_1D(self, x, dt, dW, bias=0.0):
         sig_sq_dt = np.sqrt(2 * self.model.diffusion(x) * dt)
-        return (x.T + (self.model.meandispl(x, bias)) * dt + sig_sq_dt * dW.T).T  # Weird transpose for broadcasting
+        return (x.T + (self.model.drift(x, bias)) * dt + sig_sq_dt * dW.T).T  # Weird transpose for broadcasting
 
     def run_step_ND(self, x, dt, dW, bias=0.0):  # New function
         sig_sq_dt = np.sqrt(2 * self.model.diffusion(x) * dt)  # Work only for diagonal diffusion that should a cholesky instead
-        return x + self.model.meandispl(x, bias) * dt + np.einsum("ijk,ik->ij", sig_sq_dt, dW)
+        return x + self.model.drift(x, bias) * dt + np.einsum("ijk,ik->ij", sig_sq_dt, dW)
 
 
 class MilsteinStepper(Stepper):
     def run_step_1D(self, x, dt, dW, bias=0.0):
         sig_sq_dt = np.sqrt(2 * self.model.diffusion(x) * dt)
-        return (x.T + (self.model.meandispl(x, bias)) * dt + sig_sq_dt * dW.T + 0.5 * self.model.diffusion.grad_x(x)[..., 0] * ((dW.T) ** 2 - 1) * dt).T  # same problem of dW.T as in EulerStepper class
+        return (x.T + (self.model.drift(x, bias)) * dt + sig_sq_dt * dW.T + 0.5 * self.model.diffusion.grad_x(x)[..., 0] * ((dW.T) ** 2 - 1) * dt).T  # same problem of dW.T as in EulerStepper class
 
 
 class VECStepper(Stepper):
@@ -63,7 +63,7 @@ class VECStepper(Stepper):
             gamma = self.gamma
             diff = self.diff
         except AttributeError:
-            fx = self.model.force(x, bias)
+            fx = self.model.pos_drift(x, bias)
             gamma = self.model.friction(x)
             diff = self.model.diffusion(x)
 
@@ -77,7 +77,7 @@ class VECStepper(Stepper):
         v_mid = sc2 * v + c1 * fx + d1 * dWx + d2 * dWv
         x += dt * (v_mid + (0.5 / np.sqrt(3)) * dWv)
         # Update with new value of the field
-        self.f = self.model.force(x, bias)
+        self.f = self.model.pos_drift(x, bias)
         self.gamma = self.model.friction(x)
         self.diff = self.model.diffusion(x)
 

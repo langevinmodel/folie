@@ -25,8 +25,13 @@ for n, trj in enumerate(data):
     axs[0].plot(trj["x"])
     axs[1].plot(xmax[:, n])
 
+axs[0].set_title("Trajectories")
+axs[0].set_xlabel("step")
+axs[1].set_title("Bias")
+axs[1].set_xlabel("step")
+
 fig, axs = plt.subplots(1, 2)
-axs[0].set_title("Force")
+axs[0].set_title("Drift")
 axs[0].set_xlabel("$x$")
 axs[0].set_ylabel("$F(x)$")
 axs[0].grid()
@@ -39,7 +44,7 @@ axs[1].grid()
 
 xfa = np.linspace(-7.0, 7.0, 75)
 model_simu.remove_bias()
-axs[0].plot(xfa, model_simu.force(xfa.reshape(-1, 1)), label="Exact")
+axs[0].plot(xfa, model_simu.drift(xfa.reshape(-1, 1)), label="Exact")
 axs[1].plot(xfa, model_simu.diffusion(xfa.reshape(-1, 1)), label="Exact")
 
 name = "KramersMoyal"
@@ -47,7 +52,7 @@ estimator = fl.KramersMoyalEstimator(fl.models.OrnsteinUhlenbeck(has_bias=True))
 res = estimator.fit_fetch(data)
 print(name, res.coefficients, res.is_biased)
 res.remove_bias()
-axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), "--", label=name)
+axs[0].plot(xfa, res.drift(xfa.reshape(-1, 1)), "--", label=name)
 axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), "--", label=name)
 
 for name, marker, transitioncls in zip(
@@ -64,7 +69,7 @@ for name, marker, transitioncls in zip(
     res = estimator.fit_fetch(data)
     print(name, res.coefficients, res.is_biased)
     res.remove_bias()
-    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), marker, label=name)
+    axs[0].plot(xfa, res.drift(xfa.reshape(-1, 1)), marker, label=name)
     axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), marker, label=name)
 axs[0].legend()
 axs[1].legend()

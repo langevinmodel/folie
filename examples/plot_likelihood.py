@@ -22,7 +22,7 @@ data.append(trj[:, 1:2])
 model = fl.models.BrownianMotion()
 
 fig, axs = plt.subplots(1, 2)
-axs[0].set_title("Force")
+axs[0].set_title("Drift")
 axs[0].set_xlabel("$f$")
 axs[0].set_ylabel("$L(f,1.0)$")
 axs[0].grid()
@@ -34,7 +34,7 @@ axs[1].set_xlabel("$\\sigma$")
 axs[1].set_ylabel("$L(1.0,\\sigma)$")
 
 
-force_range = np.linspace(-1, 1, 25)
+drift_range = np.linspace(-1, 1, 25)
 diff_range = np.linspace(0.5, 2, 25)
 
 
@@ -49,10 +49,10 @@ for name, transitioncls in zip(
 ):
     likelihood = transitioncls(model)
     likelihood.preprocess_traj(data[0])
-    likelihood_vals_force = np.zeros_like(force_range)
-    for n, f in enumerate(force_range):
-        likelihood_vals_force[n] = likelihood(1.0, data[0], np.array([f, 1.0]))[0]
-    axs[0].plot(force_range, likelihood_vals_force, label=name)
+    likelihood_vals_drift = np.zeros_like(drift_range)
+    for n, f in enumerate(drift_range):
+        likelihood_vals_drift[n] = likelihood(1.0, data[0], np.array([f, 1.0]))[0]
+    axs[0].plot(drift_range, likelihood_vals_drift, label=name)
     likelihood_vals_diff = np.zeros_like(diff_range)
     for n, d in enumerate(diff_range):
         likelihood_vals_diff[n] = likelihood(1.0, data[0], np.array([1.0, d]))[0]

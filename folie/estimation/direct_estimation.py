@@ -82,13 +82,13 @@ class KramersMoyalEstimator(Estimator):
                 dx_sq = dx[..., None] * dx[:, None, ...]
             self.model.diffusion.fit(X, y=dx_sq / dt, **kwargs)  # We need to estimate the diffusion first in order to have the prefactor of the bias
             bias = np.concatenate([trj["bias"] for trj in data], axis=0)
-            bias_force = np.einsum("t...h,th-> t...", self.model.diffusion(X, **kwargs).reshape((*dx.shape, bias.shape[1])), bias)
-            self.model.meandispl.fit(X, bias, y=dx / dt - bias_force, sample_weight=None, estimator=estimator, **kwargs)
+            bias_drift = np.einsum("t...h,th-> t...", self.model.diffusion(X, **kwargs).reshape((*dx.shape, bias.shape[1])), bias)
+            self.model.drift.fit(X, bias, y=dx / dt - bias_drift, sample_weight=None, estimator=estimator, **kwargs)
         else:
             bias = 0.0
-            self.model.meandispl.fit(X, y=dx / dt, sample_weight=None, estimator=estimator, **kwargs)
-        # print(self.model.meandispl.coefficients)
-        dx -= self.model.meandispl(X, bias, **kwargs) * dt
+            self.model.drift.fit(X, y=dx / dt, sample_weight=None, estimator=estimator, **kwargs)
+        # print(self.model.drift.coefficients)
+        dx -= self.model.drift(X, bias, **kwargs) * dt
         if dim <= 1:
             dx_sq = dx**2
         else:

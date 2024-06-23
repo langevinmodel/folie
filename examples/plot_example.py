@@ -32,11 +32,11 @@ xfa = (bins[1:] + bins[:-1]) / 2.0
 
 fig, axs = plt.subplots(1, 2)
 # Force plot
-axs[0].set_title("Force")
+axs[0].set_title("Drift")
 axs[0].set_xlabel("$x$")
 axs[0].set_ylabel("$F(x)$")
 axs[0].grid()
-axs[0].plot(xfa, model.force(xfa.reshape(-1, 1)))
+axs[0].plot(xfa, model.drift(xfa.reshape(-1, 1)))
 
 # Diffusion plot
 axs[1].set_title("Diffusion")

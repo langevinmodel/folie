@@ -13,16 +13,16 @@ import folie as fl
 coeff = 0.2 * np.array([0, 0, -4.5, 0, 0.1])
 free_energy = np.polynomial.Polynomial(coeff)
 D = 0.5
-force_coeff = D * np.array([-coeff[1], -2 * coeff[2], -3 * coeff[3], -4 * coeff[4]])
+drift_coeff = D * np.array([-coeff[1], -2 * coeff[2], -3 * coeff[3], -4 * coeff[4]])
 
-force_function = fl.functions.Polynomial(deg=3, coefficients=force_coeff)
+drift_function = fl.functions.Polynomial(deg=3, coefficients=drift_coeff)
 diff_function = fl.functions.Polynomial(deg=0, coefficients=np.array(D))
 
 # Plot of Free Energy and Force
 x_values = np.linspace(-7, 7, 100)
 # fig, axs = plt.subplots(1, 2)
 # axs[0].plot(x_values, free_energy(x_values))
-# axs[1].plot(x_values, force_function(x_values.reshape(len(x_values), 1)))
+# axs[1].plot(x_values, drift_function(x_values.reshape(len(x_values), 1)))
 # axs[0].set_title("Potential")
 # axs[0].set_xlabel("$x$")
 # axs[0].set_ylabel("$V(x)$")
@@ -34,7 +34,7 @@ x_values = np.linspace(-7, 7, 100)
 
 # Define model to simulate and type of simulator to use
 dt = 1e-3
-model_simu = fl.models.overdamped.Overdamped(force_function, diffusion=diff_function)
+model_simu = fl.models.overdamped.Overdamped(drift_function, diffusion=diff_function)
 simulator = fl.simulations.Simulator(fl.simulations.EulerStepper(model_simu), dt)
 
 
@@ -66,10 +66,17 @@ axs[1].set_ylabel("$D(x)$")
 axs[1].grid()
 
 xfa = np.linspace(-7.0, 7.0, 75)
-axs[0].plot(xfa, model_simu.force(xfa.reshape(-1, 1)), label="Exact")
+axs[0].plot(xfa, model_simu.pos_drift(xfa.reshape(-1, 1)), label="Exact")
 axs[1].plot(xfa, model_simu.diffusion(xfa.reshape(-1, 1)), label="Exact")
-trainforce = fl.functions.Polynomial(deg=3, coefficients=np.array([0, 0, 0, 0]))
-trainmodel = fl.models.Overdamped(force=trainforce, diffusion=fl.functions.Polynomial(deg=0, coefficients=np.asarray([0.9])), has_bias=False)
+traindrift = fl.functions.Polynomial(deg=3, coefficients=np.array([0, 0, 0, 0]))
+trainmodel = fl.models.Overdamped(traindrift, diffusion=fl.functions.Polynomial(deg=0, coefficients=np.asarray([0.9])), has_bias=False)
+
+name = "KramersMoyal"
+estimator = fl.KramersMoyalEstimator(trainmodel)
+res = estimator.fit_fetch(data)
+axs[0].plot(xfa, res.drift(xfa.reshape(-1, 1)), "--", label=name)
+axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), "--", label=name)
+
 
 for name, marker, transitioncls in zip(
     ["Euler", "Elerian", "Kessler", "Drozdov"],
@@ -84,13 +91,13 @@ for name, marker, transitioncls in zip(
     estimator = fl.LikelihoodEstimator(transitioncls(trainmodel))
     res = estimator.fit_fetch(data)
     # print(res.coefficients)
-    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), marker=marker, label=name)
+    axs[0].plot(xfa, res.pos_drift(xfa.reshape(-1, 1)), marker=marker, label=name)
     axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), marker=marker, label=name)
 
 
 name = "Kramers Moyal"
 res = fl.KramersMoyalEstimator(trainmodel).fit_fetch(data)
-axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)), "--", label=name)
+axs[0].plot(xfa, res.pos_drift(xfa.reshape(-1, 1)), "--", label=name)
 axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), "--", label=name)
 
 

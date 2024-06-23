@@ -18,11 +18,11 @@ x = np.linspace(-1.8, 1.8, 36)
 y = np.linspace(-1.8, 1.8, 36)
 input = np.transpose(np.array([x, y]))
 
-D=0.5
-diff_function= fl.functions.Polynomial(deg=0,coefficients=D * np.eye(2,2))
-a,b = 5, 10
-drift_quartic2d= fl.functions.Quartic2D(a=D*a,b=D*b)  # simple way to multiply D*Potential here force is the SDE force (meandispl)  ## use this when you need the drift ###
-quartic2d= fl.functions.Quartic2D(a=a,b=b)            # Real potential , here force is just -grad pot ## use this when you need the potential energy ###
+D = 0.5
+diff_function = fl.functions.Polynomial(deg=0, coefficients=D * np.eye(2, 2))
+a, b = 5, 10
+drift_quartic2d = fl.functions.Quartic2D(a=D * a, b=D * b)  # simple way to multiply D*Potential here force is the SDE force (meandispl)  ## use this when you need the drift ###
+quartic2d = fl.functions.Quartic2D(a=a, b=b)  # Real potential , here force is just -grad pot ## use this when you need the potential energy ###
 
 X, Y = np.meshgrid(x, y)
 
@@ -47,7 +47,7 @@ def colvar(x, y):
 
 
 dt = 1e-3
-model_simu = fl.models.overdamped.Overdamped(force=drift_quartic2d, diffusion=diff_function)
+model_simu = fl.models.overdamped.Overdamped(drift_quartic2d, diffusion=diff_function)
 simulator = fl.simulations.ABMD_2D_to_1DColvar_Simulator(fl.simulations.EulerStepper(model_simu), dt, colvar=colvar, k=25.0, qstop=1.2)
 
 # Choose number of trajectories and initialize positions
@@ -139,10 +139,10 @@ domain = fl.MeshedDomain.create_from_range(np.linspace(proj_data.stats.min, proj
 trainmodel = fl.models.OverdampedSplines1D(domain=domain)
 
 xfa = np.linspace(proj_data.stats.min, proj_data.stats.max, 75)
-force_exact = (xfa**2 - 1.0) ** 2
+drift_exact = (xfa**2 - 1.0) ** 2
 
 fig, axs = plt.subplots(1, 2)
-axs[0].set_title("Force")
+axs[0].set_title("Drift")
 axs[0].set_xlabel("$x$")
 axs[0].set_ylabel("$F(x)$")
 axs[0].grid()
@@ -155,12 +155,12 @@ axs[1].grid()
 KM_Estimator = fl.KramersMoyalEstimator(deepcopy(trainmodel))
 res_KM = KM_Estimator.fit_fetch(proj_data)
 
-axs[0].plot(xfa, res_KM.force(xfa.reshape(-1, 1)),  marker="x",label="KramersMoyal")
-axs[1].plot(xfa, res_KM.diffusion(xfa.reshape(-1, 1)), marker="x",label="KramersMoyal")
+axs[0].plot(xfa, res_KM.drift(xfa.reshape(-1, 1)), marker="x", label="KramersMoyal")
+axs[1].plot(xfa, res_KM.diffusion(xfa.reshape(-1, 1)), marker="x", label="KramersMoyal")
 print("KramersMoyal ", res_KM.coefficients)
-for name,marker, transitioncls in zip(
+for name, marker, transitioncls in zip(
     ["Euler", "Elerian", "Kessler", "Drozdov"],
-        ["|","1","2","3"],
+    ["|", "1", "2", "3"],
     [
         fl.EulerDensity,
         fl.ElerianDensity,
@@ -171,8 +171,8 @@ for name,marker, transitioncls in zip(
     estimator = fl.LikelihoodEstimator(transitioncls(deepcopy(trainmodel)))
     res = estimator.fit_fetch(deepcopy(proj_data))
     print(name, res.coefficients)
-    axs[0].plot(xfa, res.force(xfa.reshape(-1, 1)),marker=marker, label=name)
-    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)),marker=marker, label=name)
+    axs[0].plot(xfa, res.drift(xfa.reshape(-1, 1)), marker=marker, label=name)
+    axs[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), marker=marker, label=name)
 
 axs[0].legend()
 axs[1].legend()
