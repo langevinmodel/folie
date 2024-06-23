@@ -15,16 +15,16 @@ class Constant(ParametricFunction):
         self.n_functions_features_ = 1
         super().__init__(domain, output_shape, coefficients)
 
-    def transform(self, x, *args, **kwargs):
+    def transform(self, x, **kwargs):
         return np.ones((x.shape[0], 1)) * self._coefficients
 
-    def transform_dx(self, x, *args, **kwargs):
+    def transform_dx(self, x, **kwargs):
         return np.zeros((x.shape[0], self.output_size_, x.shape[1]))
 
-    def transform_d2x(self, x, *args, **kwargs):
+    def transform_d2x(self, x, **kwargs):
         return np.zeros((x.shape[0], self.output_size_, x.shape[1], x.shape[1]))
 
-    def transform_dcoeffs(self, x, *args, **kwargs):
+    def transform_dcoeffs(self, x, **kwargs):
         transform_dcoeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
         return np.tensordot(np.ones((x.shape[0], 1)), transform_dcoeffs, axes=1)
 
@@ -40,23 +40,23 @@ class Linear(ParametricFunction):
         self.n_functions_features_ = domain.dim
         super().__init__(domain, output_shape, coefficients)
 
-    def transform(self, x, *args, **kwargs):
+    def transform(self, x, **kwargs):
         return x @ self._coefficients
 
-    def transform_dx(self, x, *args, **kwargs):
+    def transform_dx(self, x, **kwargs):
         len, dim = x.shape
         x_grad = np.ones((len, 1, 1)) * np.eye(dim)[None, :, :]
         return np.einsum("nbd,bs->nsd", x_grad, self._coefficients)  # .reshape(-1, *self.output_shape_, dim)
 
-    def transform_d2x(self, x, *args, **kwargs):
+    def transform_d2x(self, x, **kwargs):
         return np.zeros((x.shape[0], self.output_size_, x.shape[1], x.shape[1]))
 
-    def hessian_x(self, x, *args, **kwargs):
+    def hessian_x(self, x, **kwargs):
         len, dim = x.shape
         x_grad = np.zeros((len, 1, 1)) * np.eye(dim)[None, :, :]
         return np.einsum("nbd,bs->nsd", x_grad, self._coefficients)  # .reshape(-1, *self.output_shape_, dim)
 
-    def transform_dcoeffs(self, x, *args, **kwargs):
+    def transform_dcoeffs(self, x, **kwargs):
         transform_dcoeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
         return np.tensordot(x, transform_dcoeffs, axes=1)
 
@@ -76,7 +76,7 @@ class Polynomial(ParametricFunction):
         self.n_functions_features_ = domain.dim * self.degree
         super().__init__(domain, output_shape, coefficients)
 
-    def transform(self, x, *args, **kwargs):
+    def transform(self, x, **kwargs):
         _, dim = x.shape
         res = 0.0
         for n in range(self.degree):
@@ -85,7 +85,7 @@ class Polynomial(ParametricFunction):
             res += self.polynom.basis(n)(x) @ self._coefficients[istart:iend, :]
         return res
 
-    def transform_dx(self, x, *args, **kwargs):
+    def transform_dx(self, x, **kwargs):
         _, dim = x.shape
         res = 0.0
         for n in range(0, self.degree):  # First value is zero anyway
@@ -95,7 +95,7 @@ class Polynomial(ParametricFunction):
             res += np.einsum("nbd,bs->nsd", grad, self._coefficients[istart:iend, :])  # .reshape(-1, *self.output_shape_, dim)
         return res
 
-    def transform_d2x(self, x, *args, **kwargs):
+    def transform_d2x(self, x, **kwargs):
         _, dim = x.shape
         res = 0.0
         for n in range(0, self.degree):  # First values are zero anyway
@@ -105,7 +105,7 @@ class Polynomial(ParametricFunction):
             res += np.einsum("nbd,bs->nsd", grad, self._coefficients[istart:iend, :])  # .reshape(-1, *self.output_shape_, dim)
         return res
 
-    def transform_dcoeffs(self, x, *args, **kwargs):
+    def transform_dcoeffs(self, x, **kwargs):
         _, dim = x.shape
         transform_dcoeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
         res = 0.0
@@ -130,7 +130,7 @@ class Fourier(ParametricFunction):
         self.n_functions_features_ = domain.dim * (self.order - self.start_order)
         super().__init__(domain, output_shape, coefficients)
 
-    def transform(self, x, *args, **kwargs):
+    def transform(self, x, **kwargs):
         _, dim = x.shape
         res = 0.0
         for n in range(self.start_order, self.order):
@@ -146,7 +146,7 @@ class Fourier(ParametricFunction):
                 res += np.sin((n + 1) / 2 * x * self.freq) / np.sqrt(np.pi) @ self._coefficients[istart:iend, :]
         return res
 
-    def transform_dx(self, x, *args, **kwargs):
+    def transform_dx(self, x, **kwargs):
         _, dim = x.shape
         res = 0.0
         for n in range(self.start_order, self.order):  # First value is zero anyway
@@ -160,7 +160,7 @@ class Fourier(ParametricFunction):
             res += np.einsum("nbd,bs->nsd", grad, self._coefficients[istart:iend, :])  # .reshape(-1, *self.output_shape_, dim)
         return res
 
-    def transform_dcoeffs(self, x, *args, **kwargs):
+    def transform_dcoeffs(self, x, **kwargs):
         _, dim = x.shape
         transform_dcoeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
         res = 0.0

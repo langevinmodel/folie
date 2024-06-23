@@ -36,24 +36,24 @@ class Underdamped(Overdamped):
         self.diffusion = self.diffusion.resize(diffusion_shape)
         self.friction = self.friction.resize(diffusion_shape)
 
-    def _drift(self, x, v, *args, **kwargs):
-        fx = self.pos_drift(x, *args, **kwargs)
-        return fx - np.einsum("t...h,th-> t...", self.friction(x, *args, **kwargs).reshape((*fx.shape, v.shape[1])), v)
+    def _drift(self, x, v, bias=0.0, **kwargs):
+        fx = self.pos_drift(x, **kwargs)
+        return fx - np.einsum("t...h,th-> t...", self.friction(x, **kwargs).reshape((*fx.shape, v.shape[1])), v)
 
-    def _drift_dx(self, x, v, *args, **kwargs):
-        dfx = self.pos_drift.grad_x(x, *args, **kwargs)
-        return dfx - np.einsum("t...he,th-> t...e", self.friction.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], dfx.shape[-1])), v)
+    def _drift_dx(self, x, v, bias=0.0, **kwargs):
+        dfx = self.pos_drift.grad_x(x, **kwargs)
+        return dfx - np.einsum("t...he,th-> t...e", self.friction.grad_x(x, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], dfx.shape[-1])), v)
 
-    def _drift_d2x(self, x, v, *args, **kwargs):
-        ddfx = self.pos_drift.hessian_x(x, *args, **kwargs)
-        return ddfx - np.einsum("t...hef,th-> t...ef", self.friction.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], v.shape[1], *ddfx.shape[-2:])), v)
+    def _drift_d2x(self, x, v, bias=0.0, **kwargs):
+        ddfx = self.pos_drift.hessian_x(x, **kwargs)
+        return ddfx - np.einsum("t...hef,th-> t...ef", self.friction.hessian_x(x, **kwargs).reshape((*ddfx.shape[:-2], v.shape[1], *ddfx.shape[-2:])), v)
 
-    def _drift_dcoeffs(self, x, v, *args, **kwargs):
+    def _drift_dcoeffs(self, x, v, bias=0.0, **kwargs):
         """
         Jacobian of the force with respect to coefficients
         """
-        dfx = self.pos_drift.grad_coeffs(x, *args, **kwargs)
-        return np.concatenate((dfx, -1 * np.einsum("t...hc,th-> t...c", self.friction.grad_coeffs(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], -1)), v)), axis=-1)
+        dfx = self.pos_drift.grad_coeffs(x, **kwargs)
+        return np.concatenate((dfx, -1 * np.einsum("t...hc,th-> t...c", self.friction.grad_coeffs(x, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], -1)), v)), axis=-1)
 
     @property
     def coefficients(self):

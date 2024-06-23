@@ -94,20 +94,20 @@ class BaseModelOverdamped(Model):
             self.drift = ModelOverlay(self, "_drift", output_shape=output_shape_drift)
             self.is_biased = False
 
-    def _drift(self, x, *args, **kwargs):
-        return self.pos_drift(x, *args, **kwargs)
+    def _drift(self, x, bias=0.0, **kwargs):
+        return self.pos_drift(x, **kwargs)
 
-    def _drift_dx(self, x, *args, **kwargs):
-        return self.pos_drift.grad_x(x, *args, **kwargs)
+    def _drift_dx(self, x, bias=0.0, **kwargs):
+        return self.pos_drift.grad_x(x, **kwargs)
 
-    def _drift_d2x(self, x, *args, **kwargs):
-        return self.pos_drift.hessian_x(x, *args, **kwargs)
+    def _drift_d2x(self, x, bias=0.0, **kwargs):
+        return self.pos_drift.hessian_x(x, **kwargs)
 
-    def _drift_dcoeffs(self, x, *args, **kwargs):
+    def _drift_dcoeffs(self, x, bias=0.0, **kwargs):
         """
         Jacobian of the drift with respect to coefficients
         """
-        return self.pos_drift.grad_coeffs(x, *args, **kwargs)
+        return self.pos_drift.grad_coeffs(x, **kwargs)
 
     @property
     def coefficients_drift(self):
@@ -119,23 +119,23 @@ class BaseModelOverdamped(Model):
         """Set parameters, used by fitter to move through param space"""
         self.pos_drift.coefficients = vals
 
-    def _drift_biased(self, x, bias, *args, **kwargs):
-        fx = self.pos_drift(x, *args, **kwargs)
-        return fx + np.einsum("t...h,th-> t...", self.diffusion(x, *args, **kwargs).reshape((*fx.shape, bias.shape[1])), bias)
+    def _drift_biased(self, x, bias, **kwargs):
+        fx = self.pos_drift(x, **kwargs)
+        return fx + np.einsum("t...h,th-> t...", self.diffusion(x, **kwargs).reshape((*fx.shape, bias.shape[1])), bias)
 
-    def _drift_biased_dx(self, x, bias, *args, **kwargs):
-        dfx = self.pos_drift.grad_x(x, *args, **kwargs)
-        return dfx + np.einsum("t...he,th-> t...e", self.diffusion.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], bias.shape[1], dfx.shape[-1])), bias)
+    def _drift_biased_dx(self, x, bias, **kwargs):
+        dfx = self.pos_drift.grad_x(x, **kwargs)
+        return dfx + np.einsum("t...he,th-> t...e", self.diffusion.grad_x(x, **kwargs).reshape((*dfx.shape[:-1], bias.shape[1], dfx.shape[-1])), bias)
 
-    def _drift_biased_d2x(self, x, bias, *args, **kwargs):
-        ddfx = self.pos_drift.hessian_x(x, *args, **kwargs)
-        return ddfx + np.einsum("t...hef,th-> t...ef", self.diffusion.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], bias.shape[1], *ddfx.shape[-2:])), bias)
+    def _drift_biased_d2x(self, x, bias, **kwargs):
+        ddfx = self.pos_drift.hessian_x(x, **kwargs)
+        return ddfx + np.einsum("t...hef,th-> t...ef", self.diffusion.hessian_x(x, **kwargs).reshape((*ddfx.shape[:-2], bias.shape[1], *ddfx.shape[-2:])), bias)
 
-    def _drift_biased_dcoeffs(self, x, bias, *args, **kwargs):
+    def _drift_biased_dcoeffs(self, x, bias, **kwargs):
         """
         Jacobian of the drift with respect to coefficients
         """
-        return self.pos_drift.grad_coeffs(x, *args, **kwargs)
+        return self.pos_drift.grad_coeffs(x, **kwargs)
 
     @property
     def coefficients_drift_biased(self):

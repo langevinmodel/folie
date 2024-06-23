@@ -17,7 +17,7 @@ class FiniteElement(ParametricFunction):
         self.n_functions_features_ = self.basis.N
         super().__init__(domain, output_shape, coefficients)
 
-    def transform(self, x, *args, **kwargs):
+    def transform(self, x, **kwargs):
         try:
             cells = kwargs["cells_idx"]
             loc_x = kwargs["loc_x"]
@@ -29,7 +29,7 @@ class FiniteElement(ParametricFunction):
             res += self.basis.elem.gbasis(self.basis.mapping, loc_x.T[..., None], k, tind=cells)[0] * self._coefficients[self.basis.element_dofs[k, cells], ...]
         return res
 
-    def transform_dx(self, x, *args, **kwargs):
+    def transform_dx(self, x, **kwargs):
         _, dim = x.shape
         try:
             cells = kwargs["cells_idx"]
@@ -50,7 +50,7 @@ class FiniteElement(ParametricFunction):
         )
         return sparse.einsum("nbd,bs->nsd", probes_matrix, self._coefficients)
 
-    def transform_dcoeffs(self, x, *args, **kwargs):
+    def transform_dcoeffs(self, x, **kwargs):
         try:
             cells = kwargs["cells_idx"]
             loc_x = kwargs["loc_x"]
@@ -106,17 +106,17 @@ class BSplinesFunction(ParametricFunction):
     def size(self):
         return np.size(self.bspline.c)
 
-    def transform(self, x, *args, **kwargs):
+    def transform(self, x, **kwargs):
         return self.bspline(x)
 
-    def transform_dx(self, x, *args, **kwargs):
+    def transform_dx(self, x, **kwargs):
         return self.bspline.derivative()(x).reshape(x.shape[0], self.output_size_, x.shape[-1])
 
-    def transform_d2x(self, x, *args, **kwargs):
+    def transform_d2x(self, x, **kwargs):
         nsamples, dim = x.shape
         return self.bspline.derivative(2)(x).reshape(nsamples, *self.output_shape_, dim, dim)
 
-    def transform_dcoeffs(self, x, *args, **kwargs):
+    def transform_dcoeffs(self, x, **kwargs):
         transform_dcoeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
         return np.trace(BSpline(self.bspline.t, transform_dcoeffs, self.bspline.k)(x), axis1=1, axis2=2)
         # transform_dcoeffs = sparse.COO.from_numpy(np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size))
@@ -141,10 +141,10 @@ class sklearnBSplines(ParametricFunction):
         self.n_functions_features_ = self.bspline.n_features_out_
         super().__init__(domain, output_shape, coefficients)
 
-    def transform(self, x, *args, **kwargs):
+    def transform(self, x, **kwargs):
         return self.bspline.transform(x) @ self._coefficients
 
-    def transform_dcoeffs(self, x, *args, **kwargs):
+    def transform_dcoeffs(self, x, **kwargs):
         transform_dcoeffs = np.eye(self.size).reshape(self.n_functions_features_, -1)
         return self.bspline.transform(x) @ transform_dcoeffs
 
@@ -180,7 +180,7 @@ class Optimized1DLinearElement(ParametricFunction):
         self.n_functions_features_ = self.basis.N
         super().__init__(domain, output_shape, coefficients)
 
-    def transform(self, x, *args, **kwargs):
+    def transform(self, x, **kwargs):
         try:
             cells = kwargs["cells_idx"]
             loc_x = kwargs["loc_x"]
@@ -188,7 +188,7 @@ class Optimized1DLinearElement(ParametricFunction):
             cells, loc_x = self.domain.localize_data(x)
         return linear_interpolation(cells, loc_x, self.coefficients)  # Check shape
 
-    def transform_dx(self, x, *args, **kwargs):
+    def transform_dx(self, x, **kwargs):
         _, dim = x.shape
         try:
             cells = kwargs["cells_idx"]
@@ -197,7 +197,7 @@ class Optimized1DLinearElement(ParametricFunction):
             cells, loc_x = self.domain.localize_data(x)
         return linear_interpolation_x(cells, loc_x, self.coefficients)
 
-    def transform_dcoeffs(self, x, *args, **kwargs):
+    def transform_dcoeffs(self, x, **kwargs):
         try:
             cells = kwargs["cells_idx"]
             loc_x = kwargs["loc_x"]

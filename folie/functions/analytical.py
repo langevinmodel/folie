@@ -20,7 +20,7 @@ class PotentialFunction(Function):
             print("Analytical functions cannot be resized, check what your are doing")
         return self
 
-    def transform(self, x, *args, **kwargs):
+    def transform(self, x, **kwargs):
         return self.force(x)
 
     def force(self, X):

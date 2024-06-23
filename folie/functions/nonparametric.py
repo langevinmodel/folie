@@ -40,7 +40,7 @@ class KernelFunction(Function):
             self.gamma = self._optimize_gamma(gamma_range)
         return self  # `fit` should always return `self`
 
-    def transform(self, X, *args, **kwargs):
+    def transform(self, X, **kwargs):
         """A reference implementation of a predicting function.
 
         Parameters
@@ -109,7 +109,7 @@ class sklearnWrapper(Function):
         self.fitted_ = True
         return self
 
-    def transform(self, X, *args, **kwargs):
+    def transform(self, X, **kwargs):
         return self.estimator.predict(X)
 
     @property
@@ -154,7 +154,7 @@ class sklearnTransformer(ParametricFunction):
             self.transformer = self.transformer.fit(domain.cube)
         self.n_functions_features_ = self.transformer.transform(domain.cube).shape[1]
 
-    def transform(self, x, *args, **kwargs):
+    def transform(self, x, **kwargs):
         return self.transformer.transform(x) @ self._coefficients
 
     def transform_dcoeffs(self, x, **kwargs):

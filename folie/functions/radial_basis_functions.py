@@ -89,12 +89,12 @@ class RadialBasisFunction(ParametricFunction):
 
         super().__init__(domain, output_shape, coefficients)
 
-    def transform(self, X, *args, **kwargs):
+    def transform(self, X, **kwargs):
         r = cdist(X, self.ref_X)
 
         return (self._coefficients[None, ...] * self.rbf(r * self.sigmas)[..., None]).sum(axis=1)
 
-    def transform_dcoeffs(self, X, *args, **kwargs):
+    def transform_dcoeffs(self, X, **kwargs):
         transform_dcoeffs = np.eye(self.size).reshape(self.n_functions_features_, -1)
         r = cdist(X, self.ref_X)
         return (transform_dcoeffs[None, ...] * self.rbf(r * self.sigmas)[..., None]).sum(axis=1)

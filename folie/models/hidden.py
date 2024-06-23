@@ -50,20 +50,20 @@ class OverdampedHidden(Overdamped):
     def coefficients_friction(self, vals):
         self.friction.coefficients = vals
 
-    def _drift(self, x, *args, **kwargs):
-        return self.pos_drift(x, *args, **kwargs) + np.einsum("t...h,th-> t...", self.friction(x, *args, **kwargs), x[:, self.dim_x :])
+    def _drift(self, x, bias=0.0, **kwargs):
+        return self.pos_drift(x[:, : self.dim_x], **kwargs) + np.einsum("t...h,th-> t...", self.friction(x[:, : self.dim_x], **kwargs), x[:, self.dim_x :])
 
-    def _drift_dx(self, x, *args, **kwargs):
-        return self.pos_drift.grad_x(x, *args, **kwargs) + np.einsum("t...he,th-> t...e", self.friction.grad_x(x, *args, **kwargs), x[:, self.dim_x :])
+    def _drift_dx(self, x, bias=0.0, **kwargs):
+        return self.pos_drift.grad_x(x[:, : self.dim_x], **kwargs) + np.einsum("t...he,th-> t...e", self.friction.grad_x(x[:, : self.dim_x], **kwargs), x[:, self.dim_x :])
 
-    def _drift_d2x(self, x, *args, **kwargs):
-        return self.pos_drift.hessian_x(x, *args, **kwargs) + np.einsum("t...hef,th-> t...ef", self.friction.hessian_x(x, *args, **kwargs), x[:, self.dim_x :])
+    def _drift_d2x(self, x, bias=0.0, **kwargs):
+        return self.pos_drift.hessian_x(x[:, : self.dim_x], **kwargs) + np.einsum("t...hef,th-> t...ef", self.friction.hessian_x(x[:, : self.dim_x], **kwargs), x[:, self.dim_x :])
 
-    def _drift_dcoeffs(self, x, *args, **kwargs):
+    def _drift_dcoeffs(self, x, bias=0.0, **kwargs):
         """
         Jacobian of the drift with respect to coefficients
         """
-        return np.concatenate((self.pos_drift.grad_coeffs(x, *args, **kwargs), np.einsum("t...hc,th-> t...c", self.friction.grad_coeffs(x, *args, **kwargs), x[:, self.dim_x :])), axis=-1)
+        return np.concatenate((self.pos_drift.grad_coeffs(x[:, : self.dim_x], **kwargs), np.einsum("t...hc,th-> t...c", self.friction.grad_coeffs(x[:, : self.dim_x], **kwargs), x[:, self.dim_x :])), axis=-1)
 
     @property
     def coefficients_drift(self):
