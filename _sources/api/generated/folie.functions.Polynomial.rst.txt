@@ -1,0 +1,15 @@
+﻿:mod:`folie.functions`.Polynomial
+========================================
+
+.. currentmodule:: folie.functions
+
+.. autoclass:: Polynomial
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.functions.Polynomial.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

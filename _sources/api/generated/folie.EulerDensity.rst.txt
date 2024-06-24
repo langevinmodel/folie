@@ -1,0 +1,15 @@
+﻿:mod:`folie`.EulerDensity
+================================
+
+.. currentmodule:: folie
+
+.. autoclass:: EulerDensity
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.EulerDensity.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

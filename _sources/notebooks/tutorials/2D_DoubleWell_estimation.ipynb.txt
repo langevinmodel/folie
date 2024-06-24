@@ -1,0 +1,1155 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2D Double Well estimation "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "import folie as fl\n",
+    "from mpl_toolkits.mplot3d import Axes3D\n",
+    "from copy import deepcopy\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2D UNBIASED Double Well Potential"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 1) The Model"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Here we model the double well potential as a quartic function along x  and a parabola along y $V(x,y)= a(x^2-1)^2 + \\frac{1}{2}by^2$\n",
+    "and constant diffusion matrix $D= d\\begin{bmatrix} 1 \\ \\ 0 \\\\\\ 0 \\ \\ 1 \\end{bmatrix}$"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "x = np.linspace(-1.8,1.8,36)\n",
+    "y = np.linspace(-1.8,1.8,36)\n",
+    "input=np.transpose(np.array([x,y]))\n",
+    "\n",
+    "diff_function= fl.functions.Polynomial(deg=0,coefficients=np.asarray([0.5]) * np.eye(2,2))\n",
+    "a,b = 5.0, 10.0\n",
+    "quartic2d= fl.functions.Quartic2D(a=a,b=b)\n",
+    "X,Y =np.meshgrid(x,y)\n",
+    "\n",
+    "# Plot potential surface \n",
+    "pot = quartic2d.potential_plot(X,Y)\n",
+    "fig = plt.figure()\n",
+    "ax = plt.axes(projection='3d')\n",
+    "ax.plot_surface(X,Y,pot, rstride=1, cstride=1,cmap='jet', edgecolor = 'none')\n",
+    "\n",
+    "# Plot Force function\n",
+    "ff=quartic2d.force(input) # returns x and y components of the force : x_comp =ff[:,0] , y_comp =ff[:,1]\n",
+    "U,V = np.meshgrid(ff[:,0],ff[:,1])\n",
+    "fig, ax =plt.subplots()\n",
+    "ax.quiver(x,y,U,V)\n",
+    "ax.set_title('Force')\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 2) Simulation"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "dt = 1e-3\n",
+    "model_simu=fl.models.overdamped.Overdamped(quartic2d,diffusion=diff_function)\n",
+    "simulator=fl.simulations.Simulator(fl.simulations.EulerStepper(model_simu), dt)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# initialize positions \n",
+    "ntraj=30\n",
+    "q0= np.empty(shape=[ntraj,2])\n",
+    "for i in range(ntraj):\n",
+    "    for j in range(2):\n",
+    "        q0[i][j]=0.0000\n",
+    "time_steps=10000\n",
+    "data_2d_unbias = simulator.run(time_steps, q0,save_every=1)  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Plot the resulting trajectories\n",
+    "fig, axs = plt.subplots()\n",
+    "for n, trj in enumerate(data_2d_unbias):\n",
+    "    axs.plot(trj[\"x\"][:,0],trj[\"x\"][:,1])\n",
+    "    axs.spines['left'].set_position('center')\n",
+    "    axs.spines['right'].set_color('none')\n",
+    "    axs.spines['bottom'].set_position('center')\n",
+    "    axs.spines['top'].set_color('none')\n",
+    "    axs.xaxis.set_ticks_position('bottom')\n",
+    "    axs.yaxis.set_ticks_position('left')\n",
+    "    axs.set_xlabel(\"$X(t)$\")\n",
+    "    axs.set_ylabel(\"$Y(t)$\")\n",
+    "    axs.set_title(\"X-Y Trajectory\")\n",
+    "    axs.grid()\n",
+    "\n",
+    "# plot x,y Trajectories in separate subplots\n",
+    "fig,bb =  plt.subplots(1,2)\n",
+    "for n, trj in enumerate(data_2d_unbias):\n",
+    "    bb[0].plot(trj[\"x\"][:,0])\n",
+    "    bb[1].plot(trj[\"x\"][:,1])\n",
+    "\n",
+    "# Set visible  axis\n",
+    "    bb[0].spines['right'].set_color('none')\n",
+    "    bb[0].spines['bottom'].set_position('center')\n",
+    "    bb[0].spines['top'].set_color('none')\n",
+    "    bb[0].xaxis.set_ticks_position('bottom')\n",
+    "    bb[0].yaxis.set_ticks_position('left')\n",
+    "    bb[0].set_xlabel(\"$timestep$\")\n",
+    "    bb[0].set_ylabel(\"$X(t)$\")\n",
+    "\n",
+    "# Set visible axis\n",
+    "    bb[1].spines['right'].set_color('none')\n",
+    "    bb[1].spines['bottom'].set_position('center')\n",
+    "    bb[1].spines['top'].set_color('none')\n",
+    "    bb[1].xaxis.set_ticks_position('bottom')\n",
+    "    bb[1].yaxis.set_ticks_position('left')\n",
+    "    bb[1].set_xlabel(\"$timestep$\")\n",
+    "    bb[1].set_ylabel(\"$Y(t)$\")\n",
+    "\n",
+    "    bb[0].set_title(\"X Dynamics\")\n",
+    "    bb[1].set_title(\"Y Dynamics\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### 2.1) 1D Simulation with same coefficients"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "coeff=a*np.array([1,0,-2,0,1])\n",
+    "free_energy = np.polynomial.Polynomial(coeff)\n",
+    "\n",
+    "force_coeff=np.array([-coeff[1],-2*coeff[2],-3*coeff[3],-4*coeff[4]])\n",
+    "force_function = fl.functions.Polynomial(deg=3,coefficients=force_coeff)\n",
+    "diff_function= fl.functions.Polynomial(deg=0,coefficients=np.asarray([0.5]))\n",
+    "\n",
+    "# Plot of Free Energy and Force\n",
+    "x_values = np.linspace(-1.5, 1.5, 100)\n",
+    "fig, axs = plt.subplots(1, 2, figsize=(14,6))\n",
+    "axs[0].plot(x_values,free_energy(x_values))\n",
+    "axs[1].plot(x_values,force_function(x_values.reshape(len(x_values),1)))\n",
+    "axs[0].set_title(\"Potential\")\n",
+    "axs[0].set_xlabel(\"$x$\")\n",
+    "axs[0].set_ylabel(\"$V(x)$\")\n",
+    "axs[0].grid()\n",
+    "axs[1].set_title(\"Force\") \n",
+    "axs[1].set_xlabel(\"$x$\")\n",
+    "axs[1].set_ylabel(\"$F(x)$\") \n",
+    "axs[1].grid()\n",
+    "\n",
+    "# Define model to simulate and type of simulator to use\n",
+    "dt=1e-3\n",
+    "model_simu = fl.models.overdamped.Overdamped(force_function,diffusion=diff_function)\n",
+    "simulator = fl.simulations.Simulator(fl.simulations.EulerStepper(model_simu), dt) \n",
+    "\n",
+    "# initialize positions \n",
+    "q0= np.empty(ntraj)\n",
+    "for i in range(len(q0)):\n",
+    "    q0[i]=0.000\n",
+    "# Calculate Trajectory, n_traj and timesteps is the same as that of the 2D simulation\n",
+    "data_1D_unbias = simulator.run(time_steps, q0, 1)\n",
+    "\n",
+    "fig, axs = plt.subplots(figsize=(14,8))\n",
+    "for n, trj in enumerate(data_1D_unbias):\n",
+    "    axs.plot(trj[\"x\"])\n",
+    "    axs.set_title(\"Trajectory\")\n",
+    "    # axs[1].plot(xmax[:, n])\n",
+    "    axs.set_xlabel(\"$timestep$\")\n",
+    "    axs.set_ylabel(\"$x(t)$\")\n",
+    "    axs.grid()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 3) Fitting "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### 3.1) Projecting onto the x Coordinate and comparison with 1D simulation\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "xdata = fl.data.trajectories.Trajectories(dt=dt) \n",
+    "for n, trj in enumerate(data_2d_unbias):\n",
+    "    xdata.append(fl.data.trajectories.Trajectory(dt, trj[\"x\"][:,0].reshape(len(trj[\"x\"][:,0]),1)))\n",
+    "xfa = np.linspace(-1.3, 1.3, 75)\n",
+    "xforce = -4*a*(xfa** 3 - xfa)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "##### 3.1.1) Fitting with exact model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Parameters of the training\n",
+    "\n",
+    "trainforce =fl.functions.Polynomial(deg=3,coefficients=np.asarray([1,1,1,1]))\n",
+    "traindiff = fl.functions.Polynomial(deg=0,coefficients=np.asarray([0.0]))\n",
+    "trainmodelx=fl.models.Overdamped(force = deepcopy(trainforce),diffusion=deepcopy(traindiff), has_bias=None)\n",
+    "\n",
+    "KM_estimator = fl.KramersMoyalEstimator(deepcopy(trainmodelx), n_jobs=4)\n",
+    "Eul_estimator = fl.LikelihoodEstimator(fl.EulerDensity(deepcopy(trainmodelx)),n_jobs=4)\n",
+    "Eln_estimator = fl.LikelihoodEstimator(fl.ElerianDensity(deepcopy(trainmodelx)),n_jobs=4)\n",
+    "Ksl_estimator = fl.LikelihoodEstimator(fl.KesslerDensity(deepcopy(trainmodelx)),n_jobs=4)\n",
+    "Drz_estimator = fl.LikelihoodEstimator(fl.DrozdovDensity(deepcopy(trainmodelx)),n_jobs=4)\n",
+    "\n",
+    "KM_res=KM_estimator.fit_fetch(xdata)\n",
+    "Eul_res=Eul_estimator.fit_fetch(xdata)\n",
+    "Eln_res=Eln_estimator.fit_fetch(xdata)\n",
+    "Ksl_res=Ksl_estimator.fit_fetch(xdata)\n",
+    "Drz_res=Drz_estimator.fit_fetch(xdata)\n",
+    "\n",
+    "res_vec = [KM_res,Eul_res,Eln_res,Ksl_res,Drz_res] # made a list of all the trained estimators \n",
+    "\n",
+    "# PLOT OF THE RESULTS \n",
+    "\n",
+    "fig, axs = plt.subplots(1, 2, figsize=(14, 8))\n",
+    "axs[0].set_title(\"Force\")\n",
+    "axs[0].set_xlabel(\"$x$\")\n",
+    "axs[0].set_ylabel(\"$F(x)$\")\n",
+    "axs[0].grid()\n",
+    "\n",
+    "axs[1].set_title(\"Diffusion Coefficient\")\n",
+    "axs[1].set_xlabel(\"$x$\")\n",
+    "axs[1].set_ylabel(\"$D(x)$\") \n",
+    "axs[1].grid()\n",
+    "\n",
+    "\n",
+    "#Plot exact quantities \n",
+    "\n",
+    "axs[0].plot(xfa, xforce, label=\"Exact\")\n",
+    "\n",
+    "# #Plot inferred quantities \n",
+    "\n",
+    "names = [\"KM\",\"Euler\", \"Elerian\", \"Kessler\", \"Drozdov\"]\n",
+    "markers = [\"x\", \"1\",\"2\",\"3\",\"|\"]\n",
+    "for i in range(len(names)):\n",
+    "     \n",
+    "    axs[0].plot(xfa, res_vec[i].drift(xfa.reshape(-1, 1)), markers[i],label=names[i] )\n",
+    "    axs[1].plot(xfa, res_vec[i].diffusion(xfa.reshape(-1, 1)), markers[i],label=names[i])\n",
+    "    print(names[i],res_vec[i].coefficients)\n",
+    "axs[0].legend()\n",
+    "axs[1].legend()\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "fitting of the 1D data \n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "trainforce =fl.functions.Polynomial(deg=3,coefficients=np.asarray([1,1,1,1]))\n",
+    "traindiff = fl.functions.Polynomial(deg=0,coefficients=np.asarray([0.0]))\n",
+    "trainmodelx=fl.models.Overdamped(force = trainforce,diffusion=traindiff, has_bias=False)\n",
+    "\n",
+    "Eul_estimator = fl.LikelihoodEstimator(fl.EulerDensity(deepcopy(trainmodelx)),n_jobs =4)   # deepcopy is used because the estimator modifies the model when fit method is called\n",
+    "Eln_estimator = fl.LikelihoodEstimator(fl.ElerianDensity(deepcopy(trainmodelx)),n_jobs =4) # and when the second estimator uses the object trainmodel this will already have the modifications\n",
+    "Ksl_estimator = fl.LikelihoodEstimator(fl.KesslerDensity(deepcopy(trainmodelx)),n_jobs =4) # made by the previous estimator. So in the end they will return the exact same results\n",
+    "Drz_estimator = fl.LikelihoodEstimator(fl.DrozdovDensity(deepcopy(trainmodelx)),n_jobs =4)\n",
+    "\n",
+    "\n",
+    "Eul_res=Eul_estimator.fit_fetch(data_1D_unbias)\n",
+    "Eln_res=Eln_estimator.fit_fetch(data_1D_unbias)\n",
+    "Ksl_res=Ksl_estimator.fit_fetch(data_1D_unbias)\n",
+    "Drz_res=Drz_estimator.fit_fetch(data_1D_unbias)\n",
+    "res_vec = [Eul_res,Eln_res,Ksl_res,Drz_res] # makes a list of all the trained estimators \n",
+    "\n",
+    "# PLOT OF THE RESULTS \n",
+    "\n",
+    "fig,ax = plt.subplots(1,2,figsize=(14,8))\n",
+    "ax[0].plot(xfa, xforce,label='Exact')\n",
+    "ax[1].plot(xfa,0.5*np.ones(xfa.shape), label = 'Exact')\n",
+    "\n",
+    "for name, res in zip(\n",
+    "    [\"Euler\", \"Elerian\",\"Kessler\", \"Drozdov\"], res_vec,\n",
+    "):\n",
+    "    ax[0].plot(xfa, res.drift(xfa.reshape(-1, 1)), label=name)\n",
+    "    ax[1].plot(xfa, res.diffusion(xfa.reshape(-1, 1)), label=name)\n",
+    "    print(name, res.coefficients)\n",
+    "ax[0].set_title('Force function')\n",
+    "ax[1].set_title('Diffusion coefficient')\n",
+    "ax[0].legend()\n",
+    "ax[1].legend()\n",
+    "fig.suptitle('Order 3 Polynomial fitting of 1D data')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "##### 3.1.2) Fitting with B-splines"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Fitting with 4-knots B-splines"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "n_knots=4\n",
+    "xfa = np.linspace(-1.3, 1.3, 75)\n",
+    "domain = fl.MeshedDomain.create_from_range(np.linspace(xdata.stats.min,xdata.stats.max , n_knots).ravel())\n",
+    "splines_trainmodelx = fl.models.Overdamped(force = fl.functions.BSplinesFunction(domain), diffusion= fl.functions.BSplinesFunction(domain), has_bias = None)\n",
+    "\n",
+    "KM_estimator = fl.KramersMoyalEstimator(deepcopy(splines_trainmodelx), n_jobs=4)\n",
+    "Eul_estimator = fl.LikelihoodEstimator(fl.EulerDensity(deepcopy(splines_trainmodelx)),n_jobs=4)\n",
+    "Eln_estimator = fl.LikelihoodEstimator(fl.ElerianDensity(deepcopy(splines_trainmodelx)),n_jobs=4)\n",
+    "Ksl_estimator = fl.LikelihoodEstimator(fl.KesslerDensity(deepcopy(splines_trainmodelx)),n_jobs=4)\n",
+    "Drz_estimator = fl.LikelihoodEstimator(fl.DrozdovDensity(deepcopy(splines_trainmodelx)),n_jobs=4)\n",
+    "\n",
+    "KM_res=KM_estimator.fit_fetch(xdata)\n",
+    "Eul_res=Eul_estimator.fit_fetch(xdata)\n",
+    "Eln_res=Eln_estimator.fit_fetch(xdata)\n",
+    "Ksl_res=Ksl_estimator.fit_fetch(xdata)\n",
+    "Drz_res=Drz_estimator.fit_fetch(xdata)\n",
+    "\n",
+    "res_vec = [KM_res,Eul_res,Eln_res,Ksl_res,Drz_res] # made a list of all the trained estimators \n",
+    "\n",
+    "# PLOT OF THE RESULTS \n",
+    "\n",
+    "fig, axs = plt.subplots(1, 2, figsize=(14, 8))\n",
+    "axs[0].set_title(\"Force\")\n",
+    "axs[0].set_xlabel(\"$x$\")\n",
+    "axs[0].set_ylabel(\"$F(x)$\")\n",
+    "axs[0].grid()\n",
+    "\n",
+    "axs[1].set_title(\"Diffusion Coefficient\")\n",
+    "axs[1].set_xlabel(\"$x$\")\n",
+    "axs[1].set_ylabel(\"$D(x)$\") \n",
+    "axs[1].grid()\n",
+    "\n",
+    "\n",
+    "#Plot exact quantities \n",
+    "\n",
+    "axs[0].plot(xfa, xforce, label=\"Exact\")\n",
+    "\n",
+    "# #Plot inferred quantities \n",
+    "\n",
+    "names = [\"KM\",\"Euler\", \"Elerian\", \"Kessler\", \"Drozdov\"]\n",
+    "markers = [\"x\", \"1\",\"2\",\"3\",\"|\"]\n",
+    "for i in range(len(names)):\n",
+    "\n",
+    "    axs[0].plot(xfa, res_vec[i].drift(xfa.reshape(-1, 1)), markers[i],label=names[i] )\n",
+    "    axs[1].plot(xfa, res_vec[i].diffusion(xfa.reshape(-1, 1)), markers[i],label=names[i])\n",
+    "    print(names[i],res_vec[i].coefficients)\n",
+    "axs[0].legend()\n",
+    "axs[1].legend()\n",
+    "\n",
+    "fig.suptitle('B-spline Fitting with '+str(n_knots)+ ' knots')\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "fitting of the 1D data with Bsplines"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "n_knots=4\n",
+    "xfa = np.linspace(-1.3, 1.3, 75)\n",
+    "domain = fl.MeshedDomain.create_from_range(np.linspace(data_1D_unbias.stats.min,data_1D_unbias.stats.max , n_knots).ravel())\n",
+    "splines_trainmodelx_1d = fl.models.OverdampedSplines1D(domain=domain)\n",
+    "\n",
+    "KM_estimator = fl.KramersMoyalEstimator(deepcopy(splines_trainmodelx_1d), n_jobs=4)\n",
+    "Eul_estimator = fl.LikelihoodEstimator(fl.EulerDensity(deepcopy(splines_trainmodelx_1d)),n_jobs=4)\n",
+    "Eln_estimator = fl.LikelihoodEstimator(fl.ElerianDensity(deepcopy(splines_trainmodelx_1d)),n_jobs=4)\n",
+    "Ksl_estimator = fl.LikelihoodEstimator(fl.KesslerDensity(deepcopy(splines_trainmodelx_1d)),n_jobs=4)\n",
+    "Drz_estimator = fl.LikelihoodEstimator(fl.DrozdovDensity(deepcopy(splines_trainmodelx_1d)),n_jobs=4)\n",
+    "\n",
+    "KM_res=KM_estimator.fit_fetch(data_1D_unbias)\n",
+    "Eul_res=Eul_estimator.fit_fetch(data_1D_unbias)\n",
+    "Eln_res=Eln_estimator.fit_fetch(data_1D_unbias)\n",
+    "Ksl_res=Ksl_estimator.fit_fetch(data_1D_unbias)\n",
+    "Drz_res=Drz_estimator.fit_fetch(data_1D_unbias)\n",
+    "\n",
+    "res_vec = [KM_res,Eul_res,Eln_res,Ksl_res,Drz_res] # made a list of all the trained estimators \n",
+    "\n",
+    "# PLOT OF THE RESULTS \n",
+    "\n",
+    "fig, axs = plt.subplots(1, 2, figsize=(14, 8))\n",
+    "axs[0].set_title(\"Force\")\n",
+    "axs[0].set_xlabel(\"$x$\")\n",
+    "axs[0].set_ylabel(\"$F(x)$\")\n",
+    "axs[0].grid()\n",
+    "\n",
+    "axs[1].set_title(\"Diffusion Coefficient\")\n",
+    "axs[1].set_xlabel(\"$x$\")\n",
+    "axs[1].set_ylabel(\"$D(x)$\") \n",
+    "axs[1].grid()\n",
+    "\n",
+    "\n",
+    "#Plot exact quantities \n",
+    "\n",
+    "axs[0].plot(xfa, xforce, label=\"Exact\")\n",
+    "\n",
+    "# #Plot inferred quantities \n",
+    "\n",
+    "names = [\"KM\",\"Euler\", \"Elerian\", \"Kessler\", \"Drozdov\"]\n",
+    "markers = [\"x\", \"1\",\"2\",\"3\",\"|\"]\n",
+    "for i in range(len(names)):\n",
+    "     \n",
+    "    axs[0].plot(xfa, res_vec[i].drift(xfa.reshape(-1, 1)), markers[i],label=names[i] )\n",
+    "    axs[1].plot(xfa, res_vec[i].diffusion(xfa.reshape(-1, 1)), markers[i],label=names[i])\n",
+    "    print(names[i],res_vec[i].coefficients)\n",
+    "axs[0].legend()\n",
+    "axs[1].legend()\n",
+    "\n",
+    "fig.suptitle('B-spline Fitting with '+str(n_knots)+ ' knots')\n",
+    "fig.suptitle('1D data B-spline Fitting with '+str(n_knots)+ ' knots')\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### 3.2) Projection onto y coordinate"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ydata = fl.data.trajectories.Trajectories(dt=dt) \n",
+    "for n, trj in enumerate(data_2d_unbias):\n",
+    "    ydata.append(fl.data.trajectories.Trajectory(dt,trj[\"x\"][:,1].reshape(len(trj[\"x\"][:,1]),1)))\n",
+    "yfa = np.linspace(-1.3, 1.3, 75)\n",
+    "yforce= -b*yfa"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "##### 3.2.1) Fitting with exact  Ornstein–Uhlenbeck model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "# Parameters of the training\n",
+    "\n",
+    "trainmodely=fl.models.overdamped.OrnsteinUhlenbeck(has_bias=None)\n",
+    "\n",
+    "KM_estimator = fl.KramersMoyalEstimator(deepcopy(trainmodely), n_jobs=4)\n",
+    "Eul_estimator = fl.LikelihoodEstimator(fl.EulerDensity(deepcopy(trainmodely)),n_jobs=4)\n",
+    "Eln_estimator = fl.LikelihoodEstimator(fl.ElerianDensity(deepcopy(trainmodely)),n_jobs=4)\n",
+    "Ksl_estimator = fl.LikelihoodEstimator(fl.KesslerDensity(deepcopy(trainmodely)),n_jobs=4)\n",
+    "Drz_estimator = fl.LikelihoodEstimator(fl.DrozdovDensity(deepcopy(trainmodely)),n_jobs=4)\n",
+    "\n",
+    "KM_res=KM_estimator.fit_fetch(deepcopy(ydata))\n",
+    "Eul_res=Eul_estimator.fit_fetch(deepcopy(ydata))\n",
+    "Eln_res=Eln_estimator.fit_fetch(deepcopy(ydata))\n",
+    "Ksl_res=Ksl_estimator.fit_fetch(deepcopy(ydata))\n",
+    "Drz_res=Drz_estimator.fit_fetch(deepcopy(ydata))\n",
+    "res_vecy = [KM_res,Eul_res,Eln_res,Ksl_res,Drz_res] # made a list of all the trained estimators \n",
+    "\n",
+    "# PLOT OF THE RESULTS \n",
+    "\n",
+    "fig, axs = plt.subplots(1, 2, figsize=(14, 8))\n",
+    "axs[0].set_title(\"Force\")\n",
+    "axs[0].set_xlabel(\"$x$\")\n",
+    "axs[0].set_ylabel(\"$F(x)$\")\n",
+    "axs[0].grid()\n",
+    "\n",
+    "axs[1].set_title(\"Diffusion Coefficient\")\n",
+    "axs[1].set_xlabel(\"$x$\")\n",
+    "axs[1].set_ylabel(\"$D(x)$\") \n",
+    "axs[1].grid()\n",
+    "\n",
+    "\n",
+    "#Plot exact quantities \n",
+    "\n",
+    "axs[0].plot(xfa, yforce, label=\"Exact\")\n",
+    "\n",
+    "# #Plot inferred quantities \n",
+    "\n",
+    "names = [\"KM\",\"Euler\", \"Elerian\", \"Kessler\", \"Drozdov\"]\n",
+    "markers = [\"x\", \"1\",\"2\",\"3\",\"|\"]\n",
+    "for i in range(len(names)):\n",
+    "     \n",
+    "    axs[0].plot(xfa, res_vecy[i].drift(xfa.reshape(-1, 1)), markers[i],label=names[i] )\n",
+    "    axs[1].plot(xfa, res_vecy[i].diffusion(xfa.reshape(-1, 1)), markers[i],label=names[i])\n",
+    "    print(names[i],res_vecy[i].coefficients)\n",
+    "axs[0].legend()\n",
+    "axs[1].legend()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### 3.3) Projecting onto $1^{st}$ and $3^{rd}$ quadrant bisectrix"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "theta = np.pi/4\n",
+    "u = np.array([np.cos(theta),np.sin(theta)])\n",
+    "u_norm = (1/np.linalg.norm(u,2))*u\n",
+    "qdata = fl.data.trajectories.Trajectories(dt=dt) \n",
+    "fig, axs = plt.subplots()\n",
+    "for n, trj in enumerate(data_2d_unbias):\n",
+    "    proj_traj = (1/np.linalg.norm(u,2))*(trj[\"x\"][:,0]+trj[\"x\"][:,1]).reshape(len(trj[\"x\"][:,0]),1)\n",
+    "    qdata.append(fl.data.trajectories.Trajectory(dt, proj_traj ))\n",
+    "    axs.plot(qdata[n][\"x\"])\n",
+    "    axs.set_xlabel('timestep')\n",
+    "    axs.set_ylabel('q')\n",
+    "    axs.set_title('Dynamics along u'+str(u_norm)+'direction')\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "##### 3.3.1) Fitting with splines"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "qfa = np.linspace(qdata.stats.min , qdata.stats.max,75)\n",
+    "n_knots= 4\n",
+    "domain = fl.MeshedDomain.create_from_range(np.linspace(qdata.stats.min , qdata.stats.max , n_knots).ravel())\n",
+    "trainmodelq = fl.models.Overdamped(fl.functions.BSplinesFunction(domain), diffusion =fl.functions.BSplinesFunction(domain), has_bias=None)\n",
+    "\n",
+    "KM_estimator = fl.KramersMoyalEstimator(deepcopy(trainmodelq), n_jobs=4)\n",
+    "Eul_estimator = fl.LikelihoodEstimator(fl.EulerDensity(deepcopy(trainmodelq)), n_jobs=4)  # deepcopy is used because the estimator modifies the model when fit method is called\n",
+    "Eln_estimator = fl.LikelihoodEstimator(fl.ElerianDensity(deepcopy(trainmodelq)), n_jobs=4)  # and when the second estimator uses the object trainmodel this will already have the modifications\n",
+    "Ksl_estimator = fl.LikelihoodEstimator(fl.KesslerDensity(deepcopy(trainmodelq)), n_jobs=4) # made by the previuos estimator and so in the end they will return the exact same results\n",
+    "Drz_estimator = fl.LikelihoodEstimator(fl.DrozdovDensity(deepcopy(trainmodelq)), n_jobs=4) # which is the reason why the loop checking if the values are different in the following cell exists\n",
+    "\n",
+    "KM_res=KM_estimator.fit_fetch(qdata)\n",
+    "Eul_res=Eul_estimator.fit_fetch(qdata)\n",
+    "Eln_res=Eln_estimator.fit_fetch(qdata)\n",
+    "Ksl_res=Ksl_estimator.fit_fetch(qdata)\n",
+    "Drz_res=Drz_estimator.fit_fetch(qdata)\n",
+    "\n",
+    "res_vecq = [KM_res,Eul_res,Eln_res,Ksl_res,Drz_res] # made a list of all the trained estimators \n",
+    "\n",
+    "# PLOT OF THE RESULTS \n",
+    "\n",
+    "\n",
+    "fig, axs = plt.subplots(1, 2, figsize=(14, 8))\n",
+    "axs[0].set_title(\"Force\")\n",
+    "axs[0].set_xlabel(\"$x$\")\n",
+    "axs[0].set_ylabel(\"$F(x)$\")\n",
+    "axs[0].grid()\n",
+    "\n",
+    "axs[1].set_title(\"Diffusion Coefficient\")\n",
+    "axs[1].set_xlabel(\"$x$\")\n",
+    "axs[1].set_ylabel(\"$D(x)$\") \n",
+    "axs[1].grid()\n",
+    "\n",
+    "\n",
+    "# #Plot inferred quantities \n",
+    "\n",
+    "names = [\"KM\",\"Euler\", \"Elerian\", \"Kessler\", \"Drozdov\"]\n",
+    "markers = [\"x\", \"1\",\"2\",\"3\",\"|\"]\n",
+    "for i in range(len(names)):\n",
+    "\n",
+    "    axs[0].plot(xfa, res_vecq[i].drift(xfa.reshape(-1, 1)), markers[i],label=names[i] )\n",
+    "    axs[1].plot(xfa, res_vecq[i].diffusion(xfa.reshape(-1, 1)), markers[i],label=names[i])\n",
+    "    print(names[i],res_vecq[i].coefficients)\n",
+    "axs[0].legend()\n",
+    "axs[1].legend()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2D BIASED Double Well Potential"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 1) Model "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Here we model the double well potential as a quartic function along x and a parabola along y $V(x,y)= a(x^2-1)^2 + \\frac{1}{2}by^2$\n",
+    "and constant diffusion matrix $D= d\\begin{bmatrix} 1 \\ \\ 0 \\\\\\ 0 \\ \\ 1 \\end{bmatrix} $ \n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "x = np.linspace(-1.8,1.8,36)\n",
+    "y = np.linspace(-1.8,1.8,36)\n",
+    "input=np.transpose(np.array([x,y]))\n",
+    "\n",
+    "diff_function= fl.functions.Polynomial(deg=0,coefficients=np.asarray([0.5]) * np.eye(2,2))\n",
+    "a,b = 0.5, 1.0\n",
+    "\n",
+    "quartic2d = fl.functions.Quartic2D(a=a, b=b)\n",
+    "X, Y = np.meshgrid(x, y)\n",
+    "\n",
+    "# Plot potential surface\n",
+    "pot = quartic2d.potential_plot(X, Y)\n",
+    "fig = plt.figure()\n",
+    "ax = plt.axes(projection=\"3d\")\n",
+    "ax.plot_surface(X, Y, pot, rstride=1, cstride=1, cmap=\"jet\", edgecolor=\"none\")\n",
+    "\n",
+    "# Plot Force function\n",
+    "ff = quartic2d.drift(input)  # returns x and y components of the force : x_comp =ff[:,0] , y_comp =ff[:,1]\n",
+    "U, V = np.meshgrid(ff[:, 0], ff[:, 1])\n",
+    "fig, ax = plt.subplots()\n",
+    "ax.quiver(x, y, U, V)\n",
+    "ax.set_title(\"Force\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "On top of that we apply a linear bias along the chosen collective variable $q(x,y)= x+y$ feeding to the biased 1DColval simulator class the collective variable as a function and its gradient as an explicit array"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 2) Simulation"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In order to bias with ABMD along a selected collective variable $\\textit{colvar} : \\: q(x,y)$ user must provide both the function of original variables and its gradient "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def colvar (x,y):\n",
+    "    gradient = np.array([1,1])\n",
+    "    return x + y , gradient\n",
+    "dt = 1e-3\n",
+    "model_simu=fl.models.overdamped.Overdamped(quartic2d,diffusion=diff_function)\n",
+    "simulator=fl.simulations.ABMD_2D_to_1DColvar_Simulator(fl.simulations.EulerStepper(model_simu), dt,colvar=colvar,k=10.0,qstop=1.5)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# initialize positions \n",
+    "ntraj=30\n",
+    "q0= np.empty(shape=[ntraj,2])\n",
+    "for i in range(ntraj):\n",
+    "    for j in range(2):\n",
+    "        q0[i][j]=-1.2\n",
+    "time_steps=5000\n",
+    "data_2d_bias = simulator.run(time_steps, q0,save_every=1)  \n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Plot the resulting trajectories\n",
+    "fig, axs = plt.subplots()\n",
+    "for n, trj in enumerate(data_2d_bias):\n",
+    "    axs.plot(trj[\"x\"][:,0],trj[\"x\"][:,1])\n",
+    "    axs.spines['left'].set_position('center')\n",
+    "    axs.spines['right'].set_color('none')\n",
+    "    axs.spines['bottom'].set_position('center')\n",
+    "    axs.spines['top'].set_color('none')\n",
+    "    axs.xaxis.set_ticks_position('bottom')\n",
+    "    axs.yaxis.set_ticks_position('left')\n",
+    "    axs.set_xlabel(\"$X(t)$\")\n",
+    "    axs.set_ylabel(\"$Y(t)$\")\n",
+    "    axs.set_title(\"X-Y Trajectory\")\n",
+    "    axs.grid()\n",
+    "\n",
+    "# plot x,y Trajectories in separate subplots\n",
+    "fig,bb =  plt.subplots(1,2)\n",
+    "for n, trj in enumerate(data_2d_bias):\n",
+    "    bb[0].plot(trj[\"x\"][:,0])\n",
+    "    bb[1].plot(trj[\"x\"][:,1])\n",
+    "\n",
+    "\n",
+    "# Set visible  axis\n",
+    "    bb[0].spines['right'].set_color('none')\n",
+    "    bb[0].spines['bottom'].set_position('center')\n",
+    "    bb[0].spines['top'].set_color('none')\n",
+    "    bb[0].xaxis.set_ticks_position('bottom')\n",
+    "    bb[0].yaxis.set_ticks_position('left')\n",
+    "    bb[0].set_xlabel(\"$timestep$\")\n",
+    "    bb[0].set_ylabel(\"$X(t)$\")\n",
+    "\n",
+    "# Set visible axis\n",
+    "    bb[1].spines['right'].set_color('none')\n",
+    "    bb[1].spines['bottom'].set_position('center')\n",
+    "    bb[1].spines['top'].set_color('none')\n",
+    "    bb[1].xaxis.set_ticks_position('bottom')\n",
+    "    bb[1].yaxis.set_ticks_position('left')\n",
+    "    bb[1].set_xlabel(\"$timestep$\")\n",
+    "    bb[1].set_ylabel(\"$Y(t)$\")\n",
+    "\n",
+    "    bb[0].set_title(\"X Dynamics\")\n",
+    "    bb[1].set_title(\"Y Dynamics\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 3) Fitting"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### 3.1) Projecting onto the x Coordinate \n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "xdata_bias = fl.data.trajectories.Trajectories(dt=dt) \n",
+    "\n",
+    "for n, trj in enumerate(data_2d_bias):\n",
+    "    xdata_bias.append(fl.data.trajectories.Trajectory(dt, trj[\"x\"][:,0].reshape(len(trj[\"x\"][:,0]),1), bias=trj[\"bias\"][:,:1].reshape(len(trj[\"bias\"][:,1]),1)))\n",
+    "\n",
+    "xfa = np.linspace(-1.3, 1.3, 75)\n",
+    "xforce = -4*a*(xfa** 3 - xfa)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "##### 3.1.1) Fitting with exact model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Parameters of the training\n",
+    "\n",
+    "trainforce =fl.functions.Polynomial(deg=3,coefficients=np.asarray([1,1,1,1]))\n",
+    "traindiff = fl.functions.Polynomial(deg=0,coefficients=np.asarray([0.0]))\n",
+    "trainmodelx=fl.models.Overdamped(force = deepcopy(trainforce),diffusion=deepcopy(traindiff), has_bias=True)\n",
+    "\n",
+    "KM_estimator = fl.KramersMoyalEstimator(deepcopy(trainmodelx), n_jobs=4)\n",
+    "Eul_estimator = fl.LikelihoodEstimator(fl.EulerDensity(deepcopy(trainmodelx)),n_jobs=4)\n",
+    "Eln_estimator = fl.LikelihoodEstimator(fl.ElerianDensity(deepcopy(trainmodelx)),n_jobs=4)\n",
+    "Ksl_estimator = fl.LikelihoodEstimator(fl.KesslerDensity(deepcopy(trainmodelx)),n_jobs=4)\n",
+    "Drz_estimator = fl.LikelihoodEstimator(fl.DrozdovDensity(deepcopy(trainmodelx)),n_jobs=4)\n",
+    "\n",
+    "KM_res=KM_estimator.fit_fetch(deepcopy(xdata_bias))\n",
+    "Eul_res=Eul_estimator.fit_fetch(deepcopy(xdata_bias))\n",
+    "Eln_res=Eln_estimator.fit_fetch(deepcopy(xdata_bias))\n",
+    "Ksl_res=Ksl_estimator.fit_fetch(deepcopy(xdata_bias))\n",
+    "Drz_res=Drz_estimator.fit_fetch(deepcopy(xdata_bias))\n",
+    "\n",
+    "res_vec = [KM_res,Eul_res,Eln_res,Ksl_res,Drz_res] # made a list of all the trained estimators \n",
+    "\n",
+    "# PLOT OF THE RESULTS \n",
+    "\n",
+    "fig, axs = plt.subplots(1, 2, figsize=(14, 8))\n",
+    "axs[0].set_title(\"Force\")\n",
+    "axs[0].set_xlabel(\"$x$\")\n",
+    "axs[0].set_ylabel(\"$F(x)$\")\n",
+    "axs[0].grid()\n",
+    "\n",
+    "axs[1].set_title(\"Diffusion Coefficient\")\n",
+    "axs[1].set_xlabel(\"$x$\")\n",
+    "axs[1].set_ylabel(\"$D(x)$\") \n",
+    "axs[1].grid()\n",
+    "\n",
+    "\n",
+    "#Plot exact quantities \n",
+    "\n",
+    "axs[0].plot(xfa, xforce, label=\"Exact\")\n",
+    "\n",
+    "# #Plot inferred quantities \n",
+    "\n",
+    "names = [\"KM\",\"Euler\", \"Elerian\", \"Kessler\", \"Drozdov\"]\n",
+    "markers = [\"x\", \"1\",\"2\",\"3\",\"|\"]\n",
+    "for i in range(len(names)):\n",
+    "    \n",
+    "    axs[0].plot(xfa, res_vec[i].drift(xfa.reshape(-1, 1)), markers[i],label=names[i] )\n",
+    "    axs[1].plot(xfa, res_vec[i].diffusion(xfa.reshape(-1, 1)), markers[i],label=names[i])\n",
+    "    print(names[i],res_vec[i].coefficients)\n",
+    "axs[0].legend()\n",
+    "axs[1].legend()\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "##### 3.1.2) Fitting with splines"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "n_knots=4\n",
+    "xfa = np.linspace(-1.3, 1.3, 75)\n",
+    "domain = fl.MeshedDomain.create_from_range(np.linspace(xdata_bias.stats.min, xdata_bias.stats.max , n_knots).ravel())\n",
+    "splines_trainmodelx = fl.models.Overdamped(force = fl.functions.BSplinesFunction(domain), diffusion= fl.functions.BSplinesFunction(domain), has_bias = True)\n",
+    "\n",
+    "KM_estimator = fl.KramersMoyalEstimator(deepcopy(splines_trainmodelx), n_jobs=4)\n",
+    "Eul_estimator = fl.LikelihoodEstimator(fl.EulerDensity(deepcopy(splines_trainmodelx)),n_jobs=4)\n",
+    "Eln_estimator = fl.LikelihoodEstimator(fl.ElerianDensity(deepcopy(splines_trainmodelx)),n_jobs=4)\n",
+    "Ksl_estimator = fl.LikelihoodEstimator(fl.KesslerDensity(deepcopy(splines_trainmodelx)),n_jobs=4)\n",
+    "Drz_estimator = fl.LikelihoodEstimator(fl.DrozdovDensity(deepcopy(splines_trainmodelx)),n_jobs=4)\n",
+    "\n",
+    "KM_res=KM_estimator.fit_fetch(xdata_bias)\n",
+    "Eul_res=Eul_estimator.fit_fetch(xdata_bias)\n",
+    "Eln_res=Eln_estimator.fit_fetch(xdata_bias)\n",
+    "Ksl_res=Ksl_estimator.fit_fetch(xdata_bias)\n",
+    "Drz_res=Drz_estimator.fit_fetch(xdata_bias)\n",
+    "\n",
+    "res_vec = [KM_res,Eul_res,Eln_res,Ksl_res,Drz_res] # made a list of all the trained estimators \n",
+    "\n",
+    "# PLOT OF THE RESULTS \n",
+    "\n",
+    "fig, axs = plt.subplots(1, 2, figsize=(14, 8))\n",
+    "axs[0].set_title(\"Force\")\n",
+    "axs[0].set_xlabel(\"$x$\")\n",
+    "axs[0].set_ylabel(\"$F(x)$\")\n",
+    "axs[0].grid()\n",
+    "\n",
+    "axs[1].set_title(\"Diffusion Coefficient\")\n",
+    "axs[1].set_xlabel(\"$x$\")\n",
+    "axs[1].set_ylabel(\"$D(x)$\") \n",
+    "axs[1].grid()\n",
+    "\n",
+    "\n",
+    "#Plot exact quantities \n",
+    "\n",
+    "axs[0].plot(xfa, xforce, label=\"Exact\")\n",
+    "\n",
+    "# #Plot inferred quantities \n",
+    "\n",
+    "names = [\"KM\",\"Euler\", \"Elerian\", \"Kessler\", \"Drozdov\"]\n",
+    "markers = [\"x\", \"1\",\"2\",\"3\",\"|\"]\n",
+    "for i in range(len(names)):\n",
+    "\n",
+    "    axs[0].plot(xfa, res_vec[i].drift(xfa.reshape(-1, 1)), markers[i],label=names[i] )\n",
+    "    axs[1].plot(xfa, res_vec[i].diffusion(xfa.reshape(-1, 1)), markers[i],label=names[i])\n",
+    "    print(names[i],res_vec[i].coefficients)\n",
+    "axs[0].legend()\n",
+    "axs[1].legend()\n",
+    "\n",
+    "fig.suptitle('B-spline Fitting with '+str(n_knots)+ ' knots')\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### 3.2) Projecting along y coordinate "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ydata_bias = fl.data.trajectories.Trajectories(dt=dt) \n",
+    "\n",
+    "for n, trj in enumerate(data_2d_bias):\n",
+    "    ydata_bias.append(fl.data.trajectories.Trajectory(dt, trj[\"x\"][:,1].reshape(len(trj[\"x\"][:,1]),1), bias=trj[\"bias\"][:,1].reshape(len(trj[\"bias\"][:,1]),1)))\n",
+    "\n",
+    "yfa = np.linspace(-1.3, 1.3, 75)\n",
+    "yforce = -b*yfa"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "# Parameters of the training\n",
+    "\n",
+    "trainmodely=fl.models.overdamped.OrnsteinUhlenbeck(has_bias=True)\n",
+    "\n",
+    "KM_estimator = fl.KramersMoyalEstimator(deepcopy(trainmodely), n_jobs=4)\n",
+    "Eul_estimator = fl.LikelihoodEstimator(fl.EulerDensity(deepcopy(trainmodely)),n_jobs=4)\n",
+    "Eln_estimator = fl.LikelihoodEstimator(fl.ElerianDensity(deepcopy(trainmodely)),n_jobs=4)\n",
+    "Ksl_estimator = fl.LikelihoodEstimator(fl.KesslerDensity(deepcopy(trainmodely)),n_jobs=4)\n",
+    "Drz_estimator = fl.LikelihoodEstimator(fl.DrozdovDensity(deepcopy(trainmodely)),n_jobs=4)\n",
+    "\n",
+    "KM_res=KM_estimator.fit_fetch(deepcopy(ydata_bias))\n",
+    "Eul_res=Eul_estimator.fit_fetch(deepcopy(ydata_bias))\n",
+    "Eln_res=Eln_estimator.fit_fetch(deepcopy(ydata_bias))\n",
+    "Ksl_res=Ksl_estimator.fit_fetch(deepcopy(ydata_bias))\n",
+    "Drz_res=Drz_estimator.fit_fetch(deepcopy(ydata_bias))\n",
+    "\n",
+    "res_vecy = [KM_res,Eul_res,Eln_res,Ksl_res,Drz_res] # made a list of all the trained estimators \n",
+    "\n",
+    "# PLOT OF THE RESULTS \n",
+    "\n",
+    "fig, axs = plt.subplots(1, 2, figsize=(14, 8))\n",
+    "axs[0].set_title(\"Force\")\n",
+    "axs[0].set_xlabel(\"$x$\")\n",
+    "axs[0].set_ylabel(\"$F(x)$\")\n",
+    "axs[0].grid()\n",
+    "\n",
+    "axs[1].set_title(\"Diffusion Coefficient\")\n",
+    "axs[1].set_xlabel(\"$x$\")\n",
+    "axs[1].set_ylabel(\"$D(x)$\") \n",
+    "axs[1].grid()\n",
+    "\n",
+    "\n",
+    "#Plot exact quantities \n",
+    "\n",
+    "axs[0].plot(xfa, yforce, label=\"Exact\")\n",
+    "\n",
+    "# #Plot inferred quantities \n",
+    "\n",
+    "names = [\"KM\",\"Euler\", \"Elerian\", \"Kessler\", \"Drozdov\"]\n",
+    "markers = [\"x\", \"1\",\"2\",\"3\",\"|\"]\n",
+    "for i in range(len(names)):\n",
+    "     \n",
+    "    axs[0].plot(xfa, res_vecy[i].drift(xfa.reshape(-1, 1)), markers[i],label=names[i] )\n",
+    "    axs[1].plot(xfa, res_vecy[i].diffusion(xfa.reshape(-1, 1)), markers[i],label=names[i])\n",
+    "    print(names[i],res_vecy[i].coefficients)\n",
+    "axs[0].legend()\n",
+    "axs[1].legend()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### 3.3) Projecting along biased coordinate"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "theta = np.pi/4\n",
+    "u = np.array([np.cos(theta),np.sin(theta)])\n",
+    "u_norm = (1/np.linalg.norm(u,2))*u\n",
+    "qdata_bias = fl.data.trajectories.Trajectories(dt=dt) \n",
+    "fig, axs = plt.subplots()\n",
+    "for n, trj in enumerate(data_2d_bias):\n",
+    "    proj_bias=(trj[\"bias\"][:,0]+trj[\"bias\"][:,1]).reshape(len(trj[\"bias\"][:,0]),1)\n",
+    "    proj_traj = (1/np.linalg.norm(u,2))*(trj[\"x\"][:,0]+trj[\"x\"][:,1]).reshape(len(trj[\"x\"][:,0]),1)\n",
+    "    qdata_bias.append(fl.data.trajectories.Trajectory(dt, proj_traj, bias = proj_bias))\n",
+    "    axs.plot(qdata_bias[n][\"x\"])\n",
+    "    axs.set_xlabel('timestep')\n",
+    "    axs.set_ylabel('q')\n",
+    "    axs.set_title('Dynamics along u'+str(u_norm)+'direction')\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "qfa = np.linspace(qdata_bias.stats.min , qdata_bias.stats.max,75)\n",
+    "n_knots= 5\n",
+    "domain = fl.MeshedDomain.create_from_range(np.linspace(qdata_bias.stats.min , qdata_bias.stats.max , n_knots).ravel())\n",
+    "trainmodelq = fl.models.Overdamped(fl.functions.BSplinesFunction(domain),has_bias=True)\n",
+    "\n",
+    "KM_estimator = fl.KramersMoyalEstimator(deepcopy(trainmodelq), n_jobs=4)\n",
+    "Eul_estimator = fl.LikelihoodEstimator(fl.EulerDensity(deepcopy(trainmodelq)), n_jobs=4)  # deepcopy is used because the estimator modifies the model when fit method is called\n",
+    "Eln_estimator = fl.LikelihoodEstimator(fl.ElerianDensity(deepcopy(trainmodelq)), n_jobs=4)  # and when the second estimator uses the object trainmodel this will already have the modifications\n",
+    "Ksl_estimator = fl.LikelihoodEstimator(fl.KesslerDensity(deepcopy(trainmodelq)), n_jobs=4) # made by the previuos estimator and so in the end they will return the exact same results\n",
+    "Drz_estimator = fl.LikelihoodEstimator(fl.DrozdovDensity(deepcopy(trainmodelq)), n_jobs=4) # which is the reason why the loop checking if the values are different in the following cell exists\n",
+    "\n",
+    "KM_res=KM_estimator.fit_fetch(qdata_bias)\n",
+    "Eul_res=Eul_estimator.fit_fetch(qdata_bias)\n",
+    "Eln_res=Eln_estimator.fit_fetch(qdata_bias)\n",
+    "Ksl_res=Ksl_estimator.fit_fetch(qdata_bias)\n",
+    "Drz_res=Drz_estimator.fit_fetch(qdata_bias)\n",
+    "\n",
+    "res_vecq = [KM_res,Eul_res,Eln_res,Ksl_res,Drz_res] # made a list of all the trained estimators \n",
+    "\n",
+    "# PLOT OF THE RESULTS \n",
+    "\n",
+    "\n",
+    "fig, axs = plt.subplots(1, 2, figsize=(14, 8))\n",
+    "axs[0].set_title(\"Force\")\n",
+    "axs[0].set_xlabel(\"$x$\")\n",
+    "axs[0].set_ylabel(\"$F(x)$\")\n",
+    "axs[0].grid()\n",
+    "\n",
+    "axs[1].set_title(\"Diffusion Coefficient\")\n",
+    "axs[1].set_xlabel(\"$x$\")\n",
+    "axs[1].set_ylabel(\"$D(x)$\") \n",
+    "axs[1].grid()\n",
+    "\n",
+    "\n",
+    "# #Plot inferred quantities \n",
+    "\n",
+    "names = [\"KM\",\"Euler\", \"Elerian\", \"Kessler\", \"Drozdov\"]\n",
+    "markers = [\"x\", \"1\",\"2\",\"3\",\"|\"]\n",
+    "for i in range(len(names)):\n",
+    "     \n",
+    "    axs[0].plot(xfa, res_vecq[i].drift(qfa.reshape(-1, 1)), markers[i],label=names[i] )\n",
+    "    axs[1].plot(xfa, res_vecq[i].diffusion(qfa.reshape(-1, 1)), markers[i],label=names[i])\n",
+    "    print(names[i],res_vecq[i].coefficients)\n",
+    "axs[0].legend()\n",
+    "axs[1].legend()\n"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "folie",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.12.2"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}

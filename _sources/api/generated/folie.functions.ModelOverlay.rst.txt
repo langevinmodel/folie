@@ -1,0 +1,15 @@
+﻿:mod:`folie.functions`.ModelOverlay
+==========================================
+
+.. currentmodule:: folie.functions
+
+.. autoclass:: ModelOverlay
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.functions.ModelOverlay.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

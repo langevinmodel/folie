@@ -1,0 +1,15 @@
+﻿:mod:`folie`.ExactDensity
+================================
+
+.. currentmodule:: folie
+
+.. autoclass:: ExactDensity
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.ExactDensity.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

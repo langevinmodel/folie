@@ -1,0 +1,12 @@
+﻿:mod:`folie`.OverdampedSplines1D
+=============================================
+
+.. currentmodule:: folie
+
+.. autofunction:: OverdampedSplines1D
+
+.. include:: folie.OverdampedSplines1D.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

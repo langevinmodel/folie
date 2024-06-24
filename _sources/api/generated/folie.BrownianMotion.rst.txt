@@ -1,0 +1,15 @@
+﻿:mod:`folie`.BrownianMotion
+==================================
+
+.. currentmodule:: folie
+
+.. autoclass:: BrownianMotion
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.BrownianMotion.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

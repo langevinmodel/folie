@@ -1,0 +1,15 @@
+﻿:mod:`folie.functions`.KernelFunction
+============================================
+
+.. currentmodule:: folie.functions
+
+.. autoclass:: KernelFunction
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.functions.KernelFunction.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

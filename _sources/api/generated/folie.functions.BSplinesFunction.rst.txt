@@ -1,0 +1,15 @@
+﻿:mod:`folie.functions`.BSplinesFunction
+==============================================
+
+.. currentmodule:: folie.functions
+
+.. autoclass:: BSplinesFunction
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.functions.BSplinesFunction.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

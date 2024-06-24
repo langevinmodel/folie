@@ -1,0 +1,15 @@
+﻿:mod:`folie.functions`.FiniteElement
+===========================================
+
+.. currentmodule:: folie.functions
+
+.. autoclass:: FiniteElement
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.functions.FiniteElement.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

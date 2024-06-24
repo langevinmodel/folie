@@ -1,0 +1,15 @@
+﻿:mod:`folie.functions`.sklearnWrapper
+============================================
+
+.. currentmodule:: folie.functions
+
+.. autoclass:: sklearnWrapper
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.functions.sklearnWrapper.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

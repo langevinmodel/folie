@@ -1,0 +1,15 @@
+﻿:mod:`folie.functions`.sklearnTransformer
+================================================
+
+.. currentmodule:: folie.functions
+
+.. autoclass:: sklearnTransformer
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.functions.sklearnTransformer.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

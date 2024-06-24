@@ -1,0 +1,12 @@
+﻿:mod:`folie`.Trajectories
+======================================
+
+.. currentmodule:: folie
+
+.. autofunction:: Trajectories
+
+.. include:: folie.Trajectories.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

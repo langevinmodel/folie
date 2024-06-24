@@ -1,0 +1,15 @@
+﻿:mod:`folie.functions`.Fourier
+=====================================
+
+.. currentmodule:: folie.functions
+
+.. autoclass:: Fourier
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.functions.Fourier.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

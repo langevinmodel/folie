@@ -1,0 +1,15 @@
+﻿:mod:`folie`.EMEstimator
+===============================
+
+.. currentmodule:: folie
+
+.. autoclass:: EMEstimator
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.EMEstimator.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

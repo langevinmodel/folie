@@ -1,0 +1,15 @@
+﻿:mod:`folie`.LikelihoodEstimator
+=======================================
+
+.. currentmodule:: folie
+
+.. autoclass:: LikelihoodEstimator
+   :members:
+   :inherited-members:
+   :special-members: __init__
+
+.. include:: folie.LikelihoodEstimator.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>

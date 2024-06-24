@@ -1,0 +1,12 @@
+﻿:mod:`folie.analysis`.free_energy_profile_1d
+=========================================================
+
+.. currentmodule:: folie.analysis
+
+.. autofunction:: free_energy_profile_1d
+
+.. include:: folie.analysis.free_energy_profile_1d.examples
+
+.. raw:: html
+
+    <div style='clear:both'></div>
