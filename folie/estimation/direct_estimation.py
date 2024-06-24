@@ -80,7 +80,7 @@ class KramersMoyalEstimator(Estimator):
                 dx_sq = dx**2
             else:
                 dx_sq = dx[..., None] * dx[:, None, ...]
-            self.model.diffusion.fit(X, y=dx_sq / dt, **kwargs)  # We need to estimate the diffusion first in order to have the prefactor of the bias
+            self.model.diffusion.fit(X, y=0.5 * dx_sq / dt, **kwargs)  # We need to estimate the diffusion first in order to have the prefactor of the bias
             bias = np.concatenate([trj["bias"] for trj in data], axis=0)
             bias_drift = np.einsum("t...h,th-> t...", self.model.diffusion(X, **kwargs).reshape((*dx.shape, bias.shape[1])), bias)
             self.model.drift.fit(X, bias, y=dx / dt - bias_drift, sample_weight=None, estimator=estimator, **kwargs)
