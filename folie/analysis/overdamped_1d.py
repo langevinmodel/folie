@@ -3,7 +3,7 @@ Set of analysis methods focused on 1D overdamped models
 """
 
 from .._numpy import np
-from scipy.integrate import cumulative_trapezoid
+from scipy.integrate import cumulative_trapezoid, solve_ivp
 
 
 def free_energy_profile_1d(model, x):
@@ -15,15 +15,22 @@ def free_energy_profile_1d(model, x):
 
     """
     x = x.ravel()
-    diff_prime_val = model.diffusion.grad_x(x.reshape(-1, 1)).ravel()
-    drift_val = model.drift(x.reshape(-1, 1)).ravel()
-    diff_val = model.diffusion(x.reshape(-1, 1)).ravel()
 
-    diff_U = (-drift_val + diff_prime_val) / diff_val
+    def grad_V(x, _):
+        x = np.asarray(x).reshape(-1, 1)
+        diff_prime_val = model.diffusion.grad_x(x).ravel()
+        drift_val = model.drift(x).ravel()
+        diff_val = model.diffusion(x).ravel()
 
-    pmf = cumulative_trapezoid(diff_U, x, initial=0.0)
+        return (-drift_val + diff_prime_val) / diff_val
 
-    return pmf - np.min(pmf)
+    sol = solve_ivp(grad_V, [x.min() - 1e-10, x.max() + 1e10], np.array([0.0]), t_eval=x)  # Add some epsilon to range to ensure inclusion of x
+
+    V = sol.y.ravel()
+
+    # V = cumulative_trapezoid(grad_V(x), x, initial=0.0)
+
+    return V - np.min(V)
 
 
 def mfpt_1d(model, x_end: float, x_range, Npoints=500, x_start=None):
