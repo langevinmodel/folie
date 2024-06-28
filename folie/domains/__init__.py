@@ -1,6 +1,7 @@
 from ..data import stats_from_input_data
 from .._numpy import np
 import skfem
+from .element_finder import get_element_finder
 
 # TODO: Add gestion of the periodicity
 
@@ -53,8 +54,8 @@ class Domain:
         if dim < 1:
             dim = 1
         range = np.empty((2, dim))
-        range[0, :] = -np.inf
-        range[1, :] = np.inf
+        range[0, :] = -np.infty
+        range[1, :] = np.infty
         return cls(range)
 
     @classmethod
@@ -93,8 +94,7 @@ class MeshedDomain(Domain):
         """
         if mapping is None:
             mapping = self.mesh.mapping()
-        cells = self.mesh.element_finder(mapping=mapping)(*(X.T))  # Change the element finder
-        # Find a way to exclude out of mesh elements, we can define an outside elements that is a constant
+        cells = get_element_finder(self.mesh, mapping=mapping)(*(X.T))
         loc_x = mapping.invF(X.T[:, :, np.newaxis], tind=cells)
         return cells, loc_x[..., 0].T
 

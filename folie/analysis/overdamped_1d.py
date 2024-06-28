@@ -18,10 +18,9 @@ def free_energy_profile_1d(model, x):
 
     def grad_V(x, _):
         x = np.asarray(x).reshape(-1, 1)
-        diff_prime_val = model.diffusion.grad_x(x).ravel()
-        drift_val = model.drift(x).ravel()
-        diff_val = model.diffusion(x).ravel()
-        # print(np.min(diff_val), x[np.argmin(diff_val)])
+        diff_prime_val = model.diffusion.grad_x(x).flatten()
+        drift_val = model.drift(x).flatten()
+        diff_val = model.diffusion(x).flatten()
         return (-drift_val + diff_prime_val) / diff_val
 
     sol = solve_ivp(grad_V, [x.min() - 1e-10, x.max() + 1e-10], np.array([0.0]), t_eval=x)  # Add some epsilon to range to ensure inclusion of x
