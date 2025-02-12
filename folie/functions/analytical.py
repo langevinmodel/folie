@@ -41,7 +41,8 @@ class PotentialFunction(Function):
         Get argument on the form of potential_plot(x,y) where x and y are result of np.meshgrid
         """
         shapes = [a.shape[0] for a in args]
-        return self.potential(np.column_stack([a.ravel() for a in args])).reshape(*shapes)
+        pot = self.potential(np.column_stack([a.ravel() for a in args])).reshape(*shapes)
+        return pot - np.min(pot)
 
 
 class ConstantForce(PotentialFunction):
@@ -119,6 +120,48 @@ class Quartic(PotentialFunction):
 
     def grad_V(self, x):
         return 2 * self.a * ((x - self.x0) * (x - 1.0)) * (2 * x - self.x0 - self.x1)
+
+
+class MultiWell1D(PotentialFunction):
+    """
+    A multiwell potential in 1D defined from a sum of Gaussian
+    """
+
+    def __init__(self, V=1.0, a=[0.1, 0.15, 0.04], x0=[5.0, 25.0, 15.0]):
+        self.V = V
+        self.a = a
+        self.x0 = x0
+        self.n_well = len(self.a)
+
+        self.dim = 1
+        super().__init__()
+
+    @property
+    def coefficients(self):
+        return np.array([self.V, *self.a, *self.x0])
+
+    def potential(self, X):
+        r"""
+        The potential is
+
+        $$ V(x) =-\log(\sum_i e^{-a_i(x-x_0^i)^2/2})
+        """
+        pot = 0.0
+        for n in range(self.n_well):
+            pot += np.exp(-0.5 * (self.a[n] * (X[:, 0] - self.x0[n]) ** 2))
+        return -self.V * np.log(pot)
+
+    def grad_V(self, X):
+        """
+        Compute potential derivative
+        """
+        x = X[:, 0]
+        dU = np.zeros(X.shape)
+        norm = 0.0
+        for n in range(self.n_well):
+            dU[:, 0] += self.a[n] * (x - self.x0[n]) * np.exp(-0.5 * (self.a[n] * (x - self.x0[n]) ** 2))
+            norm += np.exp(-0.5 * (self.a[n] * (x - self.x0[n]) ** 2))
+        return self.V * np.divide(dU, norm[:, None], out=np.zeros_like(dU), where=norm[:, None] != 0)
 
 
 class Cosine(PotentialFunction):
