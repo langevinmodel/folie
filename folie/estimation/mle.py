@@ -176,7 +176,7 @@ class EMEstimator(LikelihoodEstimator):
         do_init = not (self.warm_start and hasattr(self, "converged_"))
         n_init = self.n_init if do_init else 1
 
-        max_lower_bound = -np.infty
+        max_lower_bound = -np.inf
         self.converged_ = False
 
         # That becomes duplicate of callback
@@ -200,8 +200,8 @@ class EMEstimator(LikelihoodEstimator):
             mu0 = np.zeros(self.model.dim_h)
             sig0 = np.identity(self.model.dim_h)
             self._print_verbose_msg_init_beg(init)
-            lower_bound = -np.infty if do_init else self.lower_bound_
-            lower_bound_m_step = -np.infty
+            lower_bound = -np.inf if do_init else self.lower_bound_
+            lower_bound_m_step = -np.inf
             # Algorithm loop
             for n_iter in range(1, self.max_iter + 1):
                 prev_lower_bound = lower_bound

@@ -25,12 +25,15 @@ except ImportError as exc:
     print(exc)
     raise
 
-release = __version__
+version = __version__.split("+")[0]
+release = __version__  # The full version, including alpha/beta/rc tags
+
+html_title = f"folie {version}"  # Use short version number
+
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-bibtex_bibfiles = ["references.bib"]
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -49,6 +52,9 @@ extensions = [
     "sphinxcontrib.bibtex",
 ]
 
+bibtex_bibfiles = ["references.bib"]
+
+
 numpydoc_show_class_members = False
 autoclass_content = "both"
 autodoc_default_flags = ["members", "inherited-members"]
@@ -63,6 +69,12 @@ source_suffix = ".rst"
 exclude_patterns = ["_build", "_templates", "auto_examples/*.ipynb", "auto_examples/*/*.ipynb", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints", "*.ipynb"]
 
 
+# html_context = {
+#     "current_version": version,
+#     "latest_version": version,
+#     "branches": [{"name": "fem", "url": "fem"}, {"name": version, "url": "fem"}],
+# }
+
 # -- Autosummary settings -----------------------------------------------------
 autosummary_generate = True
 
@@ -74,6 +86,24 @@ autodoc_default_options = {"inherited-members": True, "members": True, "member-o
 
 html_theme = "furo"
 html_static_path = ["_static"]
+
+html_sidebars = {
+    "**": [
+        "sidebar/brand.html",
+        "sidebar/search.html",
+        "sidebar/scroll-start.html",
+        "sidebar/navigation.html",
+        "sidebar/scroll-end.html",
+        # "github_button.html",
+        # "versioning.html",
+    ]
+}
+
+html_theme_options = {
+    "source_repository": "https://github.com/langevinmodel/folie",
+    "source_branch": "main",
+    "source_directory": "docs/",
+}
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
@@ -89,13 +119,11 @@ intersphinx_mapping = {
 # sphinx-gallery configuration
 sphinx_gallery_conf = {
     "doc_module": "folie",
-    "backreferences_dir": os.path.join("api/generated"),
+    "backreferences_dir": "api/generated",
     "reference_url": {"folie": None},
-    # path to your examples scripts
-    "examples_dirs": ["../examples"],
+    "examples_dirs": ["../examples"],  # path to your examples scripts
     "ignore_pattern": "profile_",
-    # path where to save gallery generated examples
-    "gallery_dirs": ["auto_examples"],
+    "gallery_dirs": ["auto_examples"],  # path where to save gallery generated examples
 }
 
 nbsphinx_execute = "never"

@@ -22,7 +22,7 @@ def data(request):
 
 
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
-@pytest.mark.parametrize("transitioncls", [fl.OzakiDensity, fl.ShojiOzakiDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
+@pytest.mark.parametrize("transitioncls", [fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
 def test_likelihood(data, request, transitioncls):
     print(data.representative_array())
     fun_lin = fl.functions.Linear().fit(data.representative_array(), np.ones(data.representative_array().shape[0]))

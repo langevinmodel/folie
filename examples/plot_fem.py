@@ -23,7 +23,7 @@ for i in range(1, trj.shape[1]):
 
 fig, axs = plt.subplots(1, 2)
 # Force plot
-axs[0].set_title("Force")
+axs[0].set_title("Drift")
 axs[0].set_xlabel("$x$")
 axs[0].set_ylabel("$F(x)$")
 axs[0].grid()
@@ -49,7 +49,7 @@ for fun in [bsplines, fem]:
 
     model = estimator.fit_fetch(data)
 
-    axs[0].plot(xfa, model.force(xfa.reshape(-1, 1)))
+    axs[0].plot(xfa, model.drift(xfa.reshape(-1, 1)))
     axs[1].plot(xfa, model.diffusion(xfa.reshape(-1, 1)))
 
 plt.show()

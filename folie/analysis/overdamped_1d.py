@@ -3,34 +3,40 @@ Set of analysis methods focused on 1D overdamped models
 """
 
 from .._numpy import np
-from scipy.integrate import cumulative_trapezoid
+from scipy.integrate import cumulative_trapezoid, solve_ivp
 
 
 def free_energy_profile_1d(model, x):
     r"""
-    From the force F(x) and diffusion D(x) construct the free energy profile V(x) using the formula
+    From the drift F(x) and diffusion D(x) construct the free energy profile V(x) using the formula
 
     .. math::
         F(x) = -D(x) \nabla V(x) + \mathrm{div} D(x)
 
     """
     x = x.ravel()
-    diff_prime_val = model.diffusion.grad_x(x.reshape(-1, 1)).ravel()
-    force_val = model.force(x.reshape(-1, 1)).ravel()
-    diff_val = model.diffusion(x.reshape(-1, 1)).ravel()
 
-    diff_U = diff_U = -force_val / diff_val + diff_prime_val
+    def grad_V(x, _):
+        x = np.asarray(x).reshape(-1, 1)
+        diff_prime_val = model.diffusion.grad_x(x).flatten()
+        drift_val = model.drift(x).flatten()
+        diff_val = model.diffusion(x).flatten()
+        return (-drift_val + diff_prime_val) / diff_val
 
-    pmf = cumulative_trapezoid(diff_U, x, initial=0.0)
+    sol = solve_ivp(grad_V, [x.min() - 1e-10, x.max() + 1e-10], np.array([0.0]), t_eval=x)  # Add some epsilon to range to ensure inclusion of x
 
-    return pmf - np.min(pmf)
+    V = sol.y.ravel()
+
+    # V = cumulative_trapezoid(grad_V(x), x, initial=0.0)
+
+    return V - np.min(V)
 
 
 def mfpt_1d(model, x_end: float, x_range, Npoints=500, x_start=None):
     r"""
     Compute the mean first passage time from any point x within x_range to x_end, or from x_start to x_end if x_start is defined.
 
-    It use numerical integration of the following formula for point from x_range[0] to x_end :cite:p:`Jungblut2016`
+    It use numerical integration of the following formula for point from x_range[0] to x_end :footcite:p:`Jungblut2016`
 
     .. math::
         MFPT(x,x_{end}) = \int_x^{x_{end}} \mathrm{d}y \frac{e^{\beta V(y)}}{D(y)} \int_{x\_range[0]}^y \mathrm{d} z e^{-\beta V(y)}
