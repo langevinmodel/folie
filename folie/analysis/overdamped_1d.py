@@ -3,7 +3,7 @@ Set of analysis methods focused on 1D overdamped models
 """
 
 from .._numpy import np
-from scipy.integrate import cumulative_trapezoid
+from scipy.integrate import cumulative_trapezoid, solve_ivp
 
 
 def free_energy_profile_1d(model, x):
@@ -36,7 +36,7 @@ def mfpt_1d(model, x_end: float, x_range, Npoints=500, x_start=None):
     r"""
     Compute the mean first passage time from any point x within x_range to x_end, or from x_start to x_end if x_start is defined.
 
-    It use numerical integration of the following formula for point from x_range[0] to x_end :cite:p:`Jungblut2016`
+    It use numerical integration of the following formula for point from x_range[0] to x_end :footcite:p:`Jungblut2016`
 
     .. math::
         MFPT(x,x_{end}) = \int_x^{x_{end}} \mathrm{d}y \frac{e^{\beta V(y)}}{D(y)} \int_{x\_range[0]}^y \mathrm{d} z e^{-\beta V(y)}

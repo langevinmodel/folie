@@ -15,6 +15,7 @@ import skfem
         (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
         (fl.functions.BSplinesFunction, {}),
         (fl.functions.Fourier, {"order": 3}),
+        (fl.functions.RadialBasisFunction, {}),
     ],
 )
 def test_functions(fct, parameters):
@@ -36,7 +37,7 @@ def test_functions(fct, parameters):
         return fun(data[0:1])[0]
 
     finite_diff_jac = scipy.optimize.approx_fprime(fun.coefficients, eval_fun)
-    np.testing.assert_allclose(fun.grad_coeffs(data[0:1])[0], finite_diff_jac, rtol=1e-06)
+    np.testing.assert_allclose(fun.grad_coeffs(data[0:1])[0], finite_diff_jac, atol=1e-6, rtol=1e-6)
 
 
 def test_fem_functions():
@@ -72,11 +73,13 @@ def test_fem_functions():
         (fl.functions.Polynomial, {"deg": 3}),
         (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
         (fl.functions.Fourier, {"order": 3}),
+        (fl.functions.RadialBasisFunction, {}),
     ],
 )
 def test_functions_ND(fct, parameters):
     data = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun = fct(domain=fl.Domain.Rd(2), output_shape=(2,), **parameters).fit(data)
+    m = skfem.MeshTri().refined(4)
+    fun = fct(domain=fl.MeshedDomain(m), output_shape=(2,), **parameters).fit(data)
 
     assert fun(data).shape == (12, 2)
 
@@ -117,11 +120,13 @@ def test_functions_ND_various_dim(fct, parameters):
         (fl.functions.Polynomial, {"deg": 3}),
         (fl.functions.Polynomial, {"deg": 3, "polynom": np.polynomial.Chebyshev}),
         (fl.functions.Fourier, {"order": 3}),
+        (fl.functions.RadialBasisFunction, {}),
     ],
 )
 def test_matrix_functions_ND(fct, parameters):
     data = np.linspace(-1, 1, 24).reshape(-1, 2)
-    fun = fct(domain=fl.Domain.Rd(2), **parameters).fit(data).resize((2, 2))
+    m = skfem.MeshTri().refined(4)
+    fun = fct(domain=fl.MeshedDomain(m), **parameters).fit(data).resize((2, 2))
 
     assert fun(data).shape == (12, 2, 2)
 

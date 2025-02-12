@@ -88,7 +88,7 @@ class BiasedSimulator(Simulator):
 
 
 class ABMD_Simulator(BiasedSimulator):
-    def __init__(self, stepper, dt, k=1, xstop=np.infty, **kwargs):
+    def __init__(self, stepper, dt, k=1, xstop=np.inf, **kwargs):
         super().__init__(stepper, dt, **kwargs)
         self.xmax = None
         self.k = k
@@ -106,7 +106,7 @@ class ABMD_Simulator(BiasedSimulator):
 
 
 class ABMD_2D_to_1DColvar_Simulator(BiasedSimulator):  # user must provide both colvar function and its gradient in colvar element
-    def __init__(self, stepper, dt, colvar, k=1, qstop=np.infty, **kwargs):
+    def __init__(self, stepper, dt, colvar, k=1, qstop=np.inf, **kwargs):
         super().__init__(stepper, dt, **kwargs)
         self.qmax = None
         self.k = k

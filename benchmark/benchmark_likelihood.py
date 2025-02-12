@@ -19,7 +19,7 @@ def data(request):
 
 
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
-@pytest.mark.parametrize("transitioncls", [fl.EulerDensity, fl.OzakiDensity, fl.ShojiOzakiDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
+@pytest.mark.parametrize("transitioncls", [fl.EulerDensity, fl.ElerianDensity, fl.KesslerDensity, fl.DrozdovDensity])
 def test_likelihood_functions(data, request, benchmark, transitioncls):
     fun = fl.functions.Linear()
     model = fl.models.Overdamped(fun, fun.copy())

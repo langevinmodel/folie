@@ -206,14 +206,18 @@ class ModelOverlay(Function):
     A class that allow to overlay a model and make it be used as a function.
 
     For example, if a model contain
-        model.mean_force =  ModelOverlay(model, "_force", output_shape=output_shape_force)
+
+    .. code-block:: python
+
+        model.drift =  ModelOverlay(model, "_force", output_shape=output_shape_force)
+
     then we have the following mapping:
 
-        - model.mean_force(x) -> model._force(x)
-        - model.mean_force.grad_x(x) -> model._force_dx(x)
-        - model.mean_force.hessian_x(x) -> model._force_d2x(x)
-        - model.mean_force.grad_coeffs(x) -> model._force_dcoeffs(x)
-        - model.mean_force.coefficients -> model._force_coefficients
+        - model.drift(x) -> model._force(x)
+        - model.drift.grad_x(x) -> model._force_dx(x)
+        - model.drift.hessian_x(x) -> model._force_d2x(x)
+        - model.drift.grad_coeffs(x) -> model._force_dcoeffs(x)
+        - model.drift.coefficients -> model._force_coefficients
 
     If any of the [function_name]_d* function is not implemented, it would be replaced by a numerical derivative
 
