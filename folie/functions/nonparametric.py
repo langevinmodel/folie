@@ -56,7 +56,7 @@ class KernelFunction(Function):
             Value of the distance to the path.
         """
         X = check_array(X, accept_sparse=True)
-        check_is_fitted(self, "fitted_")
+        # check_is_fitted(self, "fitted_")
         K = pairwise_kernels(self.ref_X, X, metric=self.kernel, gamma=self.gamma)
         s = (K[..., None] * self.ref_f[:, None, ...]).sum(axis=0) / K.sum(axis=0)[:, None]
         return s
