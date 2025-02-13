@@ -40,21 +40,6 @@ class Underdamped(Overdamped):
         fx = self.pos_drift(x, *args, **kwargs)
         return fx - np.einsum("t...h,th-> t...", self.friction(x, *args, **kwargs).reshape((*fx.shape, v.shape[1])), v)
 
-    def _drift_dx(self, x, v, *args, **kwargs):
-        dfx = self.pos_drift.grad_x(x, *args, **kwargs)
-        return dfx - np.einsum("t...he,th-> t...e", self.friction.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], dfx.shape[-1])), v)
-
-    def _drift_d2x(self, x, v, *args, **kwargs):
-        ddfx = self.pos_drift.hessian_x(x, *args, **kwargs)
-        return ddfx - np.einsum("t...hef,th-> t...ef", self.friction.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], v.shape[1], *ddfx.shape[-2:])), v)
-
-    def _drift_dcoeffs(self, x, v, *args, **kwargs):
-        """
-        Jacobian of the force with respect to coefficients
-        """
-        dfx = self.pos_drift.grad_coeffs(x, *args, **kwargs)
-        return np.concatenate((dfx, -1 * np.einsum("t...hc,th-> t...c", self.friction.grad_coeffs(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], -1)), v)), axis=-1)
-
     @property
     def coefficients(self):
         """Access the coefficients"""

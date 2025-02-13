@@ -6,7 +6,7 @@ from .._numpy import np
 import numba as nb
 
 
-@nb.njit
+#@nb.njit
 def filter_kalman(mutm, Sigtm, Xt, mutilde_tm, frict, SST, dim_x, dim_h):  # pragma: no cover
     """
     Compute the foward step using Kalman filter, predict and update step
@@ -38,7 +38,7 @@ def filter_kalman(mutm, Sigtm, Xt, mutilde_tm, frict, SST, dim_x, dim_h):  # pra
     return marg_mu, marg_sig, mu_pair, Sig_pair
 
 
-@nb.njit
+#@nb.njit
 def smoothing_rauch(muft, Sigft, muStp, SigStp, Xtplus, mutilde_t, frict, SST, dim_x, dim_h):  # pragma: no cover
     """
     Compute the backward step using Kalman smoother
@@ -60,7 +60,7 @@ def smoothing_rauch(muft, Sigft, muStp, SigStp, Xtplus, mutilde_t, frict, SST, d
     return marg_mu, marg_sig, mu_pair, Sig_pair
 
 
-@nb.njit
+#@nb.njit
 def filtersmoother(Xtplus, mutilde, frict, diffusion, mu0, sig0):  # pragma: no cover
     """
     Apply Kalman filter and Rauch smoother. Fallback for the fortran implementation

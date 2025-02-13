@@ -7,7 +7,7 @@ from collections import defaultdict
 from inspect import signature
 from typing import Optional
 from pprint import PrettyPrinter
-
+from ._numpy import np
 
 class _BaseMethodsMixin(abc.ABC):
     """Defines common methods used by both Estimator and Model classes. These are mostly static and low-level
@@ -213,23 +213,26 @@ class Estimator(_BaseMethodsMixin):
     def _loop_over_trajs_serial(self, func, weights, data, *args, **kwargs):
         """
         A generator for iteration over trajectories
+        TODO: A vérifier quand la fonction sort un tuple
         """
-        array_res = [func(weight, trj, *args, **kwargs) for weight, trj in zip(weights, data)]
-        res = [0.0] * len(array_res[0])
         weightsum = weights.sum()
-        for weight, single_res in zip(weights, array_res):
-            for i, arr in enumerate(single_res):
-                res[i] += arr * weight / weightsum
-        return res
+        return np.sum([func(weight, trj, *args, **kwargs)* weight/ weightsum  for weight, trj in zip(weights, data)])
+        # res = 0.0
+        # for weight, single_res in zip(weights, array_res):
+        #     res= res+arr * weight / weightsum
+        #     for i, arr in enumerate(single_res):
+        #         res[i] += 
+        # return res
 
     def _loop_over_trajs_parallel(self, func, weights, data, *args, **kwargs):
         """
         A generator for iteration over trajectories
+        TODO: A vérifier pour l'écrire plus proprement
         """
         from joblib import Parallel, delayed
 
         array_res = Parallel(n_jobs=self.n_jobs)(delayed(func)(weight, trj, *args, **kwargs) for weight, trj in zip(weights, data))
-        res = [0.0] * len(array_res[0])
+        res = 0.0
         weightsum = weights.sum()
         for weight, single_res in zip(weights, array_res):
             for i, arr in enumerate(single_res):

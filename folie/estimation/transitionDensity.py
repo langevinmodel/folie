@@ -16,22 +16,6 @@ def gaussian_likelihood_ND(xt, E, V):
     return -0.5 * np.einsum("ti,ti-> tj", xt - E, invVE) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V))
 
 
-def gaussian_likelihood_derivative_1D(xt, E, V, jacE, jacV):
-    ll = -0.5 * ((xt.ravel() - E) ** 2 / V) - 0.5 * np.log(np.sqrt(2 * np.pi) * V)
-    l_jac_E = ((xt.ravel() - E) / V)[:, None] * jacE
-    l_jac_V = 0.5 * (((xt.ravel() - E) ** 2) / V ** 2)[:, None] * jacV - 0.5 * jacV / V[:, None]
-    return ll, np.concatenate((l_jac_E, l_jac_V), axis=-1)
-
-
-def gaussian_likelihood_derivative_ND(xt, E, V, jacE, jacV):
-    invV = np.linalg.inv(V)  # TODO: Use linalg.solve instead of inv ?
-    invVE = np.einsum("tij,tj-> ti", invV, xt - E)
-    ll = -0.5 * np.einsum("ti,ti-> t", xt - E, invVE) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V))
-    l_jac_E = np.einsum("ti,tic-> tc", invVE, jacE)
-    l_jac_V = 0.5 * np.einsum("ti,tijc,tj-> tc", invVE, jacV, invVE) - 0.5 * np.einsum("tijc,tji->tc", jacV, invV)
-    return ll, np.concatenate((l_jac_E, l_jac_V), axis=-1)
-
-
 class TransitionDensity(ABC):
     use_jac = False
 
@@ -97,4 +81,4 @@ class TransitionDensity(ABC):
         Compute Likelihood of one trajectory
         """
         self._model.coefficients = coefficients
-        return (-np.sum(np.maximum(self._min_prob, self._logdensity(**trj))) / weight,)
+        return -np.sum(np.maximum(self._min_prob, self._logdensity(**trj))) / weight

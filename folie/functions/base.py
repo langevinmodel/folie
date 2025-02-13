@@ -1,4 +1,4 @@
-from .._numpy import np
+from .._numpy import np, jacobian
 import abc
 
 
@@ -9,7 +9,6 @@ import scipy.optimize
 import sparse
 
 from ..base import _BaseMethodsMixin
-from ._numdifference import approx_fprime
 from ..domains import Domain
 
 
@@ -57,6 +56,10 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         r"""Transforms the input data."""
         pass
 
+    def wrap_call(self,x,coeffs, *args, **kwargs):
+        self.coefficients=coeffs
+        return self(x, *args, **kwargs)
+
     def fit(self, x, *args, y=None, estimator=linear_model.LinearRegression(copy_X=False, fit_intercept=False), sample_weight=None, **kwargs):
         """
         Fit coefficients of the function using linear regression.
@@ -78,64 +81,31 @@ class Function(_BaseMethodsMixin, TransformerMixin):
 
         """
         if y is None:
-            y = np.zeros((x.shape[0] * self.output_size_))
-        else:
-            y = y.ravel()
-        Fx = self.grad_coeffs(x, *args, **kwargs).reshape((x.shape[0] * self.output_size_, -1))
-        if isinstance(Fx, sparse.SparseArray):
-            Fx = Fx.tocsr()
-        reg = estimator.fit(Fx, y, sample_weight=sample_weight)
-        self.coefficients = reg.coef_
+            y = np.zeros((x.shape[0], self.output_size_))
+        # else:
+        #     y = y.ravel()
+
+
+        def func_wrapped(coeffs):
+            self.coefficients=coeffs
+            return np.sqrt(((self(x) - y)**2).sum(1))
+
+        # En fait curve_fit c'est assez merdique puisque on appelle pas les paramètres via un array, il faudrait utiliser minimize et définir soit même la loss
+        # print(x.shape,self.coefficients)
+        res=scipy.optimize.least_squares(func_wrapped, self.coefficients,jac= jacobian(func_wrapped))  # TODO: Plutôt passer par curve_fit ou un truc equivalent
+        self.coefficients = res.x
+        # print(self.coefficients)
+        # Fx=jacobian(self.wrap_call,1)(x, self.coefficients, *args, **kwargs).reshape((x.shape[0] * self.output_size_, -1))
+
+        # if isinstance(Fx, sparse.SparseArray):
+        #     Fx = Fx.tocsr()
+        # reg = estimator.fit(Fx, y, sample_weight=sample_weight)
+        # self.coefficients = reg.coef_
         self.fitted_ = True
         return self
 
-    def transform_dx(self, x, **kwargs):
-        r"""Gradient of the function with respect to input data.
-        Implemented by finite difference.
-        """
-        return approx_fprime(x, self.__call__, self.output_shape_)
-
-    def transform_d2x(self, x, *args, **kwargs):  # TODO: Check
-        r"""Hessian of the function with respect to input data.
-        Implemented by finite difference.
-        """
-        return approx_fprime(x, self.transform_dx, self.output_shape_ + (self.domain.dim,))
-
-    def transform_dcoeffs(self, x, *args, **kwargs):
-        init_coeffs = self.coefficients.copy()
-
-        def f_coeffs(c, *args, **kwargs):
-            self.coefficients = c
-            return self.transform(*args, **kwargs)
-
-        fprime = scipy.optimize.approx_fprime(self.coefficients, f_coeffs, x, *args, **kwargs)
-        self.coefficients = init_coeffs
-        return fprime
-        # raise NotImplementedError  # TODO: Check implementation
-
     def __call__(self, x, *args, **kwargs):
         return self.transform(x[:, : self.domain.dim], *args, **kwargs).reshape((-1, *self.output_shape_))
-
-    def grad_x(self, x, *args, **kwargs):
-        return self.transform_dx(x[:, : self.domain.dim], *args, **kwargs).reshape((-1, *self.output_shape_, len(x[0, : self.domain.dim])))
-
-    def hessian_x(self, x, *args, **kwargs):
-        return self.transform_d2x(x[:, : self.domain.dim], *args, **kwargs).reshape((-1, *self.output_shape_, len(x[0, : self.domain.dim]), len(x[0, : self.domain.dim])))
-
-    def grad_coeffs(self, x, *args, **kwargs):
-        r"""Gradient of the function with respect to the coefficients.
-
-        Parameters
-        ----------
-        x : array_like
-            Input data.
-
-        Returns
-        -------
-        transformed : array_like
-            The gradient
-        """
-        return self.transform_dcoeffs(x[:, : self.domain.dim], *args, **kwargs).reshape((x.shape[0], *self.output_shape_, -1))
 
     def __add__(self, other):
         return FunctionSum([self, other])
@@ -199,93 +169,6 @@ class ParametricFunction(Function):
         self._coefficients = vals.reshape((self.n_functions_features_, -1))
 
 
-class ModelOverlay(Function):
-    """
-    A class that allow to overlay a model and make it be used as a function.
-
-    For example, if a model contain
-
-    .. code-block:: python
-
-        model.drift =  ModelOverlay(model, "_force", output_shape=output_shape_force)
-
-    then we have the following mapping:
-
-        - model.drift(x) -> model._force(x)
-        - model.drift.grad_x(x) -> model._force_dx(x)
-        - model.drift.hessian_x(x) -> model._force_d2x(x)
-        - model.drift.grad_coeffs(x) -> model._force_dcoeffs(x)
-        - model.drift.coefficients -> model._force_coefficients
-
-    If any of the [function_name]_d* function is not implemented, it would be replaced by a numerical derivative
-
-    Parameters
-    ----------
-        model: a python class
-            This is the class to to overlay
-
-        function_name: str
-            The common part of the function name. The model should contain at least the function [function_name]
-
-        output_shape: tuple or array
-            The output shape of the term
-
-    """
-
-    def __init__(self, model, function_name, output_shape=None, **kwargs):
-        self.model = model
-        domain = Domain.Rd(model.dim)
-        # Do some check
-        if not hasattr(self.model, function_name):
-            raise ValueError("Model does not implement " + function_name + ".")
-        self.function_name = function_name
-        # Define output shape from model dimension
-        if output_shape is None and model.dim <= 1:
-            output_shape = ()
-        elif output_shape is None:
-            raise ValueError("output_shape should be defined.")
-
-        super().__init__(domain, output_shape, **kwargs)
-
-    def transform(self, x, *args, **kwargs):
-        return getattr(self.model, self.function_name)(x, *args, **kwargs)
-
-    def transform_dx(self, x, *args, **kwargs):
-        if hasattr(self.model, self.function_name + "_dx"):
-            return getattr(self.model, self.function_name + "_dx")(x, *args, **kwargs)
-        else:
-            return super().transform_dx(x, *args, **kwargs)  # If not implemented use finite difference
-
-    def transform_d2x(self, x, *args, **kwargs):
-        if hasattr(self.model, self.function_name + "_d2x"):
-            return getattr(self.model, self.function_name + "_d2x")(x, *args, **kwargs)
-        else:
-            return super().transform_d2x(x, *args, **kwargs)  # If not implemented use finite difference
-
-    def transform_dcoeffs(self, x, *args, **kwargs):
-        """
-        Jacobian of the force with respect to coefficients
-        """
-        if hasattr(self.model, self.function_name + "_dcoeffs"):
-            return getattr(self.model, self.function_name + "_dcoeffs")(x, *args, **kwargs)
-        else:
-            return super().transform_dcoeffs(x, *args, **kwargs)  # If not implemented use finite difference
-
-    @property
-    def coefficients(self):
-        """Access the coefficients"""
-        return getattr(self.model, "coefficients" + self.function_name)
-
-    @coefficients.setter
-    def coefficients(self, vals):
-        """Set parameters, used by fitter to move through param space"""
-        setattr(self.model, "coefficients" + self.function_name, vals)
-
-    @property
-    def size(self):
-        return np.prod(self.coefficients.shape)  # Es-ce qu'on ne devrait pas prendre plutot le gcd des deux ou équivalents
-
-
 class FunctionSum:
     """
     Return the sum of function
@@ -315,12 +198,6 @@ class FunctionSum:
 
     def __call__(self, X, *args, **kwargs):
         return np.add.reduce([fu(X) for fu in self.functions_set])
-
-    def grad_x(self, X, **kwargs):
-        return np.add.reduce([fu.grad_x(X) for fu in self.functions_set])
-
-    def grad_coeffs(self, X, **kwargs):
-        return np.concatenate([fu.grad_coeffs(X) for fu in self.functions_set], axis=-1)
 
     @property
     def coefficients(self):

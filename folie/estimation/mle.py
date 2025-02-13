@@ -2,7 +2,7 @@
 The code in this file was originnaly adapted from pymle (https://github.com/jkirkby3/pymle)
 """
 
-from .._numpy import np
+from .._numpy import np, value_and_grad
 import warnings
 from time import time
 from scipy.optimize import minimize
@@ -60,7 +60,7 @@ class LikelihoodEstimator(Estimator):
         super().__init__(transition.model, **kwargs)
         self.transition = transition
 
-    def fit(self, data, minimizer=None, coefficients0=None, use_jac=True, callback=None, minimize_kwargs={"method": "L-BFGS-B"}, **kwargs):
+    def fit(self, data, minimizer=None, coefficients0=None, callback=None, minimize_kwargs={"method": "L-BFGS-B"}, **kwargs):
         r"""Fits data to the estimator's internal :class:`Model` and overwrites it. This way, every call to
         :meth:`fetch_model` yields an autonomous model instance. Sometimes a :code:`partial_fit` method is available,
         in which case the model can get updated by the estimator.
@@ -89,13 +89,10 @@ class LikelihoodEstimator(Estimator):
             coefficients0 = np.asarray(coefficients0)
             minimizer = minimize
         # Run once, to determine if there is a Jacobian and eventual compilation if needed by numba
-        init_val = self._loop_over_trajs(self.transition, data.weights, data, coefficients0, **kwargs)
+        # init_val = self._loop_over_trajs(self.transition, data.weights, data, coefficients0, **kwargs)
 
-        if len(init_val) >= 2 and use_jac:
-            res = minimizer(self._log_likelihood_negative_with_jac, coefficients0, args=(data,), jac=True, **minimize_kwargs)
-        else:
-            self.transition.use_jac = False
-            res = minimizer(self._log_likelihood_negative, coefficients0, args=(data,), callback=callback, **minimize_kwargs)
+
+        res = minimizer(value_and_grad(self._log_likelihood_negative), coefficients0, args=(data,), jac=True, callback=callback, **minimize_kwargs)
         coefficients = res.x
 
         final_like = -res.fun
@@ -108,11 +105,7 @@ class LikelihoodEstimator(Estimator):
         return self
 
     def _log_likelihood_negative(self, coefficients, data, **kwargs):
-        return self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)[0]
-
-    def _log_likelihood_negative_with_jac(self, coefficients, data, **kwargs):
         return self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)
-
 
 class ELBOEstimator(LikelihoodEstimator):
     """
@@ -160,7 +153,7 @@ class EMEstimator(LikelihoodEstimator):
 
         self.no_stop = no_stop
 
-    def fit(self, data, minimizer=None, coefficients0=None, use_jac=True, callback=None, **kwargs):
+    def fit(self, data, minimizer=None, coefficients0=None, callback=None, **kwargs):
         """
         In this do a loop that alternatively minimize and compute expectation
         """
@@ -192,7 +185,6 @@ class EMEstimator(LikelihoodEstimator):
         best_n_init = -1
 
         init_val = self._loop_over_trajs(self.transition, data.weights, data, coefficients0, **kwargs)
-        has_jac = len(init_val) > 1 and use_jac
         for init in range(n_init):
             callbacks.append(type(callback)())  # Should work as well with None
             if do_init:
@@ -213,10 +205,7 @@ class EMEstimator(LikelihoodEstimator):
                     if lower_bound - lower_bound_m_step < 0:
                         print("Delta loglikelihood after E step:", lower_bound - lower_bound_m_step)
                 # M Step
-                if has_jac:
-                    res = minimizer(self._log_likelihood_negative_with_jac, coefficients, args=(data,), jac=True, method="L-BFGS-B")
-                else:
-                    res = minimizer(self._log_likelihood_negative, coefficients, args=(data,), method="L-BFGS-B")
+                res = minimizer(value_and_grad(self._log_likelihood_negative), coefficients, args=(data,), method="L-BFGS-B")
                 coefficients = res.x
                 if callbacks[init] is not None:
                     callbacks[init](res)
@@ -279,10 +268,6 @@ class EMEstimator(LikelihoodEstimator):
     def _log_likelihood_negative(self, coefficients, data, **kwargs):
         return self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)[0] + self._loop_over_trajs(self.transition.hiddencorrection, data.weights, data, coefficients, **kwargs)[0]
 
-    def _log_likelihood_negative_with_jac(self, coefficients, data, **kwargs):
-        like, jac = self._loop_over_trajs(self.transition, data.weights, data, coefficients, **kwargs)
-        like_c, jac_c = self._loop_over_trajs(self.transition.hiddencorrection, data.weights, data, coefficients, **kwargs)
-        return like + like_c, jac + jac_c
 
     def _print_verbose_msg_init_beg(self, n_init):
         """Print verbose message on initialization."""

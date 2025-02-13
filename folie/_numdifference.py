@@ -13,10 +13,38 @@ without dependencies.
 Adapated from statsmodels
 """
 
-from .._numpy import np
+from ._numpy import np
+
+from scipy.optimize import approx_fprime
 
 # NOTE: we only do double precision internally so far
 EPS = np.finfo(float).eps
+
+
+def value_and_grad(fun, x):
+    """Returns a function that returns both value and gradient. Suitable for use
+    in scipy.optimize"""
+    vjp, ans = _make_vjp(fun, x)
+    return ans, vjp(vspace(ans).ones())
+
+
+
+def jacobian(fun, argnum=0, eps=1.4901161193847657e-08):
+
+    def grad_fn(*args):
+        def fun_wrapper(arg):
+            args_list = list(args)
+            args_list[argnum] = arg
+            return fun(*args_list)
+        
+        arg = np.array(args[argnum], dtype=float)
+        grad = approx_fprime(arg, fun_wrapper, eps)
+        return grad
+    
+    return grad_fn
+
+
+
 
 
 def _get_epsilon(x, s, epsilon, n):
@@ -33,7 +61,9 @@ def _get_epsilon(x, s, epsilon, n):
     return h
 
 
-def approx_fprime(x, f, output_shape, epsilon=None, centered=False):
+
+
+def grad_x(f,x, epsilon=None, centered=False):
     """
     Gradient of function vectorized for scalar parameter.
 
@@ -65,11 +95,12 @@ def approx_fprime(x, f, output_shape, epsilon=None, centered=False):
     """
     n = x.shape[0]
     dim = x.shape[1]
+    f0 = f(x)
+    output_shape = f0.shape[1:]
     grad = np.zeros((n, *output_shape, dim), np.promote_types(float, x.dtype))
     ei = np.zeros((dim,), float)
     if not centered:
         eps = _get_epsilon(np.abs(x).max(axis=0), 2, epsilon, dim)
-        f0 = f(x)
         for k in range(dim):
             ei[k] = eps[k]
             grad[..., k] = (f(x + ei) - f0) / eps[k]
@@ -85,55 +116,3 @@ def approx_fprime(x, f, output_shape, epsilon=None, centered=False):
     return grad
 
 
-_hessian_docs = """
-    Calculate Hessian with finite difference derivative approximation
-
-    Parameters
-    ----------
-    x : array_like
-       value at which function derivative is evaluated
-    f : function
-       function of one array f(x, `*args`, `**kwargs`)
-    epsilon : float or array_like, optional
-       Stepsize used, if None, then stepsize is automatically chosen
-       according to EPS**(1/%(scale)s)*x.
-    args : tuple
-        Arguments for function `f`.
-    kwargs : dict
-        Keyword arguments for function `f`.
-    %(extra_params)s
-
-    Returns
-    -------
-    hess : ndarray
-       array of partial second derivatives, Hessian
-    %(extra_returns)s
-
-    Notes
-    -----
-    Equation (%(equation_number)s) in Ridout. Computes the Hessian as::
-
-      %(equation)s
-
-    where e[j] is a vector with element j == 1 and the rest are zero and
-    d[i] is epsilon[i].
-
-    References
-    ----------:
-
-    Ridout, M.S. (2009) Statistical applications of the complex-step method
-        of numerical differentiation. The American Statistician, 63, 66-74
-"""
-
-
-def approx_hess(x, f, epsilon=None, args=(), kwargs={}):
-    n = len(x)
-    h = _get_epsilon(x, 4, epsilon, n)
-    ee = np.diag(h)
-    hess = np.outer(h, h)
-
-    for i in range(n):
-        for j in range(i, n):
-            hess[i, j] = (f(*((x + ee[i, :] + ee[j, :],) + args), **kwargs) - f(*((x + ee[i, :] - ee[j, :],) + args), **kwargs) - (f(*((x - ee[i, :] + ee[j, :],) + args), **kwargs) - f(*((x - ee[i, :] - ee[j, :],) + args), **kwargs))) / (4.0 * hess[i, j])
-            hess[j, i] = hess[i, j]
-    return hess

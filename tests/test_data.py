@@ -3,7 +3,7 @@ import os
 from folie._numpy import np
 import folie as fl
 import dask.array as da
-
+from numpy.testing import assert_allclose
 
 @pytest.fixture
 def data(request):
@@ -42,13 +42,13 @@ def test_statistics(data, request):
 
     assert rep_array.shape == (75, 1)
 
-    np.testing.assert_allclose(stats.mean, rep_array.mean(axis=0), atol=1.0 / rep_array.shape[0])
+    assert_allclose(stats.mean, rep_array.mean(axis=0), atol=1.0 / rep_array.shape[0])
 
-    np.testing.assert_allclose(stats.variance, rep_array.var(axis=0), atol=1.0 / rep_array.shape[0])
+    assert_allclose(stats.variance, rep_array.var(axis=0), atol=1.0 / rep_array.shape[0])
 
-    np.testing.assert_allclose(stats.min, rep_array.min(axis=0))
+    assert_allclose(stats.min, rep_array.min(axis=0))
 
-    np.testing.assert_allclose(stats.max, rep_array.max(axis=0))
+    assert_allclose(stats.max, rep_array.max(axis=0))
 
 
 @pytest.mark.parametrize("data2d", ["numpy", "dask"], indirect=True)
@@ -61,10 +61,10 @@ def test_statistics2d(data2d, request):
 
     assert rep_array.shape == (75, 2)
 
-    np.testing.assert_allclose(stats.mean, rep_array.mean(axis=0), atol=1.0 / rep_array.shape[0])
+    assert_allclose(stats.mean, rep_array.mean(axis=0), atol=1.0 / rep_array.shape[0])
 
-    np.testing.assert_allclose(stats.variance, rep_array.var(axis=0), atol=1.0 / rep_array.shape[0])
+    assert_allclose(stats.variance, rep_array.var(axis=0), atol=1.0 / rep_array.shape[0])
 
-    np.testing.assert_allclose(stats.min, rep_array.min(axis=0))
+    assert_allclose(stats.min, rep_array.min(axis=0))
 
-    np.testing.assert_allclose(stats.max, rep_array.max(axis=0))
+    assert_allclose(stats.max, rep_array.max(axis=0))

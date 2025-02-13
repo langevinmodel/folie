@@ -2,7 +2,6 @@ import pytest
 import os
 from folie._numpy import np
 import folie as fl
-import dask.array as da
 import torch
 import skfem
 
@@ -12,9 +11,7 @@ import skfem
 def data(request):
     file_dir = os.path.dirname(os.path.realpath(__file__))
     trj = np.loadtxt(os.path.join(file_dir, "../examples/datasets/example_2d.trj"))
-    if request.param == "dask":
-        trj = da.from_array(trj)
-    elif request.param == "torch":
+    if request.param == "torch":
         trj = torch.from_numpy(trj)
     trj_list = fl.Trajectories(dt=trj[1, 0] - trj[0, 0])
     for i in range(1, trj.shape[1]):
@@ -67,7 +64,7 @@ def data_short(request):
     return trj_list
 
 
-@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize("data", ["numpy"], indirect=True)
 @pytest.mark.parametrize(
     "fct,parameters",
     [
@@ -82,7 +79,7 @@ def test_direct_estimator(data, request, fct, parameters):
     assert model.fitted_
 
 
-@pytest.mark.parametrize("data2d", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize("data2d", ["numpy"], indirect=True)
 @pytest.mark.parametrize(
     "fct,parameters",
     [
@@ -97,7 +94,7 @@ def test_direct_estimator2d(data2d, request, fct, parameters):
     assert model.fitted_
 
 
-@pytest.mark.parametrize("data_biased", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize("data_biased", ["numpy"], indirect=True)
 @pytest.mark.parametrize(
     "fct,parameters",
     [

@@ -3,7 +3,7 @@ import warnings
 from scipy.stats import norm
 
 from ..base import Model
-from ..functions import Constant, Polynomial, BSplinesFunction, ParametricFunction, ModelOverlay
+from ..functions import Constant, Polynomial, BSplinesFunction
 from ..domains import Domain
 
 
@@ -39,14 +39,13 @@ class BaseModelOverdamped(Model):
             output_shape_drift = (self.dim,)
             output_shape_diff = (self.dim, self.dim)
 
-        if hasattr(self, "_drift") and hasattr(self, "_diffusion"):
-            self.pos_drift = ModelOverlay(self, "_pos_drift", output_shape=output_shape_drift)
-            self.diffusion = ModelOverlay(self, "_diffusion", output_shape=output_shape_diff)
-
-        self.drift = ModelOverlay(self, "_drift", output_shape=output_shape_drift)
+        # self.pos_drift.output_shape=output_shape_drift  
+        # self.diffusion.output_shape= output_shape_diff
 
         if has_bias:
             self.add_bias(has_bias)
+        else:
+            self.drift = self._drift
 
     # ==============================
     # Exact Transition Density and Simulation Step, override when available
@@ -82,7 +81,7 @@ class BaseModelOverdamped(Model):
             output_shape_drift = ()
         else:
             output_shape_drift = (self.dim,)
-        self.drift = ModelOverlay(self, "_drift_biased", output_shape=output_shape_drift)
+        self.drift = self._drift_biased
         self.is_biased = True
 
     def remove_bias(self):
@@ -91,23 +90,11 @@ class BaseModelOverdamped(Model):
                 output_shape_drift = ()
             else:
                 output_shape_drift = (self.dim,)
-            self.drift = ModelOverlay(self, "_drift", output_shape=output_shape_drift)
+            self.drift = self._drift
             self.is_biased = False
 
     def _drift(self, x, *args, **kwargs):
         return self.pos_drift(x, *args, **kwargs)
-
-    def _drift_dx(self, x, *args, **kwargs):
-        return self.pos_drift.grad_x(x, *args, **kwargs)
-
-    def _drift_d2x(self, x, *args, **kwargs):
-        return self.pos_drift.hessian_x(x, *args, **kwargs)
-
-    def _drift_dcoeffs(self, x, *args, **kwargs):
-        """
-        Jacobian of the drift with respect to coefficients
-        """
-        return self.pos_drift.grad_coeffs(x, *args, **kwargs)
 
     @property
     def coefficients_drift(self):
@@ -122,20 +109,6 @@ class BaseModelOverdamped(Model):
     def _drift_biased(self, x, bias, *args, **kwargs):
         fx = self.pos_drift(x, *args, **kwargs)
         return fx + np.einsum("t...h,th-> t...", self.diffusion(x, *args, **kwargs).reshape((*fx.shape, bias.shape[1])), bias)
-
-    def _drift_biased_dx(self, x, bias, *args, **kwargs):
-        dfx = self.pos_drift.grad_x(x, *args, **kwargs)
-        return dfx + np.einsum("t...he,th-> t...e", self.diffusion.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], bias.shape[1], dfx.shape[-1])), bias)
-
-    def _drift_biased_d2x(self, x, bias, *args, **kwargs):
-        ddfx = self.pos_drift.hessian_x(x, *args, **kwargs)
-        return ddfx + np.einsum("t...hef,th-> t...ef", self.diffusion.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], bias.shape[1], *ddfx.shape[-2:])), bias)
-
-    def _drift_biased_dcoeffs(self, x, bias, *args, **kwargs):
-        """
-        Jacobian of the drift with respect to coefficients
-        """
-        return self.pos_drift.grad_coeffs(x, *args, **kwargs)
 
     @property
     def coefficients_drift_biased(self):

@@ -2,10 +2,10 @@
 The code in this file is copied and adapted from pymle (https://github.com/jkirkby3/pymle)
 """
 
-from .._numpy import np
+from .._numpy import np, grad_x, hessian_x
 import warnings
 from .transitionDensity import TransitionDensity
-from .transitionDensity import gaussian_likelihood_1D, gaussian_likelihood_ND, gaussian_likelihood_derivative_1D, gaussian_likelihood_derivative_ND
+from .transitionDensity import gaussian_likelihood_1D, gaussian_likelihood_ND
 
 try:
     from ._filter_smoother import filtersmoother
@@ -40,7 +40,6 @@ class ExactDensity(TransitionDensity):
 
 
 class EulerDensity(TransitionDensity):
-    use_jac = True
 
     def __init__(self, model):
         """
@@ -48,14 +47,6 @@ class EulerDensity(TransitionDensity):
         :param model: the SDE model, referenced during calls to the transition density
         """
         super().__init__(model)
-
-    def __call__(self, weight, trj, coefficients):
-        """
-        Compute Likelihood of one trajectory
-        """
-        self._model.coefficients = coefficients
-        like, jac = self._logdensity(**trj)
-        return (np.asarray(-np.sum(np.maximum(self._min_prob, like)) / weight), np.asarray(-np.sum(jac, axis=0) / weight))
 
     def _logdensity1D(self, x, xt, dt: float, bias=0.0, **kwargs):
         """
@@ -67,11 +58,8 @@ class EulerDensity(TransitionDensity):
         """
         sig2t = 2 * (self._model.diffusion(x, **kwargs)).ravel() * dt
         mut = x.ravel() + self._model.drift(x, bias, **kwargs).ravel() * dt
-        if not self.use_jac:
-            return gaussian_likelihood_1D(xt, mut, sig2t), np.zeros(2)
+        return gaussian_likelihood_1D(xt, mut, sig2t)
 
-        jacV = 2 * (self._model.diffusion.grad_coeffs(x, **kwargs)) * dt
-        return gaussian_likelihood_derivative_1D(xt, mut, sig2t, self._model.drift.grad_coeffs(x, bias, **kwargs) * dt, jacV)
 
     def _logdensityND(self, x, xt, dt, bias=0.0, **kwargs):
         """
@@ -85,17 +73,7 @@ class EulerDensity(TransitionDensity):
         # TODO: Add correction terms
         E = x + self._model.drift(x, bias, **kwargs) * dt
         V = 2 * (self._model.diffusion(x, **kwargs)) * dt
-        if not self.use_jac:
-            ll = gaussian_likelihood_ND(xt, E, V)
-            return ll, np.zeros(2)
-        jacV = 2 * (self._model.diffusion.grad_coeffs(x, **kwargs)) * dt
-        jacE = self._model.drift.grad_coeffs(x, bias, **kwargs) * dt
-        return gaussian_likelihood_derivative_ND(xt, E, V, jacE, jacV)
-
-        # invV = np.linalg.inv(V)  # TODO: Use linalg.solve instead of inv ?
-        # l_jac_E = np.einsum("ti,tic-> tc", invVE, self._model.drift.grad_coeffs(x, bias, **kwargs) * dt)
-        # l_jac_V = 0.5 * np.einsum("ti,tijc,tj-> tc", xt - E, np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV), xt - E) - 0.5 * np.einsum("tijc,tji->tc", jacV, invV)
-        # return ll, np.concatenate((l_jac_E, l_jac_V), axis=-1)
+        return gaussian_likelihood_ND(xt, E, V)
 
     def _hiddenvariance(self, x, xt, sigh, dt, **kwargs):
         """
@@ -119,30 +97,15 @@ class EulerDensity(TransitionDensity):
         EV = np.einsum("tdh,tdf-> thf", E2, invV)
         VE = np.einsum("tdf,tfh-> tdh", invV, E2)
 
-        extra_ll = -0.5 * np.einsum("tij,tji->t", invV[:, dh:, dh:], dhdh) + 0.5 * np.einsum("tij,tji->t", EV[:, :, dh:], dhh) + 0.5 * np.einsum("tij,tji->t", VE[:, dh:, :], hdh) - 0.5 * np.einsum("tij,tji->t", EVE, hh)
-        jacE2 = self._model.friction.grad_coeffs(x[:, : self._model.dim_x], **kwargs) * dt
-
-        EVjE = np.einsum("tdh,tdf,tfgc-> thgc", E2, invV, jacE2)
-        jEV = np.einsum("tdhc,tdf-> thfc", jacE2, invV)
-        VjE = np.einsum("tdf,tfhc-> tdhc", invV, jacE2)
-
-        l_jac_E = -0.5 * np.einsum("tijc,tji->tc", jEV[:, :, dh:, :], dhh) - 0.5 * np.einsum("tijc,tji->tc", VjE[:, dh:, ...], hdh) + np.einsum("tijc,tji->tc", EVjE, hh)
-
-        jacV = 2 * self._model.diffusion.grad_coeffs(x[:, : self._model.dim_x], **kwargs) * dt
-        jacinvV = -np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV)
-        EjVE = np.einsum("tdh,tdfc,tfg-> thgc", E2, jacinvV, E2)
-        EjV = np.einsum("tdh,tdfc-> thfc", E2, jacinvV)
-        jVE = np.einsum("tdfc,tfh-> tdhc", jacinvV, E2)
-        l_jac_V = 0.5 * np.einsum("tijc,tji->tc", jacinvV[:, dh:, dh:, :], dhdh) - 0.5 * np.einsum("tijc,tji->tc", jVE[:, dh:, :], hdh) - 0.5 * np.einsum("tijc,tji->tc", EjV[:, :, dh:], dhh) + 0.5 * np.einsum("tijc,tji->tc", EjVE, hh)
-        return extra_ll, np.concatenate((l_jac_E, l_jac_V), axis=-1)
+        return -0.5 * np.einsum("tij,tji->t", invV[:, dh:, dh:], dhdh) + 0.5 * np.einsum("tij,tji->t", EV[:, :, dh:], dhh) + 0.5 * np.einsum("tij,tji->t", VE[:, dh:, :], hdh) - 0.5 * np.einsum("tij,tji->t", EVE, hh)
 
     def hiddencorrection(self, weight, trj, coefficients):
         """
         Compute Likelihood of one trajectory
         """
         self._model.coefficients = coefficients
-        like, jac = self._hiddenvariance(x=trj["x"], xt=trj["xt"], sigh=trj["sig_h"], dt=trj["dt"])
-        return like.sum() / weight, -np.hstack((np.zeros(self._model.pos_drift.size), jac.sum(axis=0) / weight))
+        return self._hiddenvariance(x=trj["x"], xt=trj["xt"], sigh=trj["sig_h"], dt=trj["dt"]).sum()
+        # return like.sum() / weight, -np.hstack((np.zeros(self._model.pos_drift.size), jac.sum(axis=0) / weight))
 
     def e_step(self, weight, trj, coefficients, mu0, sig0):
         """
@@ -184,7 +147,7 @@ class ElerianDensity(EulerDensity):
         :param dt: float, the time step between x and xt
         :return: probability (same dimension as x and xt)
         """
-        sig_x = 2 * self._model.diffusion.grad_x(x, **kwargs).ravel()
+        sig_x = 2 * grad_x(self._model.diffusion,x, **kwargs).ravel()
         if isinstance(x, np.ndarray) and (sig_x == 0).any:
             return super()._logdensity1D(x=x, xt=xt, dt=dt, bias=bias, **kwargs)[0]
 
@@ -200,13 +163,6 @@ class ElerianDensity(EulerDensity):
         cpz = -0.5 * (C + z)
         ch = np.exp(scz + cpz) + np.exp(-scz + cpz)
         return -0.5 * np.log(z) + np.log(ch) - np.log(2 * np.abs(A) * np.sqrt(2 * np.pi))
-
-    def __call__(self, weight, trj, coefficients):
-        """
-        Compute Likelihood of one trajectory
-        """
-        self._model.coefficients = coefficients
-        return (-np.sum(np.maximum(self._min_prob, self._logdensity(x=trj["x"], xt=trj["xt"], dt=trj["dt"], bias=trj["bias"]))) / weight,)
 
 
 class KesslerDensity(TransitionDensity):
@@ -226,11 +182,11 @@ class KesslerDensity(TransitionDensity):
         :return: probability (same dimension as x and xt)
         """
         sig = 2 * self._model.diffusion(x, **kwargs).ravel()
-        sig_x = 2 * self._model.diffusion.grad_x(x, **kwargs).ravel()
-        sig_xx = 2 * self._model.diffusion.hessian_x(x, **kwargs).ravel()
+        sig_x = 2 * grad_x(self._model.diffusion, x, **kwargs).ravel()
+        sig_xx = 2 * hessian_x(self._model.diffusion,x, **kwargs).ravel()
         mu = self._model.drift(x, bias, **kwargs).ravel()
-        mu_x = self._model.drift.grad_x(x, bias, **kwargs).ravel()
-        mu_xx = self._model.drift.hessian_x(x, bias, **kwargs).ravel()
+        mu_x = grad_x(self._model.drift,x, bias, **kwargs).ravel()
+        mu_xx = hessian_x(self._model.drift,x, bias, **kwargs).ravel()
         x = x.ravel()
         d = dt**2 / 2
         E = x + mu * dt + (mu * mu_x + 0.5 * sig * mu_xx) * d
@@ -257,11 +213,11 @@ class DrozdovDensity(TransitionDensity):
         :return: probability (same dimension as x and xt)
         """
         sig = 2 * self._model.diffusion(x, **kwargs).ravel()
-        sig_x = 2 * self._model.diffusion.grad_x(x, **kwargs).ravel()
-        sig_xx = 2 * self._model.diffusion.hessian_x(x, **kwargs).ravel()
+        sig_x = 2 * grad_x(self._model.diffusion, x, **kwargs).ravel()
+        sig_xx = 2 * hessian_x(self._model.diffusion,x, **kwargs).ravel()
         mu = self._model.drift(x, bias, **kwargs).ravel()
-        mu_x = self._model.drift.grad_x(x, bias, **kwargs).ravel()
-        mu_xx = self._model.drift.hessian_x(x, bias, **kwargs).ravel()
+        mu_x = grad_x(self._model.drift,x, bias, **kwargs).ravel()
+        mu_xx = hessian_x(self._model.drift,x, bias, **kwargs).ravel()
 
         d = dt**2 / 2
         E = x.ravel() + mu * dt + (mu * mu_x + 0.5 * sig * mu_xx) * d
