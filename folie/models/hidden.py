@@ -30,6 +30,10 @@ class OverdampedHidden(Overdamped):
         super().__init__(pos_drift, diffusion, dim=self.dim_x + self.dim_h, **kwargs)
         self.friction = friction.resize((self.dim, self.dim_h))
 
+    def _drift(self, x, *args, **kwargs):
+        return self.pos_drift(x, *args, **kwargs) + np.einsum("t...h,th-> t...", self.friction(x, *args, **kwargs), x[:, self.dim_x :])
+
+
     @property
     def coefficients(self):
         """Access the coefficients"""
@@ -42,27 +46,7 @@ class OverdampedHidden(Overdamped):
         self.friction.coefficients = vals.ravel()[self.pos_drift.size : self.pos_drift.size + self.friction.size]
         self.diffusion.coefficients = vals.ravel()[self.pos_drift.size + self.friction.size :]
 
-    @property
-    def coefficients_friction(self):
-        return self.friction.coefficients
 
-    @coefficients_friction.setter
-    def coefficients_friction(self, vals):
-        self.friction.coefficients = vals
-
-    def _drift(self, x, *args, **kwargs):
-        return self.pos_drift(x, *args, **kwargs) + np.einsum("t...h,th-> t...", self.friction(x, *args, **kwargs), x[:, self.dim_x :])
-
-    @property
-    def coefficients_drift(self):
-        """Access the coefficients"""
-        return np.concatenate((self.pos_drift.coefficients.ravel(), self.friction.coefficients.ravel()))
-
-    @coefficients_drift.setter
-    def coefficients_drift(self, vals):
-        """Set parameters, used by fitter to move through param space"""
-        self.pos_drift.coefficients = vals.ravel()[: self.pos_drift.size]
-        self.friction.coefficients = vals.ravel()[self.pos_drift.size : self.pos_drift.size + self.friction.size]
 
 
 class UnderdampedHidden(Underdamped):

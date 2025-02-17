@@ -5,6 +5,11 @@ import scipy.optimize
 from sklearn.kernel_ridge import KernelRidge
 import skfem
 from numpy.testing import assert_allclose
+import numdifftools as nd
+
+
+
+
 
 @pytest.mark.parametrize(
     "fct,parameters",
@@ -30,6 +35,19 @@ def test_functions(fct, parameters):
     finite_diff_jac = scipy.optimize.approx_fprime(data[0], lambda x: fun(np.asarray([x]))[0])
     assert_allclose(grad_x(fun,data[0:1])[0], finite_diff_jac, rtol=1e-06)
 
+    hess = hessian_x(fun,data)
+
+    assert hess.shape == (25, 1, 1)
+
+    num_hess = np.zeros_like(hess)
+    hess_fun = nd.Hessian(lambda x: fun(x.reshape(1,-1))[0])
+
+    for n in range(data.shape[0]):
+        num_hess[n,...] = hess_fun(data[n])
+    print(hess.ravel())
+    print(num_hess.ravel())
+    assert_allclose(hess, num_hess, atol=1e-6, rtol=1e-6)
+
     def eval_fun(c):
         fun.coefficients = c
         return fun(data[0:1])[0]
@@ -53,6 +71,19 @@ def test_fem_functions():
 
     finite_diff_jac = scipy.optimize.approx_fprime(data[0], lambda x: fun(np.asarray([x]))[0])
     assert_allclose(grad_x(fun,data[0:1])[0], finite_diff_jac, rtol=1e-06)
+
+
+    hess = hessian_x(fun,data)
+
+    assert hess.shape == (12, 2, 2)
+
+    num_hess = np.zeros_like(hess)
+    hess_fun = nd.Hessian(lambda x: fun(x.reshape(1,-1))[0])
+
+    for n in range(data.shape[0]):
+        num_hess[n,...] = hess_fun(data[n])
+
+    assert_allclose(hess, num_hess, atol=1e-6, rtol=1e-6)
 
     def eval_fun(c):
         fun.coefficients = c
@@ -84,6 +115,20 @@ def test_functions_ND(fct, parameters):
 
     finite_diff_jac = scipy.optimize.approx_fprime(data[0, :], lambda x: fun(x.reshape(1, -1))[0, :])
     assert_allclose(grad_x(fun,data[0:1, :])[0, :], finite_diff_jac, rtol=1e-06)
+
+
+    hess = hessian_x(fun,data)
+
+    assert hess.shape == (12, 2, 2, 2)
+
+    num_hess = np.zeros_like(hess)
+    hess_fun = nd.Hessian(lambda x: fun(x.reshape(1,-1))[0,:])
+
+    for n in range(data.shape[0]):
+        print(hess_fun(data[n,:]).shape)
+        num_hess[n,...] = hess_fun(data[n,:])
+
+    assert_allclose(hess, num_hess, atol=1e-6, rtol=1e-6)
 
 
 @pytest.mark.parametrize(

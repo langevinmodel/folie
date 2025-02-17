@@ -21,23 +21,24 @@ from scipy.optimize import approx_fprime
 EPS = np.finfo(float).eps
 
 
-def value_and_grad(fun, x):
+def value_and_grad(fun, argnums=0, eps=1.4901161193847657e-08):
     """Returns a function that returns both value and gradient. Suitable for use
     in scipy.optimize"""
-    vjp, ans = _make_vjp(fun, x)
-    return ans, vjp(vspace(ans).ones())
+    def val_grad_fn(x,*args,**kwargs):
+        return fun(x,*args,**kwargs), jacobian(fun,argnums, eps)(x,*args,**kwargs)
+    return val_grad_fn
 
 
 
-def jacobian(fun, argnum=0, eps=1.4901161193847657e-08):
+def jacobian(fun, argnums=0, eps=1.4901161193847657e-08):
 
-    def grad_fn(*args):
+    def grad_fn(*args,**kwargs):
         def fun_wrapper(arg):
             args_list = list(args)
-            args_list[argnum] = arg
-            return fun(*args_list)
+            args_list[argnums] = arg
+            return fun(*args_list,**kwargs)
         
-        arg = np.array(args[argnum], dtype=float)
+        arg = np.array(args[argnums], dtype=float)
         grad = approx_fprime(arg, fun_wrapper, eps)
         return grad
     
@@ -63,7 +64,7 @@ def _get_epsilon(x, s, epsilon, n):
 
 
 
-def grad_x(f,x, epsilon=None, centered=False):
+def grad_x(f,x,*args, epsilon=None, centered=False, **kwargs):
     """
     Gradient of function vectorized for scalar parameter.
 
@@ -95,7 +96,7 @@ def grad_x(f,x, epsilon=None, centered=False):
     """
     n = x.shape[0]
     dim = x.shape[1]
-    f0 = f(x)
+    f0 = f(x,*args, **kwargs)
     output_shape = f0.shape[1:]
     grad = np.zeros((n, *output_shape, dim), np.promote_types(float, x.dtype))
     ei = np.zeros((dim,), float)
@@ -103,16 +104,19 @@ def grad_x(f,x, epsilon=None, centered=False):
         eps = _get_epsilon(np.abs(x).max(axis=0), 2, epsilon, dim)
         for k in range(dim):
             ei[k] = eps[k]
-            grad[..., k] = (f(x + ei) - f0) / eps[k]
+            grad[..., k] = (f(x + ei,*args, **kwargs) - f0) / eps[k]
             ei[k] = 0.0
 
     else:
         eps = _get_epsilon(np.abs(x).max(axis=0), 3, epsilon, dim) / 2.0
         for k in range(dim):
             ei[k] = eps[k]
-            grad[..., k] = (f(x + ei) - f(x - ei)) / eps[k]
+            grad[..., k] = (f(x + ei,*args, **kwargs) - f(x - ei,*args, **kwargs)) / eps[k]
             ei[k] = 0.0
 
     return grad
 
 
+
+def hessian_x(f,x, *args,**kwargs):
+    return grad_x(lambda x, *args,**kwargs: grad_x(f,x, *args, epsilon=1e-4,**kwargs) ,x, *args, epsilon=1e-4,**kwargs)

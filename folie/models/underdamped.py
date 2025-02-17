@@ -52,18 +52,6 @@ class Underdamped(Overdamped):
         self.diffusion.coefficients = vals.ravel()[self.pos_drift.size + self.friction.size :]
         self.friction.coefficients = vals.ravel()[self.pos_drift.size : self.pos_drift.size + self.friction.size]
 
-    @property
-    def coefficients_drift(self):
-        """Access the coefficients"""
-        return np.concatenate((self.pos_drift.coefficients.ravel(), self.friction.coefficients.ravel()))
-
-    @coefficients_drift.setter
-    def coefficients_drift(self, vals):
-        """Set parameters, used by fitter to move through param space"""
-        self.pos_drift.coefficients = vals.ravel()[: self.pos_drift.size]
-        self.friction.coefficients = vals.ravel()[self.pos_drift.size : self.pos_drift.size + self.friction.size]
-
-
 class UnderdampedOrnsteinUhlenbeck(Underdamped):
     """
     Model for OU (ornstein-uhlenbeck):

@@ -60,10 +60,9 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         self.coefficients=coeffs
         return self(x, *args, **kwargs)
 
-    def fit(self, x, *args, y=None, estimator=linear_model.LinearRegression(copy_X=False, fit_intercept=False), sample_weight=None, **kwargs):
+    def fit(self, x, *args, y=None, **kwargs):
         """
-        Fit coefficients of the function using linear regression.
-        Use as features the derivative of the function with respect to the coefficients
+        Fit coefficients of the function using least square regression.
 
         Parameters
         ----------
@@ -82,25 +81,12 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         """
         if y is None:
             y = np.zeros((x.shape[0], self.output_size_))
-        # else:
-        #     y = y.ravel()
-
 
         def func_wrapped(coeffs):
             self.coefficients=coeffs
             return np.sqrt(((self(x) - y)**2).sum(1))
-
-        # En fait curve_fit c'est assez merdique puisque on appelle pas les paramètres via un array, il faudrait utiliser minimize et définir soit même la loss
-        # print(x.shape,self.coefficients)
-        res=scipy.optimize.least_squares(func_wrapped, self.coefficients,jac= jacobian(func_wrapped))  # TODO: Plutôt passer par curve_fit ou un truc equivalent
+        res=scipy.optimize.least_squares(func_wrapped, self.coefficients,jac= jacobian(func_wrapped)) 
         self.coefficients = res.x
-        # print(self.coefficients)
-        # Fx=jacobian(self.wrap_call,1)(x, self.coefficients, *args, **kwargs).reshape((x.shape[0] * self.output_size_, -1))
-
-        # if isinstance(Fx, sparse.SparseArray):
-        #     Fx = Fx.tocsr()
-        # reg = estimator.fit(Fx, y, sample_weight=sample_weight)
-        # self.coefficients = reg.coef_
         self.fitted_ = True
         return self
 

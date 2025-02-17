@@ -6,6 +6,17 @@ import torch
 import scipy.optimize
 from numpy.testing import assert_allclose
 
+def to_numpy_array(arr):
+    from folie._numpy import _which_numpy
+
+    if _which_numpy == "jax":
+        return np.asnumpy(arr)
+
+    elif _which_numpy == "autograd":
+        return arr._values
+    else:
+        return np.asarray(arr)
+
 @pytest.fixture
 def data(request):
     file_dir = os.path.dirname(os.path.realpath(__file__))
@@ -30,7 +41,7 @@ def test_likelihood(data, request, transitioncls):
     loglikelihood, jac = value_and_grad(lambda p: transition(data.weights[0], data[0], p))(np.array([1.0, 1.0]))
 
     # Testing for evaluation of the jacobian
-    finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients._value, lambda p: transition(data.weights[0], data[0], p))
+    finite_diff_jac = scipy.optimize.approx_fprime(to_numpy_array(model.coefficients), lambda p: transition(data.weights[0], data[0], p))
     assert_allclose(jac, finite_diff_jac, rtol=1e-06, atol=1e-6)
     
 
@@ -52,7 +63,7 @@ def testlikelihoodND_derivative(data, request, transitioncls):
     loglikelihood = value_and_grad(lambda p: transition(data.weights[0], data[0], p))(model.coefficients)
 
     # Testing for evaluation of the jacobian
-    finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients._value, lambda p: transition(data.weights[0], data[0], p))
+    finite_diff_jac = scipy.optimize.approx_fprime(to_numpy_array(model.coefficients), lambda p: transition(data.weights[0], data[0], p))
     assert_allclose(loglikelihood[1], finite_diff_jac, rtol=1e-06, atol=1e-6)
 
 
@@ -83,7 +94,7 @@ def testcorrection_hiddenND_derivative(data, request, transitioncls, dim_h):
 
 
     # Testing for evaluation of the jacobian
-    finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients._value, lambda p: transition.hiddencorrection(data.weights[0], data[0], p))
+    finite_diff_jac = scipy.optimize.approx_fprime(to_numpy_array(model.coefficients), lambda p: transition.hiddencorrection(data.weights[0], data[0], p))
     assert_allclose(correction[1], finite_diff_jac, rtol=1e-06, atol=1e-6)
 
     # TODO: assert also the plain likelihood part of the transitionDensity

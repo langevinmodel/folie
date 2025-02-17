@@ -24,9 +24,7 @@ def data(request):
 def data2d(request):
     file_dir = os.path.dirname(os.path.realpath(__file__))
     trj = np.loadtxt(os.path.join(file_dir, "../examples/datasets/example_2d.trj"))
-    if request.param == "dask":
-        trj = da.from_array(trj)
-    elif request.param == "torch":
+    if request.param == "torch":
         trj = torch.from_numpy(trj)
     trj_list = fl.Trajectories(dt=trj[1, 0] - trj[0, 0])
     trj_list.append(trj[:, 1:3])
@@ -38,9 +36,7 @@ def data2d(request):
 def data_biased(request):
     file_dir = os.path.dirname(os.path.realpath(__file__))
     trj = np.loadtxt(os.path.join(file_dir, "../examples/datasets/example_biased_umbrella.trj"))
-    if request.param == "dask":
-        trj = da.from_array(trj)
-    elif request.param == "torch":
+    if request.param == "torch":
         trj = torch.from_numpy(trj)
     dt = trj[1, 0] - trj[0, 0]
     trj_list = fl.Trajectories()
@@ -53,9 +49,7 @@ def data_biased(request):
 def data_short(request):
     file_dir = os.path.dirname(os.path.realpath(__file__))
     trj = np.loadtxt(os.path.join(file_dir, "../examples/datasets/example_2d.trj"))
-    if request.param == "dask":
-        trj = da.from_array(trj)
-    elif request.param == "torch":
+    if request.param == "torch":
         trj = torch.from_numpy(trj)
     trj_list = fl.Trajectories(dt=trj[1, 0] - trj[0, 0])
     for i in range(1, trj.shape[1]):

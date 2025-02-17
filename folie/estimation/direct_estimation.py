@@ -39,9 +39,43 @@ class KramersMoyalEstimator(Estimator):
         return trj
 
 
-    def _least_square_loss(self,coefficients,fitted_part,data,  **kwargs):
+    def _least_square_loss(self,coefficients, fitted_part, data,  **kwargs):
+        # print(self._loop_over_trajs(fitted_part, data.weights, data, coefficients, **kwargs))
         return np.sqrt(self._loop_over_trajs(fitted_part, data.weights, data, coefficients, **kwargs))
+    
+    def _diffusion_loss(self,weight, trj, coefficients,remove_drift=False):
+        self.model.diffusion.coefficients=coefficients
+        return np.sum(self._diffusion_residuals(**trj,remove_drift=remove_drift))/weight
+       
+    def _diffusion_residuals(self,xt,x,dt,bias=0.0, remove_drift=False,  **kwargs):
+        dim=x.shape[1]
+        if dim <= 1:
+            dx=xt.ravel()-x.ravel()
+        else:
+            dx=xt-x
+        
+        if remove_drift:
+            dx= dx-self.model.drift(x, bias, **kwargs) * dt
+        
+        if dim <= 1:
+            dx_sq = dx**2
+            return (0.5 * dx_sq / dt-self.model.diffusion(x))**2
+        else:
+            dx_sq = dx[..., None] * dx[:, None, ...]
+            residuals= (0.5 * dx_sq / dt- self.model.diffusion(x))
+            return np.einsum("ikl,ikl->i",residuals,residuals)
 
+    def _drift_loss(self,weight, trj, coefficients):
+        self.model.pos_drift.coefficients=coefficients
+        return np.sum(self._drift_residuals(**trj))/weight
+    
+    def _drift_residuals(self,xt,x,dt,bias=0.0, **kwargs):
+        
+        dim=x.shape[1]
+        if dim <= 1:
+            return ((xt.ravel()-x.ravel())/dt-self.model.drift(x, bias, **kwargs))**2
+        else:
+            return ((xt-x)/dt-self.model.drift(x, bias, **kwargs))**2
 
     def fit(self, data, **kwargs):
         r"""Fits data to the estimator's internal :class:`Model` and overwrites it. This way, every call to
@@ -62,51 +96,17 @@ class KramersMoyalEstimator(Estimator):
         """
         for trj in data:
             self.preprocess_traj(trj)
+        if self.model.is_biased:  # If bias, first determine diffusion
+            res=scipy.minimize.least_squares(self._least_square_loss, self.model.diffusion.coefficients,jac= jacobian(self._least_square_loss), args=(self._diffusion_loss,data),kwargs={"remove_drift":False})
+            self.model.diffusion.coefficients = res.x
+        
+        res=scipy.optimize.least_squares(self._least_square_loss, self.model.pos_drift.coefficients,jac= jacobian(self._least_square_loss), args=(self._drift_loss,data))
+        self.model.pos_drift.coefficients = res.x
 
-        # def diffusion_fit(weight, trj, coefficients):
-        #     self.model.diffusion.coefficients=coefficients
-        #     dx=trj["xt"] - trj["x"]
-        #     if dim <= 1:
-        #         dx_sq = dx**2
-        #         return np.sum((0.5 * dx_sq / trj["dt"]-self.model.diffusion(trj["x"]))**2)
-        #     else:
-        #         dx_sq = dx[..., None] * dx[:, None, ...]
-        #         residuals= (0.5 * dx_sq / trj["dt"]-self.model.diffusion(trj["x"])).reshape(trj["x"].shape[0],-1)
-        #         return np.einsum("ik,ik->i",residuals,residuals)
-
-        # res=scipy.optimize.least_squares(self._least_square_loss, self.coefficients,jac= jacobian(self._least_square_loss), args=(diffusion_fit,data))
-        # self.model.diffusion.coefficients = res.x
-
-
-
-        # X = np.concatenate([trj["x"] for trj in data], axis=0)
-        # for key in ["cells_idx", "loc_x"]:
-        #     if key in data[0]:
-        #         kwargs[key] = np.concatenate([trj[key] for trj in data], axis=0)
-        # # Take weight into account as well
-        # dim = X.shape[1]
-        # dx = np.concatenate([(trj["xt"] - trj["x"]) for trj in data], axis=0)
-        # if dim <= 1:
-        #     dx = dx.ravel()
-        # # weights = np.concatenate([trj["weight"] for trj in data], axis=0)  # TODO: implement correctly the weights
-        # if self.model.is_biased:  # If bias
-        #     if dim <= 1:
-        #         dx_sq = dx**2
-        #     else:
-        #         dx_sq = dx[..., None] * dx[:, None, ...]
-        #     self.model.diffusion.fit(X, y=0.5 * dx_sq / dt, **kwargs)  # We need to estimate the diffusion first in order to have the prefactor of the bias
-        #     bias = np.concatenate([trj["bias"] for trj in data], axis=0)
-        #     bias_drift = np.einsum("t...h,th-> t...", self.model.diffusion(X, **kwargs).reshape((*dx.shape, bias.shape[1])), bias)
-        #     self.model.drift.fit(X, bias, y=dx / dt - bias_drift, sample_weight=None,  **kwargs)
-        # else:
-        #     bias = 0.0
-        #     self.model.drift.fit(X, y=dx / dt, sample_weight=None,  **kwargs)
-        # # print(self.model.drift.coefficients)
-        # dx -= self.model.drift(X, bias, **kwargs) * dt
-        # if dim <= 1:
-        #     dx_sq = dx**2
-        # else:
-        #     dx_sq = dx[..., None] * dx[:, None, ...]
-        # self.model.diffusion.fit(X, y=0.5 * dx_sq / dt, **kwargs)
+        # Determine diffusion with drift removed
+        res=scipy.optimize.least_squares(self._least_square_loss, self.model.diffusion.coefficients,jac= jacobian(self._least_square_loss), args=(self._diffusion_loss,data),kwargs={"remove_drift":True})
+        self.model.diffusion.coefficients = res.x
+        
+        
         self.model.fitted_ = True
         return self

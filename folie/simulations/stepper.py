@@ -1,5 +1,5 @@
 from abc import ABC
-from .._numpy import np
+from .._numpy import np, grad_x
 
 
 class Stepper(ABC):
@@ -50,7 +50,7 @@ class EulerStepper(Stepper):
 class MilsteinStepper(Stepper):
     def run_step_1D(self, x, dt, dW, bias=0.0):
         sig_sq_dt = np.sqrt(2 * self.model.diffusion(x) * dt)
-        return (x.T + (self.model.drift(x, bias)) * dt + sig_sq_dt * dW.T + 0.5 * self.model.diffusion.grad_x(x)[..., 0] * ((dW.T) ** 2 - 1) * dt).T  # same problem of dW.T as in EulerStepper class
+        return (x.T + (self.model.drift(x, bias)) * dt + sig_sq_dt * dW.T + 0.5 * grad_x(self.model.diffusion,x)[..., 0] * ((dW.T) ** 2 - 1) * dt).T  # same problem of dW.T as in EulerStepper class
 
 
 class VECStepper(Stepper):

@@ -7,132 +7,8 @@ from ..functions import Constant, Polynomial, BSplinesFunction
 from ..domains import Domain
 
 
-class BaseModelOverdamped(Model):
+class Overdamped(Model):
     _has_exact_density = False
-
-    def __init__(self, dim=1, has_bias=False, **kwargs):
-        r"""
-        Base model for overdamped Langevin equations.
-
-        The evolution equation for variable X(t) is defined as
-
-        .. math::
-
-            \mathrm{d}X(t) = F(X)\mathrm{d}t + sigma(X,t)\mathrm{d}W_t
-
-        The components of the overdamped model are the drift profile F(X) as well as the diffusion :math: `D(x) = \sigma(X)\sigma(X)^\T`
-
-        When considering equilibrium model, the drift and diffusion profile are related to the free energy profile V(X) via
-
-        .. math::
-            F(x) = -D(x) \nabla V(x) + \mathrm{div} D(x)
-
-        """
-
-        self._dim = dim
-        self.is_biased = False
-
-        if self.dim <= 1:
-            output_shape_drift = ()
-            output_shape_diff = ()
-        else:
-            output_shape_drift = (self.dim,)
-            output_shape_diff = (self.dim, self.dim)
-
-        # self.pos_drift.output_shape=output_shape_drift  
-        # self.diffusion.output_shape= output_shape_diff
-
-        if has_bias:
-            self.add_bias(has_bias)
-        else:
-            self.drift = self._drift
-
-    # ==============================
-    # Exact Transition Density and Simulation Step, override when available
-    # ==============================
-
-    @property
-    def has_exact_density(self) -> bool:
-        """Return true if model has an exact density implemented"""
-        return self._has_exact_density
-
-    @property
-    def dim(self):
-        """
-        Dimensionnality of the model
-        """
-        return self._dim
-
-    @dim.setter
-    def dim(self, dim):
-        """
-        Dimensionnality of the model
-        """
-        if dim == 0:
-            dim = 1
-        if dim != self._dim:
-            raise ValueError("Dimension did not match dimension of the model. Change model or review dimension of your data")
-
-    def preprocess_traj(self, trj, **kwargs):
-        return trj
-
-    def add_bias(self, bias=True):
-        if self.dim <= 1:
-            output_shape_drift = ()
-        else:
-            output_shape_drift = (self.dim,)
-        self.drift = self._drift_biased
-        self.is_biased = True
-
-    def remove_bias(self):
-        if self.is_biased:
-            if self.dim <= 1:
-                output_shape_drift = ()
-            else:
-                output_shape_drift = (self.dim,)
-            self.drift = self._drift
-            self.is_biased = False
-
-    def _drift(self, x, *args, **kwargs):
-        return self.pos_drift(x, *args, **kwargs)
-
-    @property
-    def coefficients_drift(self):
-        """Access the coefficients"""
-        return self.pos_drift.coefficients
-
-    @coefficients_drift.setter
-    def coefficients_drift(self, vals):
-        """Set parameters, used by fitter to move through param space"""
-        self.pos_drift.coefficients = vals
-
-    def _drift_biased(self, x, bias, *args, **kwargs):
-        fx = self.pos_drift(x, *args, **kwargs)
-        return fx + np.einsum("t...h,th-> t...", self.diffusion(x, *args, **kwargs).reshape((*fx.shape, bias.shape[1])), bias)
-
-    @property
-    def coefficients_drift_biased(self):
-        """Access the coefficients"""
-        return self.pos_drift.coefficients
-
-    @coefficients_drift_biased.setter
-    def coefficients_drift_biased(self, vals):
-        """Set parameters, used by fitter to move through param space"""
-        self.pos_drift.coefficients = vals
-
-    @property
-    def coefficients(self):
-        """Access the coefficients"""
-        return np.concatenate((self.drift.coefficients.ravel(), self.diffusion.coefficients.ravel()))
-
-    @coefficients.setter
-    def coefficients(self, vals):
-        """Set parameters, used by fitter to move through param space"""
-        self.drift.coefficients = vals.ravel()[: self.pos_drift.size]
-        self.diffusion.coefficients = vals.ravel()[self.pos_drift.size : self.pos_drift.size + self.diffusion.size]
-
-
-class Overdamped(BaseModelOverdamped):
     r"""
     A class that implement a overdamped model with given functions for space dependency
 
@@ -152,7 +28,7 @@ class Overdamped(BaseModelOverdamped):
 
     """
 
-    def __init__(self, drift, diffusion=None, dim=None, **kwargs):
+    def __init__(self, drift, diffusion=None, dim=None, has_bias=False, **kwargs):
         r"""
         Parameters
         ----------
@@ -169,20 +45,42 @@ class Overdamped(BaseModelOverdamped):
         """
         if dim is None:
             dim = drift.domain.dim
-        super().__init__(dim=dim, **kwargs)
+
+        self._dim = dim
+        self.is_biased = False
+
         if dim > 1:
             drift_shape = (dim,)
             diffusion_shape = (dim, dim)
         else:
             drift_shape = ()
             diffusion_shape = ()
+
+        self._dim = dim
+        self.is_biased = False
+
+            
         self.pos_drift = drift.resize(drift_shape)
         if diffusion is None or diffusion is drift:
             self.diffusion = drift.copy().resize(diffusion_shape)
         else:
             self.diffusion = diffusion.resize(diffusion_shape)
 
-    @BaseModelOverdamped.dim.setter
+        if has_bias:
+            self.add_bias(has_bias)
+        else:
+            self.drift = self._drift
+
+
+    @property
+    def dim(self):
+        """
+        Dimensionnality of the model
+        """
+        return self._dim
+
+
+    @dim.setter
     def dim(self, dim):
         if dim > 1:
             drift_shape = (dim,)
@@ -194,6 +92,28 @@ class Overdamped(BaseModelOverdamped):
         self.diffusion = self.diffusion.resize(diffusion_shape)
         self._dim = dim
 
+    @property
+    def has_exact_density(self) -> bool:
+        """Return true if model has an exact density implemented"""
+        return self._has_exact_density
+
+    def add_bias(self, bias=True):
+        self.drift = self._drift_biased
+        self.is_biased = True
+
+    def remove_bias(self):
+        if self.is_biased:
+            self.drift = self._drift
+            self.is_biased = False
+
+    def _drift(self, x, *args, **kwargs):
+        return self.pos_drift(x, *args, **kwargs)
+
+    def _drift_biased(self, x, bias, *args, **kwargs):
+        fx = self._drift(x, *args, **kwargs)
+        return fx + np.einsum("t...h,th-> t...", self.diffusion(x, *args, **kwargs).reshape((*fx.shape, bias.shape[1])), bias)
+
+
     def preprocess_traj(self, trj, **kwargs):
         if hasattr(self.pos_drift.domain, "localize_data") or hasattr(self.diffusion.domain, "localize_data"):
             # Check if domain are compatible
@@ -201,6 +121,18 @@ class Overdamped(BaseModelOverdamped):
             trj["cells_idx"] = cells_idx
             trj["loc_x"] = loc_x
         return trj
+
+    # Setting global accès to coefficients
+    @property
+    def coefficients(self):
+        """Access the coefficients"""
+        return np.concatenate((self.pos_drift.coefficients.ravel(), self.diffusion.coefficients.ravel()))
+
+    @coefficients.setter
+    def coefficients(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        self.pos_drift.coefficients = vals.ravel()[: self.pos_drift.size]
+        self.diffusion.coefficients = vals.ravel()[self.pos_drift.size : self.pos_drift.size + self.diffusion.size]
 
 
 #  Set of quick interface to more common models
