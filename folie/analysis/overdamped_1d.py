@@ -86,16 +86,12 @@ def mfpt_1d(model, x_end: float, x_range, Npoints=500, x_start=None):
 
     else:
         # Compute lower part
-        int_range = np.linspace(x_range[0], x_end, Npoints)
-        prob_well = cumulative_trapezoid(np.exp(-free_energy_profile_1d(model, int_range)), int_range, initial=0.0)
+        x_int_lower = np.linspace(x_range[0], x_end, Npoints)
+        prob_well = cumulative_trapezoid(np.exp(-free_energy_profile_1d(model, x_int_lower)), x_int_lower, initial=0.0)
+        res_lower = -1 * cumulative_trapezoid(np.exp(free_energy_profile_1d(model, x_int_lower)) * prob_well / model.diffusion(x_int_lower.reshape(-1, 1)).ravel(), x_int_lower, initial=0.0)
 
-        x_int_lower = np.linspace(x_end, x_range[0], Npoints)
-        res_lower = -1 * cumulative_trapezoid(np.exp(free_energy_profile_1d(model, x_int_lower)) * np.interp(x_int_lower, int_range, prob_well) / model.diffusion(x_int_lower.reshape(-1, 1)).ravel(), x_int_lower, initial=0.0)
-
-        int_range = np.linspace(x_end, x_range[1], Npoints)
-        prob_well = -1 * cumulative_trapezoid(np.exp(-free_energy_profile_1d(model, int_range)), int_range, initial=0.0)
-        prob_well -= prob_well[-1]
-        # return (int_range, prob_well)
         x_int_upper = np.linspace(x_end, x_range[1], Npoints)
-        res_upper = cumulative_trapezoid(np.exp(free_energy_profile_1d(model, x_int_upper)) * np.interp(x_int_upper, int_range, prob_well) / model.diffusion(x_int_upper.reshape(-1, 1)).ravel(), x_int_upper, initial=0.0)
+        prob_well = -1 * cumulative_trapezoid(np.exp(-free_energy_profile_1d(model, x_int_upper)), x_int_upper, initial=0.0)
+        prob_well -= prob_well[-1]
+        res_upper = cumulative_trapezoid(np.exp(free_energy_profile_1d(model, x_int_upper)) * prob_well / model.diffusion(x_int_upper.reshape(-1, 1)).ravel(), x_int_upper, initial=0.0)
         return np.hstack((x_int_lower[::-1], x_int_upper)), np.hstack((res_lower[::-1], res_upper))
