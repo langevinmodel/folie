@@ -10,7 +10,7 @@ Welcome to folie's documentation!
 
 
 
-folie (Finding Optimal Langevin Inferred Equations) intends to provide a simple to use module for inference of Langevin equations from trajectories of collectives variables. Please refer to the documentation for a more complete description.
+folie (Finding Optimal Langevin Inferred Equations) intends to provide a simple-to-use module for inference of Langevin equations from trajectories of collective variables. Please refer to the documentation for a more complete description.
 
 
 Installation
@@ -23,7 +23,7 @@ Installing the library is as simple as running
    pip install git+https://github.com/langevinmodel/folie.git
 
 
-If you also want to install optionnal dependencies, run for the torch dependency
+If you also want to install optional dependencies, run for the torch dependency
 
 
 .. code-block:: bash
@@ -42,7 +42,7 @@ to install dependencies for the finite element part of the library.
 Getting Started
 ------------------
 
-The general pattern of using folie is defining a model, loading trajectories data, fit the model and analyse the resulting model.
+The general pattern of using folie is to define a model, load trajectory data, fit the model, and analyse the resulting optimized model.
 
 
 
