@@ -111,6 +111,22 @@ def test_direct_estimator_biased(data_biased, request, fct, parameters):
     model.remove_bias()
     assert model.fitted_
 
+@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize(
+    "fct,parameters",
+    [
+        (fl.functions.Linear, {}),
+        (fl.functions.Polynomial, {"deg": 3}),
+        (fl.functions.BSplinesFunction, {}),
+    ],
+)
+def test_underdamped_direct_estimator(data, request, fct, parameters):
+    domain = fl.MeshedDomain.create_from_range(np.linspace(-1, 1, 7))
+    model = fl.models.Underdamped(fct(domain=domain,**parameters), fct(domain=domain,**parameters), fct(domain=domain,**parameters))
+    estimator = fl.UnderdampedKramersMoyalEstimator(model)
+    model = estimator.fit_fetch(data)
+    assert model.fitted_
+
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
 def test_likelihood_estimator(data, request):
@@ -153,6 +169,15 @@ def test_likelihood_estimator_biased(data_biased, request):
     estimator = fl.LikelihoodEstimator(fl.EulerDensity(model))
     model = estimator.fit_fetch(data_biased)
     model.remove_bias()
+    assert model.fitted_
+
+
+@pytest.mark.parametrize("data", ["numpy"], indirect=True)
+def test_underdamped_likelihood_estimator(data, request):
+    fun_lin = fl.functions.Linear()
+    model = fl.models.Underdamped(fun_lin, fun_lin, fun_lin)
+    estimator = fl.LikelihoodEstimator(fl.VECDensity(model))
+    model = estimator.fit_fetch(data)
     assert model.fitted_
 
 

@@ -30,6 +30,7 @@ def test_functions(fct, parameters):
     finite_diff_jac = scipy.optimize.approx_fprime(data[0], lambda x: fun(np.asarray([x]))[0])
     np.testing.assert_allclose(fun.grad_x(data[0:1])[0], finite_diff_jac, rtol=1e-06)
 
+
     assert fun.grad_coeffs(data).shape == (25, fun.size)
 
     def eval_fun(c):
@@ -38,6 +39,33 @@ def test_functions(fct, parameters):
 
     finite_diff_jac = scipy.optimize.approx_fprime(fun.coefficients, eval_fun)
     np.testing.assert_allclose(fun.grad_coeffs(data[0:1])[0], finite_diff_jac, atol=1e-6, rtol=1e-6)
+    
+    assert fun.grad_x_dcoeffs(data).shape == (25, 1, fun.size)
+
+    finite_diff_jac = scipy.optimize.approx_fprime(data[0], lambda x: fun.grad_coeffs(np.asarray([x]))[0].ravel())
+    np.testing.assert_allclose(fun.grad_x_dcoeffs(data[0:1])[0,0].ravel(), finite_diff_jac.ravel(), atol=1e-6, rtol=1e-6) 
+
+    def eval_fun(c):
+        fun.coefficients = c
+        return fun.grad_x(data[0:1])[0,0]
+
+    finite_diff_jac = scipy.optimize.approx_fprime(fun.coefficients, eval_fun)
+    np.testing.assert_allclose(fun.grad_x_dcoeffs(data[0:1])[0,0], finite_diff_jac, atol=1e-6, rtol=1e-6)
+    
+    assert fun.hessian_x(data).shape == (25, 1, 1)
+     
+    finite_diff_hess = scipy.optimize.approx_fprime(data[0], lambda x: fun.grad_x(np.asarray([x]))[0])
+    np.testing.assert_allclose(fun.hessian_x(data[0:1])[0,0], finite_diff_hess, rtol=1e-06, atol=1e-06)
+    
+    finite_diff_hess = scipy.optimize.approx_fprime(data[0], lambda x: fun.grad_x_dcoeffs(np.asarray([x]))[0,0])
+    np.testing.assert_allclose(fun.hessian_x_dcoeffs(data[0:1])[0,0,0], finite_diff_hess.ravel(), rtol=1e-06, atol=1e-06)
+    
+    def eval_fun(c):
+        fun.coefficients = c
+        return fun.hessian_x(data[0:1])[0,0,0]
+    
+    finite_diff_hess = scipy.optimize.approx_fprime(fun.coefficients, eval_fun)
+    np.testing.assert_allclose(fun.hessian_x_dcoeffs(data[0:1])[0,0,0], finite_diff_hess, rtol=1e-06, atol=1e-06)
 
 
 def test_fem_functions():

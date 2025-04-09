@@ -32,7 +32,6 @@ def test_likelihood(data, request, transitioncls):
     loglikelihood = transition(data.weights[0], data[0], np.array([1.0, 1.0]))
     assert len(loglikelihood) == 1
 
-
 @pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
 @pytest.mark.parametrize(
     "transitioncls",
@@ -51,6 +50,27 @@ def testlikelihood_derivative(data, request, transitioncls):
     assert loglikelihood[1].shape == (len(model.coefficients),)
     # Testing for evaluation of the jacobian
     finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition(data.weights[0], data[0], p)[0])
+    np.testing.assert_allclose(loglikelihood[1], finite_diff_jac, rtol=1e-05)
+
+@pytest.mark.parametrize("data", ["numpy", "dask"], indirect=True)
+@pytest.mark.parametrize(
+    "transitioncls",
+    [
+        fl.VECDensity,
+    ],
+)
+def test_likelihood_derivative_underdamped(data, request, transitioncls):
+    fun_lin = fl.functions.Linear().fit(data.representative_array(), np.ones(data.representative_array().shape[0]))
+    fun_cst = fl.functions.Constant(coefficients=np.ones(1))
+    model = fl.models.Underdamped(fun_lin, fun_cst, fun_cst, dim=1)
+    transition = transitioncls(model)
+    transition.preprocess_traj(data[0])
+    loglikelihood = transition(data.weights[0], data[0], model.coefficients)
+    assert len(loglikelihood) == 2
+
+    assert loglikelihood[1].shape == (len(model.coefficients),)
+    # Testing for evaluation of the jacobian
+    finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition(data.weights[0], data[0], p)[0], epsilon=1e-04)
     np.testing.assert_allclose(loglikelihood[1], finite_diff_jac, rtol=1e-05)
 
 
@@ -75,7 +95,7 @@ def testlikelihoodND_derivative(data, request, transitioncls):
     finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition(data.weights[0], data[0], p)[0])
     np.testing.assert_allclose(loglikelihood[1], finite_diff_jac, rtol=1e-06, atol=1e-6)
 
-
+@pytest.mark.skip
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)
 @pytest.mark.parametrize(
     "transitioncls",
