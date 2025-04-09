@@ -71,15 +71,15 @@ class VECStepper(Stepper):
         c1 = 0.5 * dt * (1 - 0.25 * gamma * dt)
         d1 = 0.5 * (1 - 0.25 * gamma * dt)
         d2 = -0.25 * gamma * dt / np.sqrt(3)
-        sig_sq_dt = np.sqrt(diff * dt)
-        dWx = sig_sq_dt * dW[:, : self.model.dim]
-        dWv = sig_sq_dt * dW[:, self.model.dim :]
-        v_mid = sc2 * v + c1 * fx + d1 * dWx + d2 * dWv
+        sig_sq_dt = np.sqrt(2 * diff * dt)
+        dWx = (sig_sq_dt * dW[:, : self.model.dim].T).T
+        dWv = (sig_sq_dt * dW[:, self.model.dim :].T).T
+        v_mid = ((sc2 * v.T) + c1 * fx + (d1 * dWx.T) + (d2 * dWv.T)).T
         x += dt * (v_mid + (0.5 / np.sqrt(3)) * dWv)
-        # Update with new value of the field
+        # update friction
         self.f = self.model.pos_drift(x, bias)
         self.gamma = self.model.friction(x)
         self.diff = self.model.diffusion(x)
 
-        v = sc2 * v_mid + c1 * self.f + d1 * dWx + d2 * dWv
+        v = ((sc2 * v_mid.T) + c1 * self.f + (d1 * dWx.T) + (d2 * dWv.T)).T
         return np.concatenate([x, v], axis=1)
