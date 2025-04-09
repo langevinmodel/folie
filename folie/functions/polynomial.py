@@ -28,6 +28,15 @@ class Constant(ParametricFunction):
         transform_dcoeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
         return np.tensordot(np.ones((x.shape[0], 1)), transform_dcoeffs, axes=1)
 
+    def transform_dx_dcoeffs(self, x, *args, **kwargs):
+        n = x.shape[0]
+        # Same shape as transform_dx (n, output_size, x_dim) with an extra coeff dim.
+        return np.zeros((n, self.output_size_, x.shape[1], self.size))
+
+    def transform_d2x_dcoeffs(self, x, *args, **kwargs):
+        n = x.shape[0]
+        # Same shape as transform_d2x (n, output_size, x_dim, x_dim) with an extra coeff dim.
+        return np.zeros((n, self.output_size_, x.shape[1], x.shape[1], self.size))
 
 class Linear(ParametricFunction):
     """
@@ -60,6 +69,25 @@ class Linear(ParametricFunction):
         transform_dcoeffs = np.eye(self.size).reshape(self.n_functions_features_, *self.output_shape_, self.size)
         return np.tensordot(x, transform_dcoeffs, axes=1)
 
+    def transform_dx_dcoeffs(self, x, *args, **kwargs):
+        n, dim = x.shape
+        s = self.output_size_
+        # Compute x_grad as in transform_dx:
+        x_grad = np.ones((n, 1, 1)) * np.eye(dim)[None, :, :]
+        # Initialize the Jacobian tensor of shape (n, output_size, x_dim, size)
+        J = np.zeros((n, s, dim, self.size))
+        # For each coefficient (indexed by b and j) the derivative is just x_grad[:, b, :]
+        for b in range(dim):
+            for j in range(s):
+                idx = b * s + j
+                J[:, j, :, idx] = x_grad[:, b, :]
+        return J
+    
+    def transform_d2x_dcoeffs(self, x, *args, **kwargs):
+        n, dim = x.shape
+        s = self.output_size_
+        # Since transform_d2x returns zeros, its derivative with respect to coefficients is also zero.
+        return np.zeros((n, s, dim, dim, self.size))
 
 class Polynomial(ParametricFunction):
     """
@@ -114,6 +142,36 @@ class Polynomial(ParametricFunction):
             iend = (n + 1) * dim
             res += np.tensordot(self.polynom.basis(n)(x), transform_dcoeffs[istart:iend, :], axes=1)
         return res
+
+    def transform_dx_dcoeffs(self, x, *args, **kwargs):
+        n, dim = x.shape
+        s = self.output_size_
+        # Initialize Jacobian tensor: (n, output_size, x_dim, size)
+        J = np.zeros((n, s, dim, self.size))
+        # Loop over each term of the polynomial basis.
+        for term in range(self.degree):
+            # Compute the derivative of the basis function for the given term.
+            # This gives an array of shape (n, dim, dim) (the second "dim" comes from the multiplication with np.eye)
+            basis_grad = self.polynom.basis(term).deriv(1)(x)[..., None] * np.eye(dim)[None, :, :]
+            for b in range(dim):
+                for j in range(s):
+                    idx = term * dim * s + b * s + j
+                    J[:, j, :, idx] = basis_grad[:, b, :]
+        return J
+    
+    def transform_d2x_dcoeffs(self, x, *args, **kwargs):
+        n, dim = x.shape
+        s = self.output_size_
+        # Initialize Jacobian tensor: (n, output_size, x_dim, x_dim, size)
+        J = np.zeros((n, s, dim, dim, self.size))
+        # Loop over each term to get the second derivative (Hessian) of the basis.
+        for term in range(self.degree):
+            basis_hess = self.polynom.basis(term).deriv(2)(x)[..., None] * np.eye(dim)[None, :, :]
+            for b in range(dim):
+                for j in range(s):
+                    idx = term * dim * s + b * s + j
+                    J[:, j, :, :, idx] = basis_hess[:, b, :].reshape(J[:, j, :, :, idx].shape)
+        return J
 
 
 class Fourier(ParametricFunction):

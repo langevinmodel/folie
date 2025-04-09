@@ -123,6 +123,14 @@ class BSplinesFunction(ParametricFunction):
         # dmat = sparse.COO.from_scipy_sparse(BSpline.design_matrix(x[:, 0], self.bspline.t, self.bspline.k))  # return (Nobs x nelemnts_basis) en format sparse CSR that we convert into sparse matrix
         # return sparse.einsum("nb,bsc->nsc", dmat, transform_dcoeffs)
 
+    def transform_dx_dcoeffs(self, x, *args, **kwargs):
+        transform_dcoeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
+        return np.trace(BSpline(self.bspline.t, transform_dcoeffs, self.bspline.k).derivative()(x), axis1=1, axis2=2).reshape(x.shape[0], self.output_size_, x.shape[1], self.size)
+
+    def transform_d2x_dcoeffs(self, x, *args, **kwargs):
+        transform_dcoeffs = np.eye(self.size).reshape(self.n_functions_features_, self.output_size_, self.size)
+        return np.trace(BSpline(self.bspline.t, transform_dcoeffs, self.bspline.k).derivative(2)(x), axis1=1, axis2=2).reshape(x.shape[0], self.output_size_, x.shape[1], x.shape[1], self.size)
+
 
 # En vrai, ci dessous ça utilise aussi Bspline, copier le code relevant pour merger les 2
 class sklearnBSplines(ParametricFunction):

@@ -113,6 +113,27 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         return fprime
         # raise NotImplementedError  # TODO: Check implementation
 
+    def transform_dx_dcoeffs(self, x, *args, **kwargs):
+        init_coeffs = self.coefficients.copy()
+        J = np.zeros((x.shape[0], x.shape[-1], self.size))
+        for j in range(x.shape[-1]):
+            def f_coeffs(c, *args, **kwargs):
+                self.coefficients = c
+                return self.transform_dx(x, *args, **kwargs)[:,j]
+            fprime = scipy.optimize.approx_fprime(self.coefficients, f_coeffs, *args, **kwargs)
+            J[:,j,:] = fprime
+        self.coefficients = init_coeffs
+        return J
+    
+    def transform_d2x_dcoeffs(self, x, *args, **kwargs):
+        init_coeffs = self.coefficients.copy()
+        def f_coeffs(c, *args, **kwargs):
+            self.coefficients = c
+            return self.transform_d2x(*args, **kwargs)
+        fprime = scipy.optimize.approx_fprime(self.coefficients, f_coeffs, x, *args, **kwargs)
+        self.coefficients = init_coeffs
+        return fprime
+
     def __call__(self, x, *args, **kwargs):
         return self.transform(x[:, : self.domain.dim], *args, **kwargs).reshape((-1, *self.output_shape_))
 
@@ -136,6 +157,14 @@ class Function(_BaseMethodsMixin, TransformerMixin):
             The gradient
         """
         return self.transform_dcoeffs(x[:, : self.domain.dim], *args, **kwargs).reshape((x.shape[0], *self.output_shape_, -1))
+
+    def grad_x_dcoeffs(self, x, *args, **kwargs):
+        return self.transform_dx_dcoeffs(x[:, :self.domain.dim], *args, **kwargs)\
+                   .reshape((x.shape[0], *self.output_shape_, x.shape[1], self.size))
+
+    def hessian_x_dcoeffs(self, x, *args, **kwargs):
+        return self.transform_d2x_dcoeffs(x[:, :self.domain.dim], *args, **kwargs)\
+                   .reshape((x.shape[0], *self.output_shape_, x.shape[1], x.shape[1], self.size))
 
     def __add__(self, other):
         return FunctionSum([self, other])

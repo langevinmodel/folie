@@ -1,7 +1,7 @@
 from .._numpy import np
 
 from .overdamped import Overdamped
-from ..functions import Constant, Polynomial
+from ..functions import Constant, Polynomial, ModelOverlay
 
 
 class Underdamped(Overdamped):
@@ -22,6 +22,16 @@ class Underdamped(Overdamped):
             friction = diffusion.copy()
         super().__init__(force, diffusion, dim=dim)
         self.friction = friction.resize(self.diffusion.shape)
+
+### added by Axel
+        if self.dim <= 1:
+            output_shape_drift = ()
+            output_shape_diff = ()
+        else:
+            output_shape_drift = (self.dim,)
+            output_shape_diff = (self.dim, self.dim)
+        self.drift_dx = ModelOverlay(self, "_drift_dx", output_shape=output_shape_drift)
+        self.drift_dcoeffs = ModelOverlay(self, "_drift_dcoeffs", output_shape=output_shape_drift)
 
     @Overdamped.dim.setter
     def dim(self, dim):
@@ -54,6 +64,56 @@ class Underdamped(Overdamped):
         """
         dfx = self.pos_drift.grad_coeffs(x, *args, **kwargs)
         return np.concatenate((dfx, -1 * np.einsum("t...hc,th-> t...c", self.friction.grad_coeffs(x, *args, **kwargs).reshape((*dfx.shape[:-1], v.shape[1], -1)), v)), axis=-1)
+
+    def _drift_dx_dcoeffs(self, x, v, *args, **kwargs):
+        """
+        Computes the derivative with respect to x and the coefficients of the drift:
+          drift(x, v) = pos_drift(x) - friction(x) @ v
+        It is given by:
+          grad_x_dcoeffs[pos_drift]  concatenated with  - einsum( friction.grad_x_dcoeffs, v )
+        """
+        # pos_term has shape: (t, *output_shape, x_dim, pos_coeff_dim)
+        pos_term = self.pos_drift.grad_x_dcoeffs(x, *args, **kwargs)
+        # friction.grad_x_dcoeffs originally has shape: (t, *output_shape, x_dim, friction_coeff_dim)
+        # We reshape it to insert the v-dimension (which has size v_dim)
+        # New shape becomes: (t, *output_shape, x_dim, v_dim, friction_coeff_dim)
+        friction_grad = self.friction.grad_x_dcoeffs(x, *args, **kwargs).reshape(
+            (*pos_term.shape[:-1], v.shape[1], -1)
+        )
+        # Contract the inserted v-dimension with v (shape: (t, v_dim))
+        # The einsum string:
+        #   "t...dhc,th->t...dc"
+        # here: d is the x dimension, h is the inserted v-dimension, and c is the friction coefficient index.
+        friction_term = np.einsum("t...dhc,th->t...dc", friction_grad, v)
+        # Now friction_term has shape: (t, *output_shape, x_dim, friction_coeff_dim)
+        # Concatenate along the last axis (the coefficient dimension)
+        return np.concatenate((pos_term, -friction_term), axis=-1)
+    
+    
+    def _drift_d2x_dcoeffs(self, x, v, *args, **kwargs):
+        """
+        Computes the second derivative with respect to x and the derivative with respect to the coefficients
+        of the drift function:
+          drift(x, v) = pos_drift(x) - friction(x) @ v
+        It is given by:
+          hessian_x_dcoeffs[pos_drift]  concatenated with  - einsum( friction.hessian_x_dcoeffs, v )
+        """
+        # pos_term has shape: (t, *output_shape, x_dim, x_dim, pos_coeff_dim)
+        pos_term = self.pos_drift.hessian_x_dcoeffs(x, *args, **kwargs)
+        # friction.hessian_x_dcoeffs originally has shape: (t, *output_shape, x_dim, x_dim, friction_coeff_dim)
+        # We reshape to insert the v-dimension before the last axis.
+        # New shape: (t, *output_shape, x_dim, x_dim, v_dim, friction_coeff_dim)
+        friction_grad = self.friction.hessian_x_dcoeffs(x, *args, **kwargs).reshape(
+            (*pos_term.shape[:-1], v.shape[1], -1)
+        )
+        # Contract over the inserted v-dimension with v (shape: (t, v_dim)).
+        # Using einsum:
+        #   "t...dhfc,th->t...dfc"
+        # where d and f are the two x-dimensions, h is the inserted v-dimension, and c the friction coefficient index.
+        friction_term = np.einsum("t...dhfc,th->t...dfc", friction_grad, v)
+        # Concatenate along the coefficient axis (last axis)
+        return np.concatenate((pos_term, -friction_term), axis=-1)
+
 
     @property
     def coefficients(self):
