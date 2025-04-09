@@ -131,6 +131,9 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
 
         for trj in data:
             self.preprocess_traj(trj)
+            #for key in trj:
+             #   if key != 'dt':
+              #      print(key, trj[key].shape)
 
         dt = data[0]["dt"]
 
@@ -149,8 +152,8 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
         acc = np.concatenate([trj["a"] for trj in data], axis=0)
         if dim <= 1:
             acc = acc.ravel()
-        self.model.meandispl.fit(X, V, bias, y=acc, sample_weight=None)
-        acc -= self.model.force(X)
+        self.model.drift.fit(X, V, bias, y=acc, sample_weight=None)
+        acc -= self.model.drift(X,V)
         if dim <= 1:
             acc_sq = acc ** 2
         else:
@@ -168,21 +171,33 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
         if "a" not in list(trj.keys()):
             diffs = trj["x"] - np.roll(trj["x"], 1, axis=0)
             a = np.roll(diffs, -1, axis=0) - diffs
-            if "v" not in list(trj.keys()):
-                trj["v"] = (0.5 / trj["dt"]) * (trj["x"] - np.roll(trj["x"], 2, axis=0))[2:-1]
-            else:
-                trj["v"] = trj["v"][2:-1]
-            trj["a"] = a[2:-1] / (trj["dt"] ** 2)
-            trj["x"] = trj["x"][2:-1]
-            if "bias" in trj:
-                trj["bias"] = trj["bias"][2:-1]
-            else:
-                trj["bias"] = np.zeros((1, trj["x"].shape[1]))
-            if hasattr(self._model, "dim_h"):
-                if self._model.dim_h > 0:
-                    trj["sig_h"] = np.zeros((trj["x"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
-                    trj["v"] = np.concatenate((trj["v"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
-                    trj["a"] = np.concatenate((trj["a"], np.zeros((trj["a"].shape[0], self._model.dim_h))), axis=1)
-                    trj["bias"] = np.concatenate((trj["bias"], np.zeros((trj["bias"].shape[0], self._model.dim_h))), axis=1)
-            self._model.preprocess_traj(trj, **kwargs)
+            trj["a"] = a[1:-2] / (trj["dt"] ** 2)
+
+        if "v" not in list(trj.keys()):
+            trj["v"] = (0.5 / trj["dt"]) * (trj["x"] - np.roll(trj["x"], 2, axis=0))
+
+        if "vt" not in trj:
+            trj["vt"] = trj["v"][2:-1]
+            trj["v"] = trj["v"][1:-2]
+            
+        if "xt" not in trj:
+            trj["xt"] = trj["x"][2:-1]
+            trj["x"] = trj["x"][1:-2]
+
+        if "bias" in trj:
+            trj["bias"] = trj["bias"][2:-1]
+        else:
+            trj["bias"] = np.zeros((1, trj["x"].shape[1]))
+
+        if hasattr(self._model, "dim_h"):
+            if self._model.dim_h > 0:
+                trj["sig_h"] = np.zeros((trj["x"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
+                trj["v"] = np.concatenate((trj["v"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
+                trj["a"] = np.concatenate((trj["a"], np.zeros((trj["a"].shape[0], self._model.dim_h))), axis=1)
+                trj["bias"] = np.concatenate((trj["bias"], np.zeros((trj["bias"].shape[0], self._model.dim_h))), axis=1)
+                trj["vt"] = np.concatenate((trj["vt"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
+                trj["x"] = np.concatenate((trj["x"], np.zeros((trj["x"].shape[0], self._model.dim_h))), axis=1)
+                trj["xt"] = np.concatenate((trj["xt"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
+
+        self._model.preprocess_traj(trj, **kwargs)
         return trj
