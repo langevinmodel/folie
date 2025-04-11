@@ -5,11 +5,11 @@ The code in this file is copied and adapted from pymle (https://github.com/jkirk
 from .._numpy import np
 from typing import Union
 from .transitionDensity import TransitionDensity
-from .transitionDensity import gaussian_likelihood_1D, gaussian_likelihood_ND, gaussian_likelihood_derivative_1D, gaussian_likelihood_derivative_ND
+from .transitionDensity import gaussian_likelihood_1D, gaussian_likelihood_ND, gaussian_likelihood_derivative_1D, gaussian_likelihood_derivative_ND, underdamped_gaussian_likelihood_derivative_ND
 import numba as nb
 
 
-@nb.njit
+#@nb.njit
 def compute_va(trj, correct_jumps=False, jump=2 * np.pi, jump_thr=1.75 * np.pi, lamb_finite_diff=0.5, **kwargs):
     """
     Compute velocity by finite differences if an exact velocity is not available.
@@ -29,13 +29,13 @@ def compute_va(trj, correct_jumps=False, jump=2 * np.pi, jump_thr=1.75 * np.pi, 
         #trj["v"] = sdiffs["x"] / dt   
         #trj["a"] = ddiffs["x"] / dt**2  
         trj["v"] = sdiffs / dt
-        trj["a"] = ddiffs / dt**2
+        trj["a"] = ddiffs[1:-2] / dt**2
     elif "a" not in trj:
         dv = trj["v"] - np.roll(trj["v"],1,axis=0)
         dt = trj["dt"]
         vdiffs = lamb_finite_diff * np.roll(dv, -1, axis=0) + (1.0 - lamb_finite_diff) * dv
         
-        trj["a"] = vdiffs / dt
+        trj["a"] = vdiffs[1:-2] / dt
 
     return trj
 
@@ -94,7 +94,7 @@ class BBKDensity(UnderdampedTransitionDensity):
 
 
 class VECDensity(UnderdampedTransitionDensity):
-    use_jac = False
+    use_jac = True
     def __init__(self, model):
         """
         Class which represents the VEC approximation transition density for a model
@@ -102,11 +102,23 @@ class VECDensity(UnderdampedTransitionDensity):
         """
         super().__init__(model)
 
+    def __call__(self, weight, trj, coefficients):
+        """
+        Compute Likelihood of one trajectory
+        """
+        self._model.coefficients = coefficients
+        if self.use_jac:
+            like, jac = self._logdensity(**trj)
+            return (np.asarray(-np.sum(np.maximum(self._min_prob, like)) / weight), np.asarray(-np.sum(jac, axis=0) / weight))
+        else:
+            like = self._logdensity(**trj)
+            return (np.asarray(-np.sum(np.maximum(self._min_prob, like)) / weight),)
+
     def preprocess_traj(self, trj, **kwargs):
         """
         Preprocess trajectories data
         """
-        #trj = compute_va(trj, **kwargs)
+        trj = compute_va(trj, **kwargs)
         if "xt" not in trj:
             trj["xt"] = trj["x"][2:-1]
             trj["x"] = trj["x"][1:-2]
@@ -115,9 +127,6 @@ class VECDensity(UnderdampedTransitionDensity):
             trj["vt"] = trj["v"][2:-1]
             trj["v"] = trj["v"][1:-2]
         
-        if "a" not in trj:
-            trj["a"] = trj["a"][1:-2]
-
         if "bias" not in trj:
             trj["bias"] = np.zeros((1, trj["x"].shape[1]))
 
@@ -142,9 +151,9 @@ class VECDensity(UnderdampedTransitionDensity):
         :return: probability (same dimension as x and xt)
         """
         # Drift and derivatives
-        mu = self._model.drift(x,v).ravel()                #  b
-        mu_x = self._model.drift.grad_x(x,v).ravel()       # b_q
-        mu_xx = self._model.drift.hessian_x(x,v).ravel()   # b_qq
+        mu = self._model._drift(x,v).ravel()               # b
+        mu_x = self._model._drift_dx(x,v).ravel()          # b_q
+        mu_xx = self._model._drift_d2x(x,v).ravel()        # b_qq
         
         # Friction and derivatives
         gamma = self._model.friction(x,v).ravel()          # b_v
@@ -155,53 +164,86 @@ class VECDensity(UnderdampedTransitionDensity):
         c_x = self._model.diffusion.grad_x(x,v).ravel()    # c_q
         c_xx = self._model.diffusion.hessian_x(x,v).ravel()# c_qq
 
+        x = x.ravel()
+        xt = xt.ravel()
+        v = v.ravel()
+        vt = vt.ravel()
         X = np.einsum("i...-> ...i", [x,v])                # X = [q,v].T
         Xt = np.einsum("i...-> ...i", [xt,vt])             # Xt = [qt, vt].T
 
         # First-order cumulants (from Girardier et al., JCP 2023)
         # <q>
-        x_exp = x + v * dt + mu * dt**2 / 2 + (mu_x * v + mu * gamma) * dt**3 / 6
+        x_exp = x + v * dt + mu * dt**2 / 2 + (mu_x * v - mu * gamma) * dt**3 / 6
         # <v>
-        v_exp = v + mu * dt + (mu_x * v + mu * gamma) * dt**2 / 2 + (mu_xx * v**2 + mu_x * gamma * v + 2 * mu * gamma_x * v + mu * mu_x + mu * gamma**2 + 2 * c * gamma_x) * dt**3 / 6
+        v_exp = v + mu * dt + (mu_x * v - mu * gamma) * dt**2 / 2 + (mu_xx * v**2 - mu_x * gamma * v - 2 * mu * gamma_x * v + mu * mu_x + mu * gamma**2 - 2 * c * gamma_x) * dt**3 / 6
         E = np.einsum("i...-> ...i", [x_exp, v_exp])
 
         # Second-order cumulants
-        Mxx = 2 * c * dt**3
-        Mvv = 2 * c * dt + (c_x * v + 2 * c * gamma) * dt**2 + (c_xx * v**2 + 2 * c_x * gamma * v + 4 * c * gamma_x * v + c_x * mu + 2 * c * mu_x + 4 * c * gamma**2) * dt**3 / 3
-        Mxv = c * dt**2 + (c_x * v + 3 * c * gamma) * dt**3 / 3
-        print("Mxx : {Mxx.shape}")
-        print("Mxv : {Mxv.shape}")
-        print("Mvv : {Mvv.shape}")
+        Mxx = 2/3 * c * dt**3
+        Mvv = 2 * c * dt + (c_x * v - 2 * c * gamma) * dt**2 + (c_xx * v**2 - 2 * c_x * gamma * v - 4 * c * gamma_x * v + c_x * mu + 2 * c * mu_x + 4 * c * gamma**2) * dt**3 / 3
+        Mxv = c * dt**2 + (c_x * v - 3 * c * gamma) * dt**3 / 3
         M = np.einsum("ij...-> ...ij", [[Mxx, Mxv], [Mxv, Mvv]])  # Diffusion matrix
 
-        if not use_jac:
+        if not self.use_jac:
             return gaussian_likelihood_ND(Xt, E, M)
+
         else:
+            dim_coeffs = len(self._model.coefficients)
+            dim_coeffs_pos_drift = len(self._model.pos_drift.coefficients)
+            dim_coeffs_drift = len(self._model.coefficients_drift)
             # Jacobians of all quantities above
             # Drift and derivatives
-            jac_mu = self._model.drift.grad_coeffs(x,v).ravel()                #  b
-            jac_mu_x = self._model.drift.grad_x.grad_coeffs(x,v).ravel()       # b_q
-            jac_mu_xx = self._model.drift.hessian_x.grad_coeffs(x,v).ravel()   # b_qq
-            _
+            jac_mu_0 = self._model._drift_dcoeffs(x.reshape(-1,1),v.reshape(-1,1))#.ravel()                #  b
+            jac_mu = np.zeros((jac_mu_0.shape[0], dim_coeffs))
+            jac_mu[:, :jac_mu_0.shape[1]] = jac_mu_0
+
+            # ISSUE here : _drift_dx and _drift_dcoeffs are methods of Underdamped, not Models by themselves
+            # which means the grad_coeffs or hessian_x methods are not implemented...
+            jac_mu_x_0 = self._model._drift_dx_dcoeffs(x.reshape(-1,1),v.reshape(-1,1)).squeeze(axis=1)#.ravel()       # b_q
+            jac_mu_x = np.zeros((jac_mu_0.shape[0], dim_coeffs))
+            jac_mu_x[:, :jac_mu_x_0.shape[1]] = jac_mu_x_0
+            
+            jac_mu_xx_0 = self._model._drift_d2x_dcoeffs(x.reshape(-1,1),v.reshape(-1,1)).squeeze(axis=(1,2))   # b_qq
+            jac_mu_xx = np.zeros((jac_mu_0.shape[0], dim_coeffs))
+            jac_mu_xx[:, :jac_mu_xx_0.shape[1]] = jac_mu_xx_0
+            
             # Friction and derivatives
-            jac_gamma = self._model.friction.grad_coeffs(x,v).ravel()          # b_v
-            jac_gamma_x = self._model.friction.grad_x.grad_coeffs(x,v).ravel() # b_qv
+            jac_gamma_0 = self._model.friction.grad_coeffs(x.reshape(-1,1))#.ravel()          # b_v
+            jac_gamma = np.zeros((jac_mu_0.shape[0], dim_coeffs))
+            jac_gamma[:, dim_coeffs_pos_drift:dim_coeffs_pos_drift+jac_gamma_0.shape[1]] = jac_gamma_0
+
+            jac_gamma_x_0 = self._model.friction.grad_x_dcoeffs(x.reshape(-1,1)).squeeze(axis=1)#.ravel() # b_qv
+            jac_gamma_x = np.zeros((jac_mu_0.shape[0], dim_coeffs))
+            jac_gamma_x[:, dim_coeffs_pos_drift:dim_coeffs_pos_drift+jac_gamma_0.shape[1]] = jac_gamma_x_0
     
             # Diffusion and derivatives
-            jac_c = self._model.diffusion.grad_coeffs(x,v).ravel()             # c
-            jac_c_x = self._model.diffusion.grad_x.grad_coeffs(x,v).ravel()    # c_q
-            jac_c_xx = self._model.diffusion.hessian_x.grad_coeffs(x,v).ravel()# c_qq
+            jac_c_0 = self._model.diffusion.grad_coeffs(x.reshape(-1,1))#.ravel()             # c
+            jac_c = np.zeros((jac_mu_0.shape[0], dim_coeffs))
+            jac_c[:, dim_coeffs_drift:dim_coeffs_drift+jac_c_0.shape[1]] = jac_c_0
+
+            jac_c_x_0 = self._model.diffusion.grad_x_dcoeffs(x.reshape(-1,1)).squeeze(axis=1)#.ravel()    # c_q
+            jac_c_x = np.zeros((jac_mu_0.shape[0], dim_coeffs))
+            jac_c_x[:, dim_coeffs_drift:dim_coeffs_drift+jac_c_0.shape[1]] = jac_c_x_0
+            
+            jac_c_xx_0 = self._model.diffusion.hessian_x_dcoeffs(x.reshape(-1,1)).squeeze(axis=(1,2))# c_qq
+            jac_c_xx = np.zeros((jac_mu_0.shape[0], dim_coeffs))
+            jac_c_xx[:, dim_coeffs_drift:dim_coeffs_drift+jac_c_0.shape[1]] = jac_c_xx_0
+
+            # Reshape everything
+            arrays = [x, xt, v, vt, mu, mu_x, mu_xx, gamma, gamma_x, c, c_x, c_xx]
+            arrays = [x[:, np.newaxis] for x in arrays] 
+            x, xt, v, vt, mu, mu_x, mu_xx, gamma, gamma_x, c, c_x, c_xx = arrays
 
             # First-order cumulants
-            jac_x_exp = jac_mu * dt**2 / 2 + (v * jac_mu_x + gamma * jac_mu + mu * jac_gamma) * dt**3 / 6
-            jac_v_exp = jac_mu * dt + (v * jac_mu_x + gamma * jac_mu + mu * jac_gamma) * dt**2 / 2 + (v**2*jac_mu_xx + v * (gamma * jac_mu_x + mu_x * jac_gamma) + 2 * v * (gamma_x * jac_mu + mu * jac_gamma_x ) + mu * jac_mu_x + jac_mu * mu_x + gamma**2 * jac_mu + 2 * mu * gamma * jac_gamma + 2 * c * jac_gamma_x + 2 * gamma_x * jac_c) * dt**3 / 6
-            jacE = np.einsum("i...-> ...i", [jac_x_exp, jac_v_exp])
+            jac_x_exp = jac_mu * dt**2 / 2 + (v * jac_mu_x - gamma * jac_mu - mu * jac_gamma) * dt**3 / 6
+            jac_v_exp = jac_mu * dt + (v * jac_mu_x - gamma * jac_mu - mu * jac_gamma) * dt**2 / 2 + (v**2*jac_mu_xx + v * (-gamma * jac_mu_x - mu_x * jac_gamma) + 2 * v * (-gamma_x * jac_mu - mu * jac_gamma_x ) + mu * jac_mu_x + jac_mu * mu_x + gamma**2 * jac_mu + 2 * mu * gamma * jac_gamma - 2 * c * jac_gamma_x - 2 * gamma_x * jac_c) * dt**3 / 6
+            jacE = np.einsum("itc->tic", [jac_x_exp, jac_v_exp])
 
             # Second-order cumulants
             jac_Mxx = jac_c * dt**3 * 2 / 3
-            jac_Mvv = 2 * jac_c * dt + (v*jac_c_x + 2 * gamma * jac_c + 2 * c * jac_gamma) * dt**2 + (v**2*jac_c_xx + 2 * v * c_x * jac_gamma + 2 * v * jac_c_x * gamma + 4 * jac_c * gamma_x * v + 4 * c * jac_gamma_x * v + c_x * jac_mu + mu * jac_c_x + 2 * jac_c * mu_x + 2 * jac_mu_x * c + 4 * gamma**2 * jac_c + 8 * gamma * jac_gamma * c) * dt**3 / 3
-            jac_Mxv = jac_c * dt**2 + (jac_c_x * v + 3 * jac_c * gamma + 3 * jac_gamma * c) * dt**3 / 3
-            jacM = np.einsum("ij...-> ...ij", [[jac_Mxx, jac_Mxv], [jac_Mxv, jac_Mvv]])  # Diffusion matrix
+            jac_Mvv = 2 * jac_c * dt + (v * jac_c_x - 2 * gamma * jac_c - 2 * c * jac_gamma) * dt**2 + (v**2*jac_c_xx - 2 * v * c_x * jac_gamma - 2 * v * jac_c_x * gamma - 4 * jac_c * gamma_x * v - 4 * c * jac_gamma_x * v + c_x * jac_mu + mu * jac_c_x + 2 * jac_c * mu_x + 2 * jac_mu_x * c + 4 * gamma**2 * jac_c + 8 * gamma * jac_gamma * c) * dt**3 / 3
+            jac_Mxv = jac_c * dt**2 + (jac_c_x * v - 3 * jac_c * gamma - 3 * jac_gamma * c) * dt**3 / 3
+            jacM = np.einsum("ijtc-> tijc", [[jac_Mxx, jac_Mxv], [jac_Mxv, jac_Mvv]])  # Diffusion matrix
 
         # Here we kind of divert likelihood_ND from its original scope
         # (treating multi-dimensional CVs) by defining X = (x,v) a 2D-
@@ -212,7 +254,7 @@ class VECDensity(UnderdampedTransitionDensity):
         # -placing explicit indices by ellipses in np.einsum, e.g.
         # "tij,tj-> ti" should become "t...j,t...j-> t...") we could 
         # make it work.
-            return gaussian_likelihood_ND_derivatives(Xt, E, M, jacE, jacM)
+            return  underdamped_gaussian_likelihood_derivative_ND(Xt, E, M, jacE, jacM)
 
         
         #raise NotImplementedError
