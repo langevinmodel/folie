@@ -173,12 +173,16 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
             a = np.roll(diffs, -1, axis=0) - diffs
             trj["a"] = a[1:-2] / (trj["dt"] ** 2)
 
-        if "v" not in list(trj.keys()):
-            trj["v"] = (0.5 / trj["dt"]) * (trj["x"] - np.roll(trj["x"], 2, axis=0))
+        if "u" not in list(trj.keys()):
+            trj["u"] = (0.5 / trj["dt"]) * (trj["x"] - np.roll(trj["x"], 2, axis=0))
+
+        if "v" not in trj:
+            trj["v"] = trj["u"].copy()
 
         if "vt" not in trj:
             trj["vt"] = trj["v"][2:-1]
             trj["v"] = trj["v"][1:-2]
+            trj["u"] = trj["u"][1:-2]
             
         if "xt" not in trj:
             trj["xt"] = trj["x"][2:-1]

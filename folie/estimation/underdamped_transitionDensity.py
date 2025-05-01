@@ -28,7 +28,8 @@ def compute_va(trj, correct_jumps=False, jump=2 * np.pi, jump_thr=1.75 * np.pi, 
         # Former version : sdiffs and ddiffs are np arrays, not dicts
         #trj["v"] = sdiffs["x"] / dt   
         #trj["a"] = ddiffs["x"] / dt**2  
-        trj["v"] = sdiffs / dt
+        trj["u"] = sdiffs / dt
+        trj["v"] = trj["u"].copy()
         trj["a"] = ddiffs[1:-2] / dt**2
     elif "a" not in trj:
         dv = trj["v"] - np.roll(trj["v"],1,axis=0)
@@ -109,10 +110,10 @@ class VECDensity(UnderdampedTransitionDensity):
         self._model.coefficients = coefficients
         if self.use_jac:
             like, jac = self._logdensity(**trj)
-            return (np.asarray(-np.sum(np.maximum(self._min_prob, like)) / weight), np.asarray(-np.sum(jac, axis=0) / weight))
+            return np.asarray(-np.sum(like) / weight), np.asarray(-np.sum(jac, axis=0) / weight)
         else:
             like = self._logdensity(**trj)
-            return (np.asarray(-np.sum(np.maximum(self._min_prob, like)) / weight),)
+            return (np.asarray(-np.sum(like) / weight),)
 
     def preprocess_traj(self, trj, **kwargs):
         """
@@ -126,6 +127,8 @@ class VECDensity(UnderdampedTransitionDensity):
         if "vt" not in trj:
             trj["vt"] = trj["v"][2:-1]
             trj["v"] = trj["v"][1:-2]
+            if "u" in trj:
+                trj["u"] = trj["u"][1:-2]
         
         if "bias" not in trj:
             trj["bias"] = np.zeros((1, trj["x"].shape[1]))
@@ -156,7 +159,7 @@ class VECDensity(UnderdampedTransitionDensity):
         mu_xx = self._model._drift_d2x(x,v).ravel()        # b_qq
         
         # Friction and derivatives
-        gamma = self._model.friction(x,v).ravel()          # b_v
+        gamma = self._model.friction(x,v).ravel()          # - b_v
         gamma_x = self._model.friction.grad_x(x,v).ravel() # b_qv
 
         # Diffusion and derivatives
@@ -256,5 +259,12 @@ class VECDensity(UnderdampedTransitionDensity):
         # make it work.
             return  underdamped_gaussian_likelihood_derivative_ND(Xt, E, M, jacE, jacM)
 
-        
-        #raise NotImplementedError
+    def correct_velocities(self, trj):
+        sigma_sq = 2 * self._model.diffusion(trj["x"]).ravel().mean() * trj["dt"]
+        a = 0.57275 * np.sqrt(sigma_sq)
+        b = 0.07275 * np.sqrt(sigma_sq)
+        g = np.random.default_rng().standard_normal(size = trj["v"].shape)
+        trj["v"] = trj["u"] + a * g + b * np.roll(g, 1, axis=0)
+        return trj
+           
+

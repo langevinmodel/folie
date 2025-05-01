@@ -347,3 +347,208 @@ class EMEstimator(LikelihoodEstimator):
             )
             print("----------------Fitted parameters values------------------")
             print(self.model.coefficients)
+
+class FiniteVelocityEMEstimator(LikelihoodEstimator):
+    """
+    Maximize the likelihood using Expectation-maximization algorithm
+    TODO: Replace all history by a callback
+    """
+
+    def __init__(
+        self,
+        transition,
+        *args,
+        tol=1e-5,
+        max_iter=100,
+        n_init=1,
+        warm_start=False,
+        no_stop=False,
+        verbose=0,
+        verbose_interval=10,
+        **kwargs,
+    ):
+        super().__init__(transition, **kwargs)
+        self.verbose = verbose
+        self.verbose_interval = verbose_interval
+
+        self.tol = tol
+        self.max_iter = max_iter
+        self.n_init = n_init
+        self.warm_start = warm_start
+
+        self.no_stop = no_stop
+
+    def fit(self, data, minimizer=None, coefficients0=None, use_jac=True, callback=None, **kwargs):
+        """
+        In this do a loop that alternatively minimize and compute expectation
+        """
+        for trj in data:
+            self.transition.preprocess_traj(trj)
+        if coefficients0 is None:
+            coefficients0 = self._initialize_parameters(data, coefficients0)
+        if minimizer is None:
+            coefficients = np.asarray(coefficients0)
+            minimizer = minimize
+
+        # if we enable warm_start, we will have a unique initialisation
+        do_init = not (self.warm_start and hasattr(self, "converged_"))
+        n_init = self.n_init if do_init else 1
+
+        max_lower_bound = -np.inf
+        self.converged_ = False
+
+        # That becomes duplicate of callback
+        self.logL = np.empty((n_init, self.max_iter))
+        self.logL[:] = np.nan
+
+        # Trouver un truc pour gérer les callback multiple
+        callbacks = []
+
+        # For referencement
+        best_coeffs = None
+        best_n_iter = -1
+        best_n_init = -1
+
+        init_val = self._loop_over_trajs(self.transition, data.weights, data, coefficients0, **kwargs)
+        has_jac = len(init_val) > 1 and use_jac
+        for init in range(n_init):
+            callbacks.append(type(callback)())  # Should work as well with None
+            if do_init:
+                coefficients = self._initialize_parameters(data, coefficients0)  # Need to randomize initial coefficients if multiple run
+            self._print_verbose_msg_init_beg(init)
+            lower_bound = -np.inf if do_init else self.lower_bound_
+            lower_bound_m_step = -np.inf
+            # Algorithm loop
+            for n_iter in range(1, self.max_iter + 1):
+                prev_lower_bound = lower_bound
+                # E step
+                for trj in data:
+                    trj = self.transition.correct_velocities(trj)
+
+                lower_bound = -self._log_likelihood_negative(coefficients, data)
+                if self.verbose >= 2:
+                    if lower_bound - lower_bound_m_step < 0:
+                        print("Delta loglikelihood after E step:", lower_bound - lower_bound_m_step)
+                # M Step
+                if has_jac:
+                    res = minimizer(self._log_likelihood_negative_with_jac, coefficients, args=(data,), jac=True, method="L-BFGS-B")
+                else:
+                    res = minimizer(self._log_likelihood_negative, coefficients, args=(data,), method="L-BFGS-B")
+                coefficients = res.x
+                if callbacks[init] is not None:
+                    callbacks[init](res)
+                lower_bound_m_step = -res.fun
+                if self.verbose >= 2 and lower_bound_m_step - lower_bound < 0:
+                    print("Delta loglikelihood after M step:", lower_bound_m_step - lower_bound)
+                if np.isnan(lower_bound_m_step) or not np.isfinite(np.sum(coefficients)):  # If we have nan value we simply restart the iteration
+                    warnings.warn(
+                        "Initialization %d has NaN values. Ends iteration" % (init),
+                        ConvergenceWarning,
+                    )
+                    if self.verbose >= 2:
+                        print(self.model.coefficients)
+                        print("loglikelihood: {}".format(lower_bound))
+                    break
+
+                self.logL[init, n_iter - 1] = lower_bound  # Value after E step
+                change = lower_bound - prev_lower_bound
+                self._print_verbose_msg_iter_end(n_iter, change, lower_bound)
+
+                if lower_bound > max_lower_bound:
+                    max_lower_bound = lower_bound
+                    best_coeffs = coefficients
+                    best_n_iter = n_iter
+                    best_n_init = init
+
+                if abs(change) < self.tol:
+                    self.converged_ = True
+                    if not self.no_stop:
+                        break
+
+            self._print_verbose_msg_init_end(lower_bound, n_iter)
+            # self.coeffs_list_all.append(coeff_list_init)
+            if not self.converged_:
+                warnings.warn(
+                    "Initialization %d did not converge. " "Try different init parameters, " "or increase max_iter, tol " "or check for degenerate data." % (init + 1),
+                    ConvergenceWarning,
+                )
+        if best_coeffs is not None:
+            self.model.coefficients = best_coeffs
+            self.model.fitted_ = True
+            self.results_ = EstimatedResult(coefficients=best_coeffs, log_like=max_lower_bound, sample_size=data.nobs - 1)
+        self.n_iter_ = best_n_iter
+        self.n_best_init_ = best_n_init
+        self.lower_bound_ = max_lower_bound
+        self._print_verbose_msg_fit_end(max_lower_bound, best_n_init, best_n_iter)
+        return self
+
+    def _initialize_parameters(self, data, coefficients0):
+        """
+        Random initialisation of the parameters
+        """
+        # Random initialization of hidden variables
+        UnderdampedKramersMoyalEstimator(self.model).fit(data)  # We get initial parameters via KramersMoyal fit of random hidden values
+        rng = np.random.default_rng()
+        num_coeffs = len(self.model.coefficients)
+        return self.model.coefficients * ( ( rng.random(size=num_coeffs) * 0.2 + 0.8 ) ** (rng.choice(2, size=num_coeffs) * 2 - 1) )
+
+    def _print_verbose_msg_init_beg(self, n_init):
+        """Print verbose message on initialization."""
+        if self.verbose == 1:
+            print("Initialization %d" % n_init)
+        elif self.verbose >= 2:
+            print("Initialization %d" % n_init)
+            self._init_prev_time = time()
+            self._iter_prev_time = self._init_prev_time
+        if self.verbose >= 3:
+            print("----------------Current parameters values------------------")
+            print(self.model.coefficients)
+
+    def _print_verbose_msg_iter_end(self, n_iter, diff_ll, log_likelihood):
+        """Print verbose message on initialization."""
+        if n_iter % self.verbose_interval == 0:
+            if self.verbose == 1:
+                print("***Iteration EM*** : {} / {} --- Current loglikelihood {}".format(n_iter, self.max_iter, log_likelihood))
+            elif self.verbose >= 2:
+                cur_time = time()
+                print(
+                    "***Iteration EM*** :%d / %d\t time lapse %.5fs\t Current loglikelihood %.5f loglikelihood change %.5f"
+                    % (
+                        n_iter,
+                        self.max_iter,
+                        cur_time - self._iter_prev_time,
+                        log_likelihood,
+                        diff_ll,
+                    )
+                )
+                self._iter_prev_time = cur_time
+            if self.verbose >= 3:
+                print("----------------Current parameters values------------------")
+                print(self.model.coefficients)
+
+    def _print_verbose_msg_init_end(self, ll, best_iter):
+        """Print verbose message on the end of iteration."""
+        if self.verbose == 1:
+            print("Initialization converged: %s at step %i \t ll %.5f" % (self.converged_, best_iter, ll))
+        elif self.verbose >= 2:
+            print("Initialization converged: %s at step %i \t time lapse %.5fs\t ll %.5f" % (self.converged_, best_iter, time() - self._init_prev_time, ll))
+            print("----------------Current parameters values------------------")
+            print(self.model.coefficients)
+
+    def _print_verbose_msg_fit_end(self, ll, best_init, best_iter):
+        """Print verbose message on the end of iteration."""
+        if self.verbose == 1:
+            print("Fit converged: %s Init: %s at step %i \t ll %.5f" % (self.converged_, best_init, best_iter, ll))
+        elif self.verbose >= 2:
+            print(
+                "Fit converged: %s Init: %s at step %i \t time lapse %.5fs\t ll %.5f"
+                % (
+                    self.converged_,
+                    best_init,
+                    best_iter,
+                    time() - self._init_prev_time,
+                    ll,
+                )
+            )
+            print("----------------Fitted parameters values------------------")
+            print(self.model.coefficients)
