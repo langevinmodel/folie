@@ -261,8 +261,8 @@ class VECDensity(UnderdampedTransitionDensity):
 
     def correct_velocities(self, trj):
         sigma_sq = 2 * self._model.diffusion(trj["x"]).ravel().mean() * trj["dt"]
-        a = 0.57275 * np.sqrt(sigma_sq)
-        b = 0.07275 * np.sqrt(sigma_sq)
+        a = 1/4*(1+np.sqrt(5/3)) * np.sqrt(sigma_sq)
+        b = 1/4*(-1+np.sqrt(5/3)) * np.sqrt(sigma_sq)
         g = np.random.default_rng().standard_normal(size = trj["v"].shape)
         trj["v"] = trj["u"] + a * g + b * np.roll(g, 1, axis=0)
         return trj

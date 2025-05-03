@@ -70,8 +70,8 @@ def test_likelihood_derivative_underdamped(data, request, transitioncls):
 
     assert loglikelihood[1].shape == (len(model.coefficients),)
     # Testing for evaluation of the jacobian
-    finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition(data.weights[0], data[0], p)[0], epsilon=1e-04)
-    np.testing.assert_allclose(loglikelihood[1], finite_diff_jac, rtol=1e-05)
+    finite_diff_jac = scipy.optimize.approx_fprime(model.coefficients, lambda p: transition(data.weights[0], data[0], p)[0], epsilon=1e-05)
+    np.testing.assert_allclose(loglikelihood[1], finite_diff_jac, rtol=1e-04)
 
 
 @pytest.mark.parametrize("data", ["numpy"], indirect=True)

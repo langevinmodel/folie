@@ -111,7 +111,7 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
     def __init__(self, model):
         super().__init__(model)
 
-    def fit(self, data, **kwargs):
+    def fit(self, data, correct_finite_diff_vel=True, **kwargs):
         r"""Fits data to the estimator's internal :class:`Model` and overwrites it. This way, every call to
         :meth:`fetch_model` yields an autonomous model instance. Sometimes a :code:`partial_fit` method is available,
         in which case the model can get updated by the estimator.
@@ -138,7 +138,9 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
         dt = data[0]["dt"]
 
         X = np.concatenate([trj["x"] for trj in data], axis=0)
+        U = np.concatenate([trj["u"] for trj in data], axis=0)
         V = np.concatenate([trj["v"] for trj in data], axis=0)
+        
         bias = np.concatenate([trj["bias"] for trj in data], axis=0)
         extra_kwargs = {}
         for key in ["cells_idx", "loc_x"]:
@@ -158,7 +160,12 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
             acc_sq = acc ** 2
         else:
             acc_sq = acc[..., None] * acc[:, None, ...]
-        self.model.diffusion.fit(X, y=acc_sq * dt)
+        # Test if velocities were computed by finite differences
+        if correct_finite_diff_vel and np.array_equal(U, V):
+            # finite difference velocity correction
+            # for KM it's a simple multiplicative factor
+            acc_sq *= 3/2
+        self.model.diffusion.fit(X, y=acc_sq * dt / 2)
         self.model.fitted_ = True
 
         return self
@@ -168,16 +175,23 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
         Compute velocity and acceleration
         """
 
-        if "a" not in list(trj.keys()):
-            diffs = trj["x"] - np.roll(trj["x"], 1, axis=0)
-            a = np.roll(diffs, -1, axis=0) - diffs
-            trj["a"] = a[1:-2] / (trj["dt"] ** 2)
-
         if "u" not in list(trj.keys()):
             trj["u"] = (0.5 / trj["dt"]) * (trj["x"] - np.roll(trj["x"], 2, axis=0))
+            trj["u"] = np.roll(trj["u"], -1, axis=0)
 
         if "v" not in trj:
             trj["v"] = trj["u"].copy()
+            if "a" not in trj:
+                diffs = trj["x"] - np.roll(trj["x"], 1, axis=0)
+                a = np.roll(diffs, -1, axis=0) - diffs
+                trj["a"] = a[1:-2] / (trj["dt"] ** 2)
+        elif "a" not in trj:
+            # Purposefully define the acceleration as v_n - v_n-1 / dt
+            # for further fitting
+            trj["a"] = ( trj["v"] - np.roll(trj["v"], 1, axis=0) )[1:-2] / trj["dt"]
+            # trj["a"] = (0.5 / trj["dt"]) * (trj["v"] - np.roll(trj["v"], 2, axis=0))
+            # trj["a"] = np.roll(trj["a"], -1, axis=0)[1:-2]
+
 
         if "vt" not in trj:
             trj["vt"] = trj["v"][2:-1]
