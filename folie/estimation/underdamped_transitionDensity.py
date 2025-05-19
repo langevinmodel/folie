@@ -21,7 +21,6 @@ def compute_va(trj, correct_jumps=False, jump=2 * np.pi, jump_thr=1.75 * np.pi, 
         if correct_jumps:
             diffs = np.where(diffs > -jump_thr, diffs, diffs + jump)
             diffs = np.where(diffs < jump_thr, diffs, diffs - jump)
-        # raise NotImplementedError("Periodic data are not implemented yet")
 
         ddiffs = np.roll(diffs, -1, axis=0) - diffs
         sdiffs = lamb_finite_diff * np.roll(diffs, -1, axis=0) + (1.0 - lamb_finite_diff) * diffs
@@ -260,11 +259,29 @@ class VECDensity(UnderdampedTransitionDensity):
             return  underdamped_gaussian_likelihood_derivative_ND(Xt, E, M, jacE, jacM)
 
     def correct_velocities(self, trj):
+        r""" Add taylored noise to finite-difference velocities to correct drift fitting.
+                    
+        Parameters
+        ----------
+        trj : dict
+            Trajectory dictionary containing positions, velocities and other data.
+
+        Returns
+        -------
+        trj : dict
+            Updated trajectory with corrected velocities.
+            """
+        # Compute sigma squared from average diffusion
         sigma_sq = 2 * self._model.diffusion(trj["x"]).ravel().mean() * trj["dt"]
+
+        # Correct velocity by adding two gaussian white noises
+        # with fine-tuned coefficients a and b that depend on sigma_sq
         a = 1/4*(1+np.sqrt(5/3)) * np.sqrt(sigma_sq)
         b = 1/4*(-1+np.sqrt(5/3)) * np.sqrt(sigma_sq)
         g = np.random.default_rng().standard_normal(size = trj["v"].shape)
         trj["v"] = trj["u"] + a * g + b * np.roll(g, 1, axis=0)
+        # update vt accordingly
+        trj["vt"] = np.concatenate((trj["v"][1:], [trj["vt"][-1]]))
         return trj
            
 
