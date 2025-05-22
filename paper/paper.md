@@ -59,7 +59,7 @@ FOLIE is designed to allow easy and efficient inference of such models from proj
 
 ## Langevin Models
 
-Let's consider the dynamics of a low-dimensional collective variable $q$. There is a set of possible Langevin models to describe this dynamics[@PalacioRodriguez2022,@giradier2023]. Projecting the high-dimensionnal dynamics onto the collective variable leads to the generalized Langevin equation[@vroylandt2022a], that writes for a single variable
+Let's consider the dynamics of a low-dimensional collective variable $q$. There is a set of possible Langevin models to describe this dynamics[@PalacioRodriguez2022,@girardier2023]. Projecting the high-dimensionnal dynamics onto the collective variable leads to the generalized Langevin equation[@vroylandt2022a], that writes for a single variable
 \begin{equation*}
     \ddot{q}= - \frac{1}{m(q)} \frac{\partial A(q)}{\partial q}+ k_BT\frac{\partial m(q)^{-1}}{\partial q}- \int_0^t  \Gamma(s)\dot{q}(t-s) \,\mathrm{d} s + R(t)
 \end{equation*}
