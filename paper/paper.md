@@ -11,9 +11,8 @@ tags:
 authors:
   - name: Hadrien Vroylandt
     orcid: 0000-0002-2443-5901
-    affiliation: 1 # (Multiple affiliations must be quoted)
+    affiliation: "1, 2" # (Multiple affiliations must be quoted)
     corresponding: true # (This is how to denote the corresponding author)
-    affiliation: 2
   - name: Daniele Bersano
     affiliation: 3
   - name: Jérôme Hénin
@@ -31,7 +30,7 @@ affiliations:
    index: 3
    ror: 00nvjgv40
    ror: 05abgg682
-date: 2 April 2025
+date: 23 Mai 2025
 bibliography: paper.bib
 
 ---
@@ -92,7 +91,7 @@ The analytical shape of the likelihood is not always known a priory but, restric
 \mathcal{L}(\vec{q}|\theta ) = \prod_{i=0}^{N-1} p_\theta(q_{i+1},t_{i+1}|q_{i},t_{i})
 \end{equation}
 from which follows that the log-likelihood of the trajectory is :
-\begin{equation} \label{eq:eq:log_likelihood_general}
+\begin{equation} \label{eq:log_likelihood_general}
     \log{\mathcal{L}}(\vec{q}|\theta) = \sum_{i=0}^{N-1} \log \left[ p_\theta(q_{i+1},t_{i+1}|q_{i},t_{i}) \right]
 \end{equation}
 
