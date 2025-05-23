@@ -23,9 +23,10 @@ authors:
 affiliations:
  - name: Université Caen Normandie, ENSICAEN, CNRS, Normandie Univ, GREYC UMR 6072, 14000 Caen, France
    index: 1
-   ror: 043749971
+   ror: 0043749971
  - name: Sorbonne Université, Institut des sciences du calcul et des données, ISCD - F-75005 Paris, France
    index: 2
+   ror: 00y16rm59
  - name: Université Paris Cité, CNRS, Laboratoire de Biochimie Théorique UPR 9080, 75005, Paris, France
    index: 3
    ror: 00nvjgv40
