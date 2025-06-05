@@ -7,7 +7,7 @@ ABMD simulation is adapted from pyoptLE
 
 from .._numpy import np
 from ..data import Trajectories, Trajectory
-from .stepper import ExactStepper, EulerStepper, MilsteinStepper, VECStepper
+from .stepper import ExactStepper, EulerStepper, MilsteinStepper, VECStepper, EulerMaruyamaStepper
 
 # np.random.seed(3)
 
@@ -55,7 +55,7 @@ class UnderdampedSimulator(Simulator):
                 x_val[:, n // save_every, :] = x
         data = Trajectories(dt=self.dt * save_every)
         for i in range(ntrajs):
-            data.append(Trajectory(self.dt, x_val[i, :, : self.keep_dim], v=x_val[i, :, dim // 2 : dim // 2 + self.keep_dim]))
+            data.append(Trajectory(self.dt * save_every, x_val[i, :, : self.keep_dim], v=x_val[i, :, dim // 2 : dim // 2 + self.keep_dim]))
         return data
 
 

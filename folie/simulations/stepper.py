@@ -52,9 +52,18 @@ class MilsteinStepper(Stepper):
         sig_sq_dt = np.sqrt(2 * self.model.diffusion(x) * dt)
         return (x.T + (self.model.drift(x, bias)) * dt + sig_sq_dt * dW.T + 0.5 * self.model.diffusion.grad_x(x)[..., 0] * ((dW.T) ** 2 - 1) * dt).T  # same problem of dW.T as in EulerStepper class
 
-
+class EulerMaruyamaStepper(Stepper):
+    def run_step_1D(self, X, dt, dW, bias=0.0):
+        x = X[:, : self.model.dim]
+        v = X[:, self.model.dim :]
+        sig_sq_dt = np.sqrt(2 * self.model.diffusion(x) * dt)
+        dWv = (sig_sq_dt * dW[:, self.model.dim :].T).T
+        x += dt*v
+        v += ( ( self.model.drift(x, v, bias) * dt ).T + dWv.T).T
+        return np.concatenate([x, v], axis=1)      
+        
 class VECStepper(Stepper):
-    def run_step(self, X, dt, dW, bias=0.0):
+    def run_step_1D(self, X, dt, dW, bias=0.0):
         x = X[:, : self.model.dim]
         v = X[:, self.model.dim :]
         # If not initialized initialize
@@ -67,7 +76,7 @@ class VECStepper(Stepper):
             gamma = self.model.friction(x)
             diff = self.model.diffusion(x)
 
-        sc2 = 1 - 0.5 * gamma * dt + 0.125 * (gamma * dt) ** 2
+        sc2 = 1 - 0.5 * gamma * dt + 0.125 * gamma * dt ** 2
         c1 = 0.5 * dt * (1 - 0.25 * gamma * dt)
         d1 = 0.5 * (1 - 0.25 * gamma * dt)
         d2 = -0.25 * gamma * dt / np.sqrt(3)
@@ -83,3 +92,37 @@ class VECStepper(Stepper):
 
         v = ((sc2 * v_mid.T) + c1 * self.f + (d1 * dWx.T) + (d2 * dWv.T)).T
         return np.concatenate([x, v], axis=1)
+    
+    def run_step_ND(self, X, dt, dW, bias=0.0):
+        x = X[:, : self.model.dim]
+        v = X[:, self.model.dim :]
+        # If not initialized initialize
+        try:
+            fx = self.f
+            gamma = self.gamma
+            diff = self.diff
+        except AttributeError:
+            fx = self.model.pos_drift(x, bias)
+            gamma = self.model.friction(x)
+            diff = self.model.diffusion(x)
+            
+
+        N, dim = gamma.shape[0], self.model.dim
+        sc2 = np.broadcast_to(np.eye(dim), (N, dim, dim)) - 0.5 * gamma * dt + 0.125 * gamma * dt ** 2 # prev. version : (gamma * dt) ** 2 does not match VEC paper
+        c1 = 0.5 * dt * (np.broadcast_to(np.eye(dim), (N, dim, dim)) - 0.25 * gamma * dt)
+        d1 = 0.5 * (np.broadcast_to(np.eye(dim), (N, dim, dim)) - 0.25 * gamma * dt)
+        d2 = -0.25 * gamma * dt / np.sqrt(3)
+        sig_sq_dt = np.sqrt(2 * diff * dt)
+        dWx = np.einsum('ijk,ik->ij', sig_sq_dt, dW[:, : self.model.dim])
+        dWv = np.einsum('ijk,ik->ij', sig_sq_dt, dW[:, self.model.dim :])
+        v_mid = np.einsum('ijk,ik->ij', sc2, v) + np.einsum('ijk,ik->ij', c1, fx) + np.einsum('ijk,ik->ij',d1, dWx) + np.einsum('ijk,ik->ij', d2, dWv)
+        x += dt * (v_mid + (0.5 / np.sqrt(3)) * dWv)
+        # update friction
+        self.f = self.model.pos_drift(x, bias)
+        self.gamma = self.model.friction(x)
+        self.diff = self.model.diffusion(x)
+
+        v = np.einsum('ijk,ik->ij', sc2, v_mid) + np.einsum('ijk,ik->ij', c1, self.f) + np.einsum('ijk,ik->ij', d1, dWx) + np.einsum('ijk,ik->ij', d2, dWv)
+        return np.concatenate([x, v], axis=1)
+
+        
