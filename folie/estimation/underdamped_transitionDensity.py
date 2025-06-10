@@ -5,7 +5,7 @@ The code in this file is copied and adapted from pymle (https://github.com/jkirk
 from .._numpy import np
 from typing import Union
 from .transitionDensity import TransitionDensity
-from .transitionDensity import gaussian_likelihood_1D, gaussian_likelihood_ND, gaussian_likelihood_derivative_1D, gaussian_likelihood_derivative_ND, underdamped_gaussian_likelihood_derivative_ND
+from .transitionDensity import gaussian_likelihood_1D, gaussian_likelihood_ND, gaussian_likelihood_derivative_1D, gaussian_likelihood_derivative_ND, underdamped_gaussian_likelihood_derivative_ND, underdampedFDT_gaussian_likelihood_derivative_1D
 import numba as nb
 
 
@@ -32,15 +32,13 @@ def compute_va(trj, correct_jumps=False, jump=2 * np.pi, jump_thr=1.75 * np.pi, 
         trj["a"] = ddiffs[1:-2] / dt**2
     elif "a" not in trj:
         dv = trj["v"] - np.roll(trj["v"],1,axis=0)
-        dt = trj["dt"]
-        vdiffs = lamb_finite_diff * np.roll(dv, -1, axis=0) + (1.0 - lamb_finite_diff) * dv
-        
-        trj["a"] = vdiffs[1:-2] / dt
-
+        dt = trj["dt"]      
+        trj["a"] = dv[2:-1] / dt
     return trj
 
 
 class UnderdampedTransitionDensity(TransitionDensity):
+    use_jac=True
     def __init__(self, model):
         """
         Class which represents the Euler approximation transition density for a model
@@ -48,18 +46,70 @@ class UnderdampedTransitionDensity(TransitionDensity):
         """
         super().__init__(model)
 
+    def __call__(self, weight, trj, coefficients):
+        """
+        Compute Likelihood of one trajectory
+        """
+        self._model.coefficients = coefficients
+        if self.use_jac:
+            like, jac = self._logdensity(**trj)
+            return np.asarray(-np.sum(like) / weight), np.asarray(-np.sum(jac, axis=0) / weight)
+        else:
+            like = self._logdensity(**trj)
+            return (np.asarray(-np.sum(like) / weight),)
+
     def preprocess_traj(self, trj, **kwargs):
         """
         Preprocess trajectories data
         """
         trj = compute_va(trj, **kwargs)
+        if "vt" not in trj:
+            trj["vt"] = trj["v"][2:-1]
+            trj["v"] = trj["v"][1:-2]
+            if "u" in trj:
+                trj["u"] = trj["u"][1:-2]
+        
+        if "bias" not in trj:
+            trj["bias"] = np.zeros((1, trj["x"].shape[1]))
+
+        trj["sig_h"] = np.zeros((trj["v"].shape[0], 2 * self._model.dim, 2 * self._model.dim))  # That would be dim_x+dim_h as the velocity is in the hidden dim
         if hasattr(self._model, "dim_h"):
             if self._model.dim_h > 0:
-                trj["sig_h"] = np.zeros((trj["v"].shape[0], 2 * self._model.dim_h, 2 * self._model.dim_h))
                 trj["v"] = np.concatenate((trj["v"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
                 trj["a"] = np.concatenate((trj["a"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
+                trj["vt"] = np.concatenate((trj["vt"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
+                trj["x"] = np.concatenate((trj["x"], np.zeros((trj["x"].shape[0], self._model.dim_h))), axis=1)
+                trj["bias"] = np.concatenate((trj["bias"], np.zeros((trj["bias"].shape[0], self._model.dim_h))), axis=1)
         return trj
 
+    def _logdensity1D(self, x, v, a, dt: float, bias=0.0, **kwargs) -> Union[float, np.ndarray]:
+        """
+        The transition density obtained via Kessler expansion
+        :param x: float or array, the current position value
+        :param v: float or array, the current velocity value
+        :param vt: float or array, the velocity value to transition to (must be same dimension as v)
+        :param dt: float, the timestep between v and vt
+        :return: probability (same dimension as v and vt)
+        """
+        # Drift and derivatives
+        mut = self._model._drift(x,v, bias, **kwargs).ravel() * dt             
+        # Diffusion and derivatives
+        sig2t = 2 * self._model.diffusion(x, **kwargs).ravel() * dt #* 2 / 3
+
+        # scale = 6
+        # real_diff = 3.
+        # corr = scale * ( self._model.friction(x, bias, **kwargs).ravel() * real_diff / self._model.diffusion(x, **kwargs).ravel() ) * dt / 12
+
+        # jac_corr = scale * dt / 12 * ( self._model.friction.grad_coeffs(x, bias, **kwargs) / self._model.diffusion(x, **kwargs)[:,None] - self._model.friction(x, bias, **kwargs)[:,None] * self._model.diffusion.grad_coeffs(x, **kwargs) / (( self._model.diffusion(x, **kwargs) )**2 ) [:,None] )
+        
+        if not self.use_jac:
+            return gaussian_likelihood_1D(a*dt, mut, sig2t) #+ corr#, np.zeros(2)
+
+        else:
+            jacE = self._model.drift.grad_coeffs(x, v, bias, **kwargs) * dt
+            jacV = 2 * self._model.diffusion.grad_coeffs(x, **kwargs) * dt# * 2 / 3
+            return gaussian_likelihood_derivative_1D(a*dt, mut, sig2t, jacE, jacV)
+    
 
 class BBKDensity(UnderdampedTransitionDensity):
     def __init__(self, model):
@@ -162,9 +212,9 @@ class VECDensity(UnderdampedTransitionDensity):
         gamma_x = self._model.friction.grad_x(x,v).ravel() # b_qv
 
         # Diffusion and derivatives
-        c = self._model.diffusion(x,v).ravel()             # c
-        c_x = self._model.diffusion.grad_x(x,v).ravel()    # c_q
-        c_xx = self._model.diffusion.hessian_x(x,v).ravel()# c_qq
+        c = self._model.diffusion(x).ravel() #* 4/7             # c
+        c_x = self._model.diffusion.grad_x(x).ravel() #* 4/7    # c_q
+        c_xx = self._model.diffusion.hessian_x(x).ravel() #* 4/7 # c_qq
 
         x = x.ravel()
         xt = xt.ravel()
@@ -187,7 +237,7 @@ class VECDensity(UnderdampedTransitionDensity):
         M = np.einsum("ij...-> ...ij", [[Mxx, Mxv], [Mxv, Mvv]])  # Diffusion matrix
 
         if not self.use_jac:
-            return gaussian_likelihood_ND(Xt, E, M)
+            return gaussian_likelihood_ND(Xt, E, M) + corr
 
         else:
             dim_coeffs = len(self._model.coefficients)
@@ -247,6 +297,7 @@ class VECDensity(UnderdampedTransitionDensity):
             jac_Mxv = jac_c * dt**2 + (jac_c_x * v - 3 * jac_c * gamma - 3 * jac_gamma * c) * dt**3 / 3
             jacM = np.einsum("ijtc-> tijc", [[jac_Mxx, jac_Mxv], [jac_Mxv, jac_Mvv]])  # Diffusion matrix
 
+
         # Here we kind of divert likelihood_ND from its original scope
         # (treating multi-dimensional CVs) by defining X = (x,v) a 2D-
         # variable encapsulating position and velocity to yield a more
@@ -258,7 +309,7 @@ class VECDensity(UnderdampedTransitionDensity):
         # make it work.
             return  underdamped_gaussian_likelihood_derivative_ND(Xt, E, M, jacE, jacM)
 
-    def correct_velocities(self, trj):
+    def add_noise_to_velocities(self, trj):
         r""" Add taylored noise to finite-difference velocities to correct drift fitting.
                     
         Parameters
@@ -283,5 +334,78 @@ class VECDensity(UnderdampedTransitionDensity):
         # update vt accordingly
         trj["vt"] = np.concatenate((trj["v"][1:], [trj["vt"][-1]]))
         return trj
-           
+
+class UnderdampedTransitionDensityFDT_exact_vels(UnderdampedTransitionDensity):
+    use_jac=True
+    def __init__(self, model):
+        """
+        Class which represents the Euler approximation transition density for a model
+        :param model: the SDE model, referenced during calls to the transition density
+        """
+        super().__init__(model)
+
+    def _logdensity1D(self, x, v, a, dt: float, bias=0.0, **kwargs) -> Union[float, np.ndarray]:
+        """
+        The transition density obtained via Euler expansion
+        :param x: float or array, the current position value
+        :param v: float or array, the current velocity value
+        :param a: float or array, the acceleration value (must be same dimension as v)
+        :param dt: float, the timestep between v and vt
+        :return: probability (same dimension as v and vt)
+        """
+        # Drift and derivatives
+        mut = self._model._drift(x,v, bias, **kwargs).ravel() * dt             
+        # Diffusion and derivatives
+        sig2t = 2 * self._model.diffusion(x, **kwargs).ravel() * dt # * 2 / 3
+        
+        if not self.use_jac:
+            return gaussian_likelihood_1D(a*dt, mut, sig2t)
+
+        else:
+            jacPhi_0 = self._model.pos_drift.grad_coeffs(x, v, bias, **kwargs) * dt
+            jacGamma_v_0 = - self._model.diffusion.grad_coeffs(x, bias, **kwargs) * v.ravel()[:,None] / self._model.mass_kBT * dt
+            jacE = np.concatenate((jacPhi_0, jacGamma_v_0), axis=-1)
+            jacV_0 = 2 * self._model.diffusion.grad_coeffs(x, **kwargs) * dt # * 2 / 3
+            jacV = np.zeros((jacE.shape[0], len(self._model.coefficients)))
+            jacV[:, self._model.pos_drift.size :] = jacV_0
+
+            return underdampedFDT_gaussian_likelihood_derivative_1D(a*dt, mut, sig2t, jacE, jacV)
+
+class UnderdampedTransitionDensityFDT(UnderdampedTransitionDensity):
+    use_jac=True
+    def __init__(self, model):
+        """
+        Class which represents the Euler approximation transition density for a model
+        :param model: the SDE model, referenced during calls to the transition density
+        """
+        super().__init__(model)
+
+    def _logdensity1D(self, x, v, a, dt: float, bias=0.0, **kwargs) -> Union[float, np.ndarray]:
+        """
+        The transition density obtained via Euler expansion
+        :param x: float or array, the current position value
+        :param v: float or array, the current velocity value
+        :param a: float or array, the acceleration value (must be same dimension as v)
+        :param dt: float, the timestep between v and vt
+        :return: probability (same dimension as v and vt)
+        """
+        # Drift and derivatives
+        mut = self._model._drift(x,v, bias, **kwargs).ravel() * dt             
+        # Diffusion and derivatives
+        sig2t = 2 * self._model.diffusion(x, **kwargs).ravel() * dt # * 2 / 3
+        
+        if not self.use_jac:
+            return gaussian_likelihood_1D(a*dt, mut, sig2t) + 1/2 * -0.5 * a.ravel()**2 * dt**2 / sig2t
+
+        else:
+            jacPhi_0 = self._model.pos_drift.grad_coeffs(x, v, bias, **kwargs) * dt
+            jacGamma_v_0 = - self._model.diffusion.grad_coeffs(x, bias, **kwargs) * v.ravel()[:,None] / self._model.mass_kBT * dt
+            jacE = np.concatenate((jacPhi_0, jacGamma_v_0), axis=-1)
+            jacV_0 = 2 * self._model.diffusion.grad_coeffs(x, **kwargs) * dt # * 2 / 3
+            jacV = np.zeros((jacE.shape[0], len(self._model.coefficients)))
+            jacV[:, self._model.pos_drift.size :] = jacV_0
+
+            like0, jac0 = underdampedFDT_gaussian_likelihood_derivative_1D(a*dt, mut, sig2t, jacE, jacV)
+
+            return like0 + 1/2 * -0.5 * a.ravel()**2 * dt**2 / sig2t, jac0 + 1/2 * 0.5 * ( a.ravel()**2 * dt**2 / sig2t**2 )[:,None] * jacV
 

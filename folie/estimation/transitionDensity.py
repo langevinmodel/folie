@@ -10,12 +10,10 @@ from typing import Union
 def gaussian_likelihood_1D(xt, E, V):
     return -0.5 * ((xt.ravel() - E) ** 2 / V) - 0.5 * np.log(np.sqrt(2 * np.pi) * V)
 
-
 def gaussian_likelihood_ND(xt, E, V):
     invVE = np.linalg.solve(V, xt - E)
     # error in the scalar product
     return -0.5 * np.einsum("ti,ti-> t", xt - E, invVE) - 0.5 * np.log(np.sqrt(2 * np.pi) * np.linalg.det(V))
-
 
 def gaussian_likelihood_derivative_1D(xt, E, V, jacE, jacV):
     ll = -0.5 * ((xt.ravel() - E) ** 2 / V) - 0.5 * np.log(np.sqrt(2 * np.pi) * V)
@@ -23,7 +21,12 @@ def gaussian_likelihood_derivative_1D(xt, E, V, jacE, jacV):
     l_jac_V = 0.5 * (((xt.ravel() - E) ** 2) / V ** 2)[:, None] * jacV - 0.5 * jacV / V[:, None]
     return ll, np.concatenate((l_jac_E, l_jac_V), axis=-1)
 
-
+def underdampedFDT_gaussian_likelihood_derivative_1D(xt, E, V, jacE, jacV):
+    ll = -0.5 * ((xt.ravel() - E) ** 2 / V) - 0.5 * np.log(np.sqrt(2 * np.pi) * V)
+    l_jac_E = ((xt.ravel() - E) / V)[:, None] * jacE
+    l_jac_V = 0.5 * (((xt.ravel() - E) ** 2) / V ** 2)[:, None] * jacV - 0.5 * jacV / V[:, None]
+    return ll, l_jac_E + l_jac_V
+    
 def gaussian_likelihood_derivative_ND(xt, E, V, jacE, jacV):
     invV = np.linalg.inv(V)  # TODO: Use linalg.solve instead of inv ?
     invVE = np.einsum("tij,tj-> ti", invV, xt - E)

@@ -16,14 +16,14 @@ class Underdamped(Overdamped):
 
     """
 
-    def __init__(self, force, friction, diffusion, dim=1, **kwargs):
+    def __init__(self, force, friction, diffusion, dim=1, FDT=False, **kwargs):
 
         if friction is diffusion:
             friction = diffusion.copy()
         super().__init__(force, diffusion, dim=dim)
-        self.friction = friction.resize(self.diffusion.shape)
+        if not FDT:
+            self.friction = friction.resize(self.diffusion.shape)
 
-### added by Axel
         if self.dim <= 1:
             output_shape_drift = ()
             output_shape_diff = ()
@@ -138,6 +138,38 @@ class Underdamped(Overdamped):
         self.pos_drift.coefficients = vals.ravel()[: self.pos_drift.size]
         self.friction.coefficients = vals.ravel()[self.pos_drift.size : self.pos_drift.size + self.friction.size]
 
+class UnderdampedFDT(Underdamped):
+    """
+    Base model for underdamped Langevin equations modelling equilibrium systems, defined by
+
+    .. math ::
+
+    dX(t) = V(t)
+
+    dV(t) = f(X,t)dt - gamma(X,t)V(t)dt + sqrt(2mkBTgamma(X,t))dW_t
+
+    """
+    def __init__(self, force, diffusion, mass_kBT=1., dim=1, **kwargs):
+        super().__init__(force, diffusion, diffusion, dim=dim, FDT=True)
+        self.mass_kBT = mass_kBT
+
+    @property
+    def friction(self):
+        friction = self.diffusion.copy()
+        friction.coefficients /= self.mass_kBT
+        return friction
+
+    @property
+    def coefficients(self):
+        """Access the coefficients"""
+        return np.concatenate((self.pos_drift.coefficients.ravel(), self.diffusion.coefficients.ravel(), ))
+
+    @coefficients.setter
+    def coefficients(self, vals):
+        """Set parameters, used by fitter to move through param space"""
+        self.pos_drift.coefficients = vals.ravel()[: self.pos_drift.size]
+        self.diffusion.coefficients = vals.ravel()[self.pos_drift.size :]
+        
 
 class UnderdampedOrnsteinUhlenbeck(Underdamped):
     """

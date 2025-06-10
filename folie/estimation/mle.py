@@ -10,8 +10,8 @@ from sklearn.exceptions import ConvergenceWarning
 
 
 from ..base import Estimator
-from .direct_estimation import KramersMoyalEstimator, UnderdampedKramersMoyalEstimator
-from ..models import BaseModelOverdamped, Underdamped
+from .direct_estimation import KramersMoyalEstimator, UnderdampedKramersMoyalEstimator, UnderdampedFDTKramersMoyalEstimator
+from ..models import BaseModelOverdamped, Underdamped, UnderdampedFDT
 
 
 class EstimatedResult(object):
@@ -84,7 +84,10 @@ class LikelihoodEstimator(Estimator):
             # TODO, check depending of the order of the model
             if isinstance(self.model, BaseModelOverdamped):
                 if isinstance(self.model, Underdamped):
-                    UnderdampedKramersMoyalEstimator(self.model).fit(data, **kwargs)
+                    if isinstance(self.model, UnderdampedFDT):
+                        UnderdampedFDTKramersMoyalEstimator(self.model).fit(data, **kwargs)
+                    else:
+                        UnderdampedKramersMoyalEstimator(self.model).fit(data, **kwargs)
                 else:
                     KramersMoyalEstimator(self.model, n_jobs=self.n_jobs).fit(data, **kwargs)
             coefficients0 = self.model.coefficients
@@ -378,14 +381,14 @@ class FiniteVelocityEMEstimator(LikelihoodEstimator):
 
         self.no_stop = no_stop
 
-    def fit(self, data, minimizer=None, coefficients0=None, use_jac=True, callback=None, **kwargs):
+    def fit(self, data, minimizer=None, coefficients0=None, use_jac=True, callback=None, random_init=False, **kwargs):
         """
         In this do a loop that alternatively minimize and compute expectation
         """
         for trj in data:
             self.transition.preprocess_traj(trj)
         if coefficients0 is None:
-            coefficients0 = self._initialize_parameters(data, coefficients0)
+            coefficients0 = self._initialize_parameters(data, coefficients0, random_init=random_init)
         if minimizer is None:
             coefficients = np.asarray(coefficients0)
             minimizer = minimize
@@ -482,15 +485,18 @@ class FiniteVelocityEMEstimator(LikelihoodEstimator):
         self._print_verbose_msg_fit_end(max_lower_bound, best_n_init, best_n_iter)
         return self
 
-    def _initialize_parameters(self, data, coefficients0):
+    def _initialize_parameters(self, data, coefficients0, random_init=False):
         """
-        Random initialisation of the parameters
+        optionally random initialization of the parameters
         """
         # Random initialization of hidden variables
-        UnderdampedKramersMoyalEstimator(self.model).fit(data)  # We get initial parameters via KramersMoyal fit of random hidden values
-        rng = np.random.default_rng()
-        num_coeffs = len(self.model.coefficients)
-        return self.model.coefficients * ( ( rng.random(size=num_coeffs) * 0.2 + 0.8 ) ** (rng.choice(2, size=num_coeffs) * 2 - 1) )
+        UnderdampedFDTKramersMoyalEstimator(self.model).fit(data)  # We get initial parameters via KramersMoyal fit of random hidden values
+        if random_init:
+            rng = np.random.default_rng()
+            num_coeffs = len(self.model.coefficients)
+            return self.model.coefficients * ( ( rng.random(size=num_coeffs) * 0.2 + 0.8 ) ** (rng.choice(2, size=num_coeffs) * 2 - 1) )
+        else:
+            return self.model.coefficients
 
     def _print_verbose_msg_init_beg(self, n_init):
         """Print verbose message on initialization."""

@@ -326,3 +326,65 @@ def inverse_sqrt_gram(b_eval, cutoff=1e-10):
     B_inv_sqrt = U @ inv_sqrt_S @ Vh
     return B_inv_sqrt
 
+
+class UnderdampedFDTKramersMoyalEstimator(UnderdampedKramersMoyalEstimator):
+    def __init__(self, model):
+        super().__init__(model)
+
+    def fit(self, data, correct_finite_diff_vel=True, **kwargs):
+        r"""Fits data to the estimator's internal :class:`Model` and overwrites it. This way, every call to
+        :meth:`fetch_model` yields an autonomous model instance. Sometimes a :code:`partial_fit` method is available,
+        in which case the model can get updated by the estimator.
+
+        Parameters
+        ----------
+        data : array_like
+            Data that is used to fit a model.
+        **kwargs
+            Additional kwargs.
+
+        Returns
+        -------
+        self : Estimator
+            Reference to self.
+        """
+
+        for trj in data:
+            self.preprocess_traj(trj)
+
+        dt = data[0]["dt"]
+
+        X = np.concatenate([trj["x"] for trj in data], axis=0)
+        U = np.concatenate([trj["u"] for trj in data], axis=0)
+        V = np.concatenate([trj["v"] for trj in data], axis=0)
+        
+        bias = np.concatenate([trj["bias"] for trj in data], axis=0)
+        extra_kwargs = {}
+        for key in ["cells_idx", "loc_x"]:
+            if key in data[0]:
+                extra_kwargs[key] = np.concatenate([trj[key] for trj in data], axis=0)
+
+        # ----- Initial fit (works if velocities are exact) -----
+        dim = X.shape[1]
+        acc = np.concatenate([trj["a"] for trj in data], axis=0)
+        if dim <= 1:
+            acc = acc.ravel()
+            acc_sq = acc ** 2
+        else:
+            acc_sq = acc[..., None] * acc[:, None, ...]
+        # fit diffusion to squared acceleration
+        self.model.diffusion.fit(X, y=acc_sq * dt / 2)
+
+        # ------ Finite difference velocities correction ------
+        # test if velocities were computed by finite differences
+        if correct_finite_diff_vel and np.array_equal(U, V):
+            # multiply diffusion coefficients by 3/2 factor
+            self.model.diffusion.coefficients *= 3/2
+
+        # fit drift to average acceleration
+        shape_0 = self.model.pos_drift(X, bias).shape
+        self.model.pos_drift.fit(X, bias, y = acc + np.einsum("t...h,th-> t...", self.model.friction(X, bias).reshape((*shape_0, dim)), V), sample_weight=None)
+   
+        self.model.fitted_ = True
+        return self
+
