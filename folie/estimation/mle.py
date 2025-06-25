@@ -145,7 +145,6 @@ class EMEstimator(LikelihoodEstimator):
     def __init__(
         self,
         transition,
-        *args,
         tol=1e-5,
         max_iter=100,
         n_init=1,
@@ -360,7 +359,6 @@ class FiniteVelocityEMEstimator(LikelihoodEstimator):
     def __init__(
         self,
         transition,
-        *args,
         tol=1e-5,
         max_iter=100,
         n_init=1,

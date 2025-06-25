@@ -60,8 +60,27 @@ class EulerMaruyamaStepper(Stepper):
         dWv = (sig_sq_dt * dW[:, self.model.dim :].T).T
         x += dt*v
         v += ( ( self.model.drift(x, v, bias) * dt ).T + dWv.T).T
-        return np.concatenate([x, v], axis=1)      
-        
+        return np.concatenate([x, v], axis=1)
+
+    def run_step_ND(self, X, dt, dW, bias=0.0):
+        x = X[:, : self.model.dim]
+        v = X[:, self.model.dim :]
+        sig_sq_dt = np.sqrt(2 * self.model.diffusion(x) * dt)
+        dWv = np.einsum('ijk,ik->ij', sig_sq_dt, dW[:, self.model.dim :])
+        x += dt*v
+        v += self.model.drift(x, v, bias) * dt + dWv
+        return np.concatenate([x, v], axis=1)
+
+class GLEEulerStepper(EulerMaruyamaStepper):
+    def run_step_ND(self, X, dt, dW, bias=0.0):
+        x = X[:, : self.model.dim_x]
+        v = X[:, self.model.dim_x :]
+        sig_sq_dt = np.sqrt(2 * self.model.diffusion(x) * dt)
+        dWv = np.einsum('ijk,ik->ij', sig_sq_dt, dW[:, self.model.dim_x :])
+        x += dt*v[:, : self.model.dim_x]
+        v += self.model.drift(x, v, bias) * dt + dWv
+        return np.concatenate([x, v], axis=1)
+    
 class VECStepper(Stepper):
     def run_step_1D(self, X, dt, dW, bias=0.0):
         x = X[:, : self.model.dim]

@@ -72,13 +72,14 @@ class UnderdampedTransitionDensity(TransitionDensity):
         if "bias" not in trj:
             trj["bias"] = np.zeros((1, trj["x"].shape[1]))
 
-        trj["sig_h"] = np.zeros((trj["v"].shape[0], 2 * self._model.dim, 2 * self._model.dim))  # That would be dim_x+dim_h as the velocity is in the hidden dim
         if hasattr(self._model, "dim_h"):
             if self._model.dim_h > 0:
+                trj["sig_h"] = np.zeros((trj["v"].shape[0], 2 * self._model.dim, 2 * self._model.dim))  # That would be dim_x+dim_h as the velocity is in the hidden dim
                 trj["v"] = np.concatenate((trj["v"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
                 trj["a"] = np.concatenate((trj["a"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
                 trj["vt"] = np.concatenate((trj["vt"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
                 trj["x"] = np.concatenate((trj["x"], np.zeros((trj["x"].shape[0], self._model.dim_h))), axis=1)
+                trj["xt"] = np.concatenate((trj["xt"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
                 trj["bias"] = np.concatenate((trj["bias"], np.zeros((trj["bias"].shape[0], self._model.dim_h))), axis=1)
         return trj
 
@@ -109,7 +110,27 @@ class UnderdampedTransitionDensity(TransitionDensity):
             jacE = self._model.drift.grad_coeffs(x, v, bias, **kwargs) * dt
             jacV = 2 * self._model.diffusion.grad_coeffs(x, **kwargs) * dt# * 2 / 3
             return gaussian_likelihood_derivative_1D(a*dt, mut, sig2t, jacE, jacV)
-    
+
+    def _logdensityND(self, x, v, a, dt, bias=0.0, **kwargs):
+        """
+        The transition density evaluated at these arguments
+        :param x: float or array, the current value
+        :param xt: float or array, the value to transition to  (must be same dimension as x)
+        :param dt: float, the time step between x and xt
+        :return: probability (same dimension as x and xt)
+        """
+
+        # Drift and derivatives
+        mut = self._model._drift(x,v, bias, **kwargs).ravel() * dt             
+        # Diffusion and derivatives
+        sig2t = 2 * self._model.diffusion(x, **kwargs).ravel() * dt
+
+        if not self.use_jac:
+            return gaussian_likelihood_ND(a*dt, mut, sig2t)
+        else:
+            jacV = 2 * (self._model.diffusion.grad_coeffs(x, **kwargs)) * dt
+            jacE = self._model.drift.grad_coeffs(x, v, bias, **kwargs) * dt
+            return gaussian_likelihood_derivative_ND(a*dt, mut, sig2t, jacE, jacV)
 
 class BBKDensity(UnderdampedTransitionDensity):
     def __init__(self, model):
@@ -182,9 +203,9 @@ class VECDensity(UnderdampedTransitionDensity):
         if "bias" not in trj:
             trj["bias"] = np.zeros((1, trj["x"].shape[1]))
 
-        trj["sig_h"] = np.zeros((trj["v"].shape[0], 2 * self._model.dim, 2 * self._model.dim))  # That would be dim_x+dim_h as the velocity is in the hidden dim
         if hasattr(self._model, "dim_h"):
             if self._model.dim_h > 0:
+                trj["sig_h"] = np.zeros((trj["v"].shape[0], 2 * self._model.dim, 2 * self._model.dim))  # That would be dim_x+dim_h as the velocity is in the hidden dim
                 trj["v"] = np.concatenate((trj["v"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
                 trj["a"] = np.concatenate((trj["a"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)
                 trj["vt"] = np.concatenate((trj["vt"], np.zeros((trj["v"].shape[0], self._model.dim_h))), axis=1)

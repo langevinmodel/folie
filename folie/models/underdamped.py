@@ -12,7 +12,7 @@ class Underdamped(Overdamped):
 
     dX(t) = V(t)
 
-    dV(t) = f(X,t)dt+ gamma(X,t)V(t)dt + sigma(X,t)dW_t
+    dV(t) = f(X,t)dt - gamma(X,t)V(t)dt + sigma(X,t)dW_t
 
     """
 

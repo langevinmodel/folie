@@ -145,7 +145,7 @@ class UnderdampedKramersMoyalEstimator(KramersMoyalEstimator):
                 extra_kwargs[key] = np.concatenate([trj[key] for trj in data], axis=0)
 
         # ----- Initial fit (works if velocities are exact) -----
-        dim = X.shape[1]
+        dim = V.shape[1]
         acc = np.concatenate([trj["a"] for trj in data], axis=0)
         if dim <= 1:
             acc = acc.ravel()

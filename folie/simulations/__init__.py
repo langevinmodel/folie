@@ -42,22 +42,37 @@ class Simulator:
 
 
 class UnderdampedSimulator(Simulator):
+    def __init__(self, stepper, dt, seed=None, keep_dim=None):
+        self.dt = dt
+        self.stepper = stepper
+        self.keep_dim = keep_dim
+
+        if hasattr(self.stepper.model, 'dim_h'):
+            self.dim = self.stepper.model.dim_x + self.stepper.model.dim
+            self.dim_x = self.stepper.model.dim_x
+        else:
+            self.dim = 2*self.stepper.model.dim
+            self.dim_x = self.stepper.model.dim
+        
+        if keep_dim is None:
+            self.keep_dim = self.dim_x
+        else:
+            self.keep_dim = self.keep_dim % self.dim
+        
     def run(self, nsteps, x0, save_every=1, **kwargs):
-        dim = 2 * self.stepper.model.dim
-        x = np.asarray(x0).reshape(-1, dim)
+        x = np.asarray(x0).reshape(-1, self.dim)
         ntrajs = x.shape[0]
 
-        x_val = np.empty((ntrajs, nsteps // save_every, dim))
+        x_val = np.empty((ntrajs, nsteps // save_every, self.dim))
         for n in range(nsteps):
-            dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, dim))
+            dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, self.dim))
             x = self.stepper.run_step(x, self.dt, dW)
             if n % save_every == 0:
                 x_val[:, n // save_every, :] = x
         data = Trajectories(dt=self.dt * save_every)
         for i in range(ntrajs):
-            data.append(Trajectory(self.dt * save_every, x_val[i, :, : self.keep_dim], v=x_val[i, :, dim // 2 : dim // 2 + self.keep_dim]))
+            data.append(Trajectory(self.dt * save_every, x_val[i, :, : min(self.keep_dim, self.dim_x)], v=x_val[i, :, self.dim_x : self.dim_x + self.keep_dim]))
         return data
-
 
 class BiasedSimulator(Simulator):
     def __init__(self, stepper, dt, k=1, **kwargs):
