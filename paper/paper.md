@@ -70,7 +70,7 @@ Assuming that the timescale of evolution of the collective variable is slow with
 \begin{equation}
 \ddot{q}= - \frac{1}{m(q)} \frac{\partial A(q)}{\partial q}+ k_BT\frac{\partial m(q)^{-1}}{\partial q} -\frac{\gamma}{m(q)} \dot{q}+ \sqrt{\frac{2k_BT \gamma}{m(q)}}\eta(t)
 \end{equation}
-where $\eta(t)$ is now a standard Gaussian noise. One common assumption that we do not take here is a position-independent effective lass.
+where $\eta(t)$ is now a standard Gaussian noise. One common assumption that we do not take here is a position-independent effective mass.
 If one were to consider the dynamics for underdamped motion on a time scale $\tau \gg\frac{m}{\gamma}$ non equilibrium fluctuations are quickly damped. This entitles us to improperly consider $\ddot{q} \approx 0$ leading to the Overdamped Langevin Equation
 \begin{equation}
 \dot{q}= -\beta D(q)\frac{\partial A(q)}{\partial q}+ \frac{\partial D(q)}{\partial q} + \sqrt{2D(q)}\eta(t)
