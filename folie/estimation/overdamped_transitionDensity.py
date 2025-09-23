@@ -150,10 +150,12 @@ class EulerDensity(TransitionDensity):
         Assume that the model is an OverdampedHidden model
         """
         self._model.coefficients = coefficients
+        mutilde= self._model.pos_drift(trj["x"][:, : self._model.dim_x], trj["bias"][:, : self._model.dim_x]) * trj["dt"]
+        mutilde[:,:self._model.dim_x]+=trj["x"][:, : self._model.dim_x]
         muh, Sigh = filtersmoother(
             trj["xt"][:, : self._model.dim_x],
-            self._model.pos_drift(trj["x"][:, : self._model.dim_x], trj["bias"][:, : self._model.dim_x]) * trj["dt"],
-            self._model.friction(trj["x"][:, : self._model.dim_x]) * trj["dt"],
+            mutilde,
+            np.identity(self._model.dim_x+self._model.dim_h)[:,self._model.dim_x:] +self._model.friction(trj["x"][:, : self._model.dim_x]) * trj["dt"],
             2 * self._model.diffusion(trj["x"][:, : self._model.dim_x]) * trj["dt"],
             mu0,
             sig0,

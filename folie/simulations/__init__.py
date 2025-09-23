@@ -22,7 +22,7 @@ class Simulator:
         if keep_dim is None:
             self.keep_dim = dim
         else:
-            self.keep_dim = self.keep_dim % dim
+            self.keep_dim = self.keep_dim % (dim+1)
 
     def run(self, nsteps, x0, save_every=1, **kwargs):
         dim = self.stepper.model.dim
