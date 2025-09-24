@@ -1,6 +1,3 @@
-FOLIE - JOSS
-===
-
 ---
 title: 'folie: Finding Optimal Langevin Inferred Equations'
 tags:
