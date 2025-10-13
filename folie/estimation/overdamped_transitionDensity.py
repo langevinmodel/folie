@@ -84,7 +84,7 @@ class EulerDensity(TransitionDensity):
 
         # TODO: Add correction terms
         E = x + self._model.drift(x, bias, **kwargs) * dt
-        V = 2 * (self._model.diffusion(x, **kwargs)) * dt
+        V = 2 * (self._model.diffusion(x[:, : self._model.dim_x], **kwargs)) * dt 
         if not self.use_jac:
             ll = gaussian_likelihood_ND(xt, E, V)
             return ll, np.zeros(2)
@@ -118,22 +118,22 @@ class EulerDensity(TransitionDensity):
         EVE = np.einsum("tdh,tdf,tfg-> thg", E2, invV, E2)
         EV = np.einsum("tdh,tdf-> thf", E2, invV)
         VE = np.einsum("tdf,tfh-> tdh", invV, E2)
-
-        extra_ll = -0.5 * np.einsum("tij,tji->t", invV[:, dh:, dh:], dhdh) + 0.5 * np.einsum("tij,tji->t", EV[:, :, dh:], dhh) + 0.5 * np.einsum("tij,tji->t", VE[:, dh:, :], hdh) - 0.5 * np.einsum("tij,tji->t", EVE, hh)
+        dx = self._model.dim_x
+        extra_ll = -0.5 * np.einsum("tij,tji->t", invV[:, dx:, dx:], dhdh) + 0.5 * np.einsum("tij,tji->t", EV[:, :, dx:], dhh) + 0.5 * np.einsum("tij,tji->t", VE[:, dx:, :], hdh) - 0.5 * np.einsum("tij,tji->t", EVE, hh)
         jacE2 = self._model.friction.grad_coeffs(x[:, : self._model.dim_x], **kwargs) * dt
 
         EVjE = np.einsum("tdh,tdf,tfgc-> thgc", E2, invV, jacE2)
         jEV = np.einsum("tdhc,tdf-> thfc", jacE2, invV)
         VjE = np.einsum("tdf,tfhc-> tdhc", invV, jacE2)
 
-        l_jac_E = -0.5 * np.einsum("tijc,tji->tc", jEV[:, :, dh:, :], dhh) - 0.5 * np.einsum("tijc,tji->tc", VjE[:, dh:, ...], hdh) + np.einsum("tijc,tji->tc", EVjE, hh)
+        l_jac_E = -0.5 * np.einsum("tijc,tji->tc", jEV[:, :, dx:, :], dhh) - 0.5 * np.einsum("tijc,tji->tc", VjE[:, dx:, ...], hdh) + np.einsum("tijc,tji->tc", EVjE, hh)
 
         jacV = 2 * self._model.diffusion.grad_coeffs(x[:, : self._model.dim_x], **kwargs) * dt
         jacinvV = -np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV)
         EjVE = np.einsum("tdh,tdfc,tfg-> thgc", E2, jacinvV, E2)
         EjV = np.einsum("tdh,tdfc-> thfc", E2, jacinvV)
         jVE = np.einsum("tdfc,tfh-> tdhc", jacinvV, E2)
-        l_jac_V = 0.5 * np.einsum("tijc,tji->tc", jacinvV[:, dh:, dh:, :], dhdh) - 0.5 * np.einsum("tijc,tji->tc", jVE[:, dh:, :], hdh) - 0.5 * np.einsum("tijc,tji->tc", EjV[:, :, dh:], dhh) + 0.5 * np.einsum("tijc,tji->tc", EjVE, hh)
+        l_jac_V = 0.5 * np.einsum("tijc,tji->tc", jacinvV[:, dx:, dx:, :], dhdh) - 0.5 * np.einsum("tijc,tji->tc", jVE[:, dx:, :], hdh) - 0.5 * np.einsum("tijc,tji->tc", EjV[:, :, dx:], dhh) + 0.5 * np.einsum("tijc,tji->tc", EjVE, hh)
         return extra_ll, np.concatenate((l_jac_E, l_jac_V), axis=-1)
 
     def hiddencorrection(self, weight, trj, coefficients):
@@ -142,7 +142,7 @@ class EulerDensity(TransitionDensity):
         """
         self._model.coefficients = coefficients
         like, jac = self._hiddenvariance(x=trj["x"], xt=trj["xt"], sigh=trj["sig_h"], dt=trj["dt"])
-        return like.sum() / weight, -np.hstack((np.zeros(self._model.pos_drift.size), jac.sum(axis=0) / weight))
+        return -like.sum() / weight, np.hstack((np.zeros(self._model.pos_drift.size), jac.sum(axis=0) / weight))
 
     def e_step(self, weight, trj, coefficients, mu0, sig0):
         """
@@ -160,11 +160,11 @@ class EulerDensity(TransitionDensity):
             mu0,
             sig0,
         )
-
+        
         trj["sig_h"] = Sigh
         trj["x"][:, self._model.dim_x :] = muh[:, self._model.dim_h :]
         trj["xt"][:, self._model.dim_x :] = muh[:, : self._model.dim_h]
-        return muh[0, self._model.dim_h :] / weight, Sigh[0, self._model.dim_h :, self._model.dim_h :] / weight  # Return µ0 and sig0
+        return muh[0, self._model.dim_h :] / weight, Sigh[0, self._model.dim_h :, self._model.dim_h :] / weight # Return µ0 and sig0
 
 
 class ElerianDensity(EulerDensity):
@@ -271,3 +271,144 @@ class DrozdovDensity(TransitionDensity):
         V = sig * dt + (mu * sig_x + 2 * mu_x * sig + sig * sig_xx) * d
         V = np.abs(V)
         return gaussian_likelihood_1D(xt, E, V)
+
+
+
+class GLE_Hidden_v_EulerDensity(TransitionDensity):
+    use_jac = True
+
+    def __init__(self, model):
+        """
+        Class which represents the Euler approximation transition density for a model
+        :param model: the SDE model, referenced during calls to the transition density
+        """
+        super().__init__(model)
+        if self._model.dim_x <= 1:
+            self._logdensity = self._logdensity1D
+        else:
+            self._logdensity = self._logdensityND
+
+    def __call__(self, weight, trj, coefficients):
+        """
+        Compute Likelihood of one trajectory
+        """
+        self._model.coefficients = coefficients
+        like, jac = self._logdensity(**trj)
+        return (np.asarray(-np.sum(np.maximum(self._min_prob, like)) / weight), np.asarray(-np.sum(jac, axis=0) / weight))
+
+    def _logdensity1D(self, x, xt, dt, bias=0.0, **kwargs):
+        """
+        The transition density evaluated at these arguments
+        :param x: float or array, the current value
+        :param xt: float or array, the value to transition to  (must be same dimension as x)
+        :param dt: float, the time step between x and xt
+        :return: probability (same dimension as x and xt)
+        """
+
+        # TODO: Add correction terms
+        E = x[:, self._model.dim_x :].ravel() + self._model.drift(x, bias, **kwargs).ravel() * dt
+        V = 2 * self._model.diffusion(x, **kwargs).ravel() * dt
+        if not self.use_jac:
+            ll = gaussian_likelihood_1D(xt[:, self._model.dim_x :], E, V)
+            return ll, np.zeros(2)
+        jacV = 2 * (self._model.diffusion.grad_coeffs(x, **kwargs)) * dt
+        jacE = self._model.drift.grad_coeffs(x, bias, **kwargs) * dt
+        return gaussian_likelihood_derivative_1D(xt[:, self._model.dim_x :], E, V, jacE, jacV)
+
+        
+    def _logdensityND(self, x, xt, dt, bias=0.0, **kwargs):
+        """
+        The transition density evaluated at these arguments
+        :param x: float or array, the current value
+        :param xt: float or array, the value to transition to  (must be same dimension as x)
+        :param dt: float, the time step between x and xt
+        :return: probability (same dimension as x and xt)
+        """
+
+        # TODO: Add correction terms
+        E = x[:, self._model.dim_x :] + self._model.drift(x, bias, **kwargs) * dt
+        V = 2 * self._model.diffusion(x, **kwargs) * dt
+        if not self.use_jac:
+            ll = gaussian_likelihood_ND(xt, E, V)
+            return ll, np.zeros(2)
+        jacV = 2 * (self._model.diffusion.grad_coeffs(x, **kwargs)) * dt
+        jacE = self._model.drift.grad_coeffs(x, bias, **kwargs) * dt
+        return gaussian_likelihood_derivative_ND(xt, E, V, jacE, jacV)
+
+    def _hiddenvariance(self, x, xt, sigh, dt, **kwargs):
+        """
+        The transition density evaluated at these arguments
+        :param x: float or array, the current value
+        :param xt: float or array, the value to transition to  (must be same dimension as x)
+        :param dt: float, the time step between x and xt
+        :return: probability (same dimension as x and xt)
+        """
+        dh = self._model.dim_h
+        E2 = self._model.friction(x[:, : self._model.dim_x], **kwargs).reshape((x.shape[0], dh, dh)) * dt
+        V = 2 * self._model.diffusion(x, **kwargs).reshape((x.shape[0], dh, dh)) * dt
+        invV = np.linalg.inv(V)
+        dhdh = sigh[:, :dh, :dh] - sigh[:, :dh, dh:] - sigh[:, dh:, :dh] + sigh[:, dh:, dh:]
+        hdh = sigh[:, dh:, :dh] - sigh[:, dh:, dh:]
+        dhh = sigh[:, :dh, dh:] - sigh[:, dh:, dh:]
+        hh = sigh[:, dh:, dh:]
+
+        EVE = np.einsum("tdh,tdf,tfg-> thg", E2, invV, E2)
+        EV = np.einsum("tdh,tdf-> thf", E2, invV)
+        VE = np.einsum("tdf,tfh-> tdh", invV, E2)
+        extra_ll = -0.5 * np.einsum("tij,tji->t", invV, dhdh) + 0.5 * np.einsum("tij,tji->t", EV, dhh) + 0.5 * np.einsum("tij,tji->t", VE, hdh) - 0.5 * np.einsum("tij,tji->t", EVE, hh)
+        jacE2 = self._model.friction.grad_coeffs(x[:, : self._model.dim_x], **kwargs).reshape((x.shape[0], dh, dh, -1)) * dt
+
+        EVjE = np.einsum("tdh,tdf,tfgc-> thgc", E2, invV, jacE2)
+        jEV = np.einsum("tdhc,tdf-> thfc", jacE2, invV)
+        VjE = np.einsum("tdf,tfhc-> tdhc", invV, jacE2)
+
+        l_jac_E = -0.5 * np.einsum("tijc,tji->tc", jEV, dhh) - 0.5 * np.einsum("tijc,tji->tc", VjE, hdh) + np.einsum("tijc,tji->tc", EVjE, hh)
+
+        jacV = 2 * self._model.diffusion.grad_coeffs(x[:, : self._model.dim_x], **kwargs).reshape((x.shape[0], dh, dh, -1)) * dt
+        jacinvV = -np.einsum("tij,tjkc,tkl->tilc", invV, jacV, invV)
+        EjVE = np.einsum("tdh,tdfc,tfg-> thgc", E2, jacinvV, E2)
+        EjV = np.einsum("tdh,tdfc-> thfc", E2, jacinvV)
+        jVE = np.einsum("tdfc,tfh-> tdhc", jacinvV, E2)
+        l_jac_V = 0.5 * np.einsum("tijc,tji->tc", jacinvV, dhdh) - 0.5 * np.einsum("tijc,tji->tc", jVE, hdh) - 0.5 * np.einsum("tijc,tji->tc", EjV, dhh) + 0.5 * np.einsum("tijc,tji->tc", EjVE, hh)
+        return extra_ll, np.concatenate((l_jac_E, l_jac_V), axis=-1)
+
+    def hiddencorrection(self, weight, trj, coefficients):
+        """
+        Compute Likelihood of one trajectory
+        """
+        self._model.coefficients = coefficients
+        like, jac = self._hiddenvariance(x=trj["x"], xt=trj["xt"], sigh=trj["sig_h"], dt=trj["dt"])
+        return -like.sum() / weight, np.hstack((np.zeros(self._model.pos_drift.size), jac.sum(axis=0) / weight))
+
+    def e_step(self, weight, trj, coefficients, mu0, sig0):
+        """
+        In presence of hidden variables, reconstruct then using a Kalman Filter.
+        Assume that the model is an OverdampedHidden model
+        """
+        dx, dh = self._model.dim_x, self._model.dim_h
+        self._model.coefficients = coefficients
+        mutilde = np.zeros_like(trj["x"])
+        mutilde[:,:dx] = trj["x"][:, : dx]
+        mutilde[:, dx:2*dx] = self._model.pos_drift(trj["x"][:, : dx], trj["bias"][:, : dx]).reshape(*trj["x"][:, : dx].shape) * trj["dt"]
+        constrain_x_evolution = np.zeros((dx+dh, dh))
+        constrain_x_evolution[:dx, :dx] = np.identity(dx) * trj["dt"]
+        frict_term = np.zeros((trj["x"].shape[0], dx+dh, dh))
+        frict_term[:,dx:,:] += self._model.friction(trj["x"][:, : dx]).reshape((trj["x"].shape[0], dh, dh)) * trj["dt"]
+        A = np.identity(dx+dh)[:,dx:] + constrain_x_evolution + frict_term
+        V = np.zeros((trj["x"].shape[0], dx+dh, dx+dh))
+        V[:,dx:, dx:] = 2 * self.model.diffusion(trj["x"][:, : dx]).reshape((trj["x"].shape[0], dh, dh)) * trj["dt"]
+
+        muh, Sigh = filtersmoother(
+            trj["xt"][:, : dx],
+            mutilde,
+            A,
+            V,
+            mu0,
+            sig0,
+        )
+        
+        trj["sig_h"] = Sigh
+        trj["x"][:, self._model.dim_x :] = muh[:, self._model.dim_h :]
+        trj["xt"][:, self._model.dim_x :] = muh[:, : self._model.dim_h]
+        return muh[0, self._model.dim_h :] / weight, Sigh[0, self._model.dim_h :, self._model.dim_h :] / weight # Return µ0 and sig0
+

@@ -83,21 +83,19 @@ class UnderdampedHidden(Underdamped):
     A class that implements an underdamped model with some extra hidden variables linearly correlated with the visible ones.
 
     
-    d \\begin{pmatrix} X(t) \\ H(t) \\end{pmatrix} = \\begin{pmatrix} v(t)dt \\ f(X,t)dt - gamma(X,t)H(t)dt + sigma(X,t)dW_t \\end{pmatrix}
+    d \\begin{pmatrix} X(t) \\ v(t) \\ h(t) \\end{pmatrix} = \\begin{pmatrix} v(t)dt \\ f(X,t)dt - gamma_{vv}(X,t)v(t) - gamma_{vh}(X,t)h(t)dt + sigma_v(X,t)dW_t \\ - gamma_{hv}(X,t)v(t) - gamma_{hh}(X,t)h(t)dt + sigma_h(X,t)dW_t \\end{pmatrix}
 
     where
 
-    H(t) = \\begin{pmatrix} v(t) \\ h(t) \\end{pmatrix} is a $dim_h$ vector.
+    f(X,t) is a $dim_x$
 
-    f(X,t) = \\begin{pmatrix} f(X,t) \\ 0 \\end{pmatrix} is a $dim_x + dim_h$ vector
+    gamma(X,t) is a $(dim_x + dim_h) \times (dim_x + dim_h)$ matrix
 
-    gamma(X,t) is a $dim_h \times dim_h$ matrix
-
-    sigma(X,t) is a $dim_h \times dim_h$ matrix
+    sigma(X,t) is a $(dim_x + dim_h) \times (dim_x + dim_h)$ matrix
 
     """
 
-    def __init__(self, pos_drift, friction, diffusion, dim=1, dim_h=0, **kwargs):
+    def __init__(self, pos_drift, friction, diffusion, dim=1, dim_h=0, **kwargs): 
         self.dim_h = dim_h
         self.dim_x = dim
         pos_drift.dim_x = self.dim_x
@@ -163,3 +161,58 @@ class _ZeroPadHidden(Function):
         return np.concatenate((J, pad), axis=1)
 
         
+class UnderdampedHiddenHidden(Underdamped):
+    """
+    A class that implements an underdamped model with some extra hidden variables linearly correlated with the visible ones.
+
+    
+    d \\begin{pmatrix} X(t) \\ H(t) \\end{pmatrix} = \\begin{pmatrix} v(t)dt \\ f(X,t)dt - gamma(X,t)H(t)dt + sigma(X,t)dW_t \\end{pmatrix}
+
+    where
+
+    H(t) = \\begin{pmatrix} v(t) \\ h(t) \\end{pmatrix} is a $dim_h$ vector.
+
+    f(X,t) = \\begin{pmatrix} f(X,t) \\ 0 \\end{pmatrix} is a $dim_x + dim_h$ vector
+
+    gamma(X,t) is a $dim_h \times dim_h$ matrix
+
+    sigma(X,t) is a $dim_h \times dim_h$ matrix
+
+    """
+
+    def __init__(self, pos_drift, friction, diffusion, dim=1, dim_h=1, **kwargs): 
+        self.dim_h = dim_h
+        self.dim_x = dim
+        pos_drift.dim_x = self.dim_x
+        if self.dim_h > self.dim_x:
+            pos_drift = _ZeroPadHidden(pos_drift, dim_h=self.dim_h-self.dim_x)
+        diffusion.dim_x = self.dim_x
+        friction.dim_x = self.dim_x
+        super().__init__(pos_drift, friction, diffusion, dim=self.dim_h, **kwargs)
+
+    def _drift(self, x, *args, **kwargs):
+        fx = self.pos_drift(x, *args, **kwargs)
+        return fx + np.einsum("t...h,th-> t...", self.friction(x, *args, **kwargs).reshape((*fx.shape, self.dim_h)), x[:, self.dim_x :])
+
+    def _drift_dx(self, x, *args, **kwargs):
+        dfx = self.pos_drift.grad_x(x, *args, **kwargs)
+        return dfx + np.einsum("t...he,th-> t...e", self.friction.grad_x(x, *args, **kwargs).reshape((*dfx.shape[:-1], self.dim_h, dfx.shape[-1])), x[:, self.dim_x :])
+
+    def _drift_d2x(self, x, *args, **kwargs):
+        ddfx = self.pos_drift.hessian_x(x, *args, **kwargs)
+        return ddfx + np.einsum("t...hef,th-> t...ef", self.friction.hessian_x(x, *args, **kwargs).reshape((*ddfx.shape[:-2], self.dim_h, ddfx.shape[-2:])), x[:, self.dim_x :])
+
+    def _drift_dcoeffs(self, x, *args, **kwargs):
+        """
+        Jacobian of the drift with respect to coefficients
+        """
+        dfx = self.pos_drift.grad_coeffs(x, *args, **kwargs)
+        return np.concatenate((dfx, np.einsum("t...hc,th-> t...c", self.friction.grad_coeffs(x, *args, **kwargs).reshape((*dfx.shape[:-1], self.dim_h, -1)), x[:, self.dim_x :])), axis=-1)
+  
+    @property
+    def coefficients_friction(self):
+        return self.friction.coefficients
+
+    @coefficients_friction.setter
+    def coefficients_friction(self, vals):
+        self.friction.coefficients = vals
