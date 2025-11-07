@@ -56,24 +56,13 @@ FOLIE is designed to allow easy and efficient inference of such models from proj
 
 ## Langevin Models
 
-Let's consider the dynamics of a low-dimensional collective variable $q$. There is a set of possible Langevin models to describe this dynamics[@PalacioRodriguez2022,@girardier2023]. Projecting the high-dimensionnal dynamics onto the collective variable leads to the generalized Langevin equation[@vroylandt2022a], that writes for a single variable
-\begin{equation*}
-    \ddot{q}= - \frac{1}{m(q)} \frac{\partial A(q)}{\partial q}+ k_BT\frac{\partial m(q)^{-1}}{\partial q}- \int_0^t  \Gamma(s)\dot{q}(t-s) \,\mathrm{d} s + R(t)
-\end{equation*}
-Here, $m(q)$ represent a position-dependent effective mass,  $-\frac{\partial A(q)}{\partial q}$ is the conservative force field in which the dynamics takes place, and the effective free energy surface is $A(q) = -k_BT \log (\rho_{eq}(q))$ where $\rho_{eq}$ is the invariant distribution of the dynamics. $\Gamma(s)$ is a memory kernel and $R(t)$ is a random force. The random force is usually assumed to be related to the memory kernel according to the fluctuation-dissipation theorem $\langle R(0)R(t)\rangle = \frac{k_BT}{m} \Gamma(t)$, with $m=\int m(q)\rho_{eq}(q) \mathrm{d}q$, even if this relation is approximate in this framework[@vroylandt2022a].
-
-
-Assuming that the timescale of evolution of the collective variable is slow with respect to its environment; we can take the assumption of a Dirac kernel $\Gamma(s)=\gamma \delta(s)$, the fluctuation dissipation theorem being now valid. We then obtain the memory-less (Markovian) Standard Langevin equation
-\begin{equation}
-\ddot{q}= - \frac{1}{m(q)} \frac{\partial A(q)}{\partial q}+ k_BT\frac{\partial m(q)^{-1}}{\partial q} -\frac{\gamma}{m(q)} \dot{q}+ \sqrt{\frac{2k_BT \gamma}{m(q)}}\eta(t)
-\end{equation}
-where $\eta(t)$ is now a standard Gaussian noise. One common assumption that we do not take here is a position-independent effective mass.
-If one were to consider the dynamics for underdamped motion on a time scale $\tau \gg\frac{m}{\gamma}$ non equilibrium fluctuations are quickly damped. This entitles us to improperly consider $\ddot{q} \approx 0$ leading to the Overdamped Langevin Equation
+Let's consider the dynamics of a low-dimensional collective variable $q$. There is a set of possible Langevin models to describe this dynamics[@PalacioRodriguez2022,@girardier2023]. Projecting the high-dimensionnal dynamics onto the collective variable leads to the generalized Langevin equation[@vroylandt2022a] that features a memory kernel representing the complex interactions with the environment. Assuming that the timescale of evolution of the collective variable is slow with respect to its environment. We then obtain the memory-less (Markovian) Standard Langevin equation, that is a second order stochastic differential equation. If one were to assume the inertial time scale is small, the inertial effect are quickly damped. This further approximation leads to the Overdamped Langevin Equation
 \begin{equation}
 \dot{q}= -\beta D(q)\frac{\partial A(q)}{\partial q}+ \frac{\partial D(q)}{\partial q} + \sqrt{2D(q)}\eta(t)
 \end{equation}
-with the definition of the diffusion profile from $D(q) = \frac{k_BT}{m(q)\gamma}$ and using $\beta = \frac{1}{k_BT}$.
+where, using $\beta = \frac{1}{k_BT}$, $D(q)$ is a diffusion profile, the effective free energy surface is $A(q) = -k_BT \log (\rho_{eq}(q))$ where $\rho_{eq}$ is the invariant distribution of the dynamics and $\eta(t)$ is a standard Gaussian noise.
 This last model sensibly simplify the mathematical structure being a first order differential equation. The current state of the library is to infer reduced Langevin models starting from projected simulation trajectories, focusing so far on the overdamped case.
+
 
 ## Kinetic model optimization by a maximum-likelihood approach
 
@@ -119,9 +108,7 @@ The library is built with a modular structure, allowing users to assemble compon
 
 ## Initial guess for parameters
 
-Optimization of the likelihood requires an initial guess for the drift and diffusion parameter. In FOLIE, we use a Kramers-Moyal estimation to provide such a guess[@Risken1996]. It is worth noticing that the Kramers-Moyal procedure leads to the correct parameters in the limit of a small timestep $\Delta t$ and a sufficient number of trajectories passing at position $q$. In which case, it becomes equivalent to a maximum-likelihood estimation using Euler discretization of the propagator. It thus provides a good starting guess for the maximum-likelihood estimator.
-
-
+Optimization of the likelihood requires an initial guess for the drift and diffusion parameter. In FOLIE, we use a Kramers-Moyal estimation to provide such a guess[@Risken1996]. The Kramers-Moyal method yields accurate parameters for small timesteps $\Delta t$ and sufficient trajectories, being then equivalent to maximum-likelihood estimation with Euler discretization. This makes it a strong initial estimate for maximum-likelihood approaches.
 
 ## Parallel computation
 
