@@ -129,6 +129,14 @@ One key motivation behind the writing of folie was performance.
 Likelihood calculation scales linearly with the data size, and with the model complexity, making optimization potentially slow. Furthermore, Langevin optimization can be integrated in a scheme for optimizing collective variables [@mouaffac2023], in which case a large number of model optimizations must be performed before collective variable optimization converges. When running folie in a shared-memory multiprocessor environment, likelihood computation is performed in a data-parallel way over the projected simulation trajectories.
 
 
+# Practical use
+
+## Usage workflow
+
+![Typical workflow in folie. This basic workflow is illustrated in this [example script in the repository](https://github.com/langevinmodel/folie/blob/main/examples/plot_example.py). Several options are available for the model definition and the model estimation. \label{fig:worklow}](workflow.png)
+
+
+
 # Perspectives
 
 Further developments are in progress, in particular more widely applicable forms of dynamics, namely underdamped and generalized Langevin dynamics.
