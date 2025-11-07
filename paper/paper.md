@@ -60,7 +60,7 @@ Let's consider the dynamics of a low-dimensional collective variable $q$. There 
 \begin{equation*}
     \ddot{q}= - \frac{1}{m(q)} \frac{\partial A(q)}{\partial q}+ k_BT\frac{\partial m(q)^{-1}}{\partial q}- \int_0^t  \Gamma(s)\dot{q}(t-s) \,\mathrm{d} s + R(t)
 \end{equation*}
-Here, $m(q)$ represent a position-dependent effective mass,  $-\frac{\partial A(q)}{\partial q}$ is the conservative force field in which the dynamics takes place, and the effective free energy surface is $A(q) = -k_BT \log (\rho_{eq}(q))$ where $\rho_{eq}$ is the invariant distribution of the dynamics. $\Gamma(s)$ is a memory kernel, a time dependent function describing the correlation of the velocity at time $t$ with itself at a previous time  $t-s$ and $R(t)$ is a random force. The random force is usually assumed to be related to the memory kernel according to the fluctuation-dissipation theorem $\langle R(0)R(t)\rangle = \frac{k_BT}{m} \Gamma(t)$, with $m=\int m(q)\rho_{eq}(q) \mathrm{d}q$, even if this relation is approximate in this framework[@vroylandt2022a].
+Here, $m(q)$ represent a position-dependent effective mass,  $-\frac{\partial A(q)}{\partial q}$ is the conservative force field in which the dynamics takes place, and the effective free energy surface is $A(q) = -k_BT \log (\rho_{eq}(q))$ where $\rho_{eq}$ is the invariant distribution of the dynamics. $\Gamma(s)$ is a memory kernel and $R(t)$ is a random force. The random force is usually assumed to be related to the memory kernel according to the fluctuation-dissipation theorem $\langle R(0)R(t)\rangle = \frac{k_BT}{m} \Gamma(t)$, with $m=\int m(q)\rho_{eq}(q) \mathrm{d}q$, even if this relation is approximate in this framework[@vroylandt2022a].
 
 
 Assuming that the timescale of evolution of the collective variable is slow with respect to its environment; we can take the assumption of a Dirac kernel $\Gamma(s)=\gamma \delta(s)$, the fluctuation dissipation theorem being now valid. We then obtain the memory-less (Markovian) Standard Langevin equation
@@ -127,15 +127,6 @@ Optimization of the likelihood requires an initial guess for the drift and diffu
 
 One key motivation behind the writing of folie was performance.
 Likelihood calculation scales linearly with the data size, and with the model complexity, making optimization potentially slow. Furthermore, Langevin optimization can be integrated in a scheme for optimizing collective variables [@mouaffac2023], in which case a large number of model optimizations must be performed before collective variable optimization converges. When running folie in a shared-memory multiprocessor environment, likelihood computation is performed in a data-parallel way over the projected simulation trajectories.
-
-
-# Practical use
-
-## Usage workflow
-
-![Typical workflow in folie. This basic workflow is illustrated in this [example script in the repository](https://github.com/langevinmodel/folie/blob/main/examples/plot_example.py). Several options are available for the model definition and the model estimation. \label{fig:worklow}](workflow.png)
-
-
 
 
 # Perspectives
