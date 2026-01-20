@@ -23,7 +23,21 @@ def free_energy_profile_1d(model, x):
         diff_val = model.diffusion(x).flatten()
         return (-drift_val + diff_prime_val) / diff_val
 
-    sol = solve_ivp(grad_V, [x.min() - 1e-10, x.max() + 1e-10], np.array([0.0]), t_eval=x)  # Add some epsilon to range to ensure inclusion of x
+    # Sort x to ensure solve_ivp is happy
+    idx = np.argsort(x)
+    x_sorted = x[idx]
+
+    sol = solve_ivp(
+        grad_V,
+        [x_sorted.min() - 1e-10, x_sorted.max() + 1e-10],
+        np.array([0.0]),
+        t_eval=x_sorted
+    )
+
+    # Re-map the potential V back to the original order of x
+    V_sorted = sol.y.ravel()
+    V = np.zeros_like(V_sorted)
+    V[idx] = V_sorted
 
     V = sol.y.ravel()
 
