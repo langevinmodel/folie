@@ -45,6 +45,8 @@ Such rare events include chemical reactions in chemistry, drug unbinding in phar
 A strategy to make such predictions tractable is to construct intermediate, low-dimensional kinetic models of the time evolution of the system.
 Such low-dimensional models are constructed based on a projection of the full dynamics onto a reduced set of collective variables. This set must fulfill two constraints: describe the process of interest, and be informative enough to capture the long-time dynamics of this process.
 
+# State of the field
+
 FOLIE is designed to allow easy and efficient inference of such models from projected molecular simulations. There exits several software packages performing related tasks, but FOLIE differ mainly by its flexibility in the description of the energy landscape and its modular construction for the estimation task.
 [DeepTime](https://deeptime-ml.github.io) (previously pyEmma) [@hoffmann2021deeptime] is an equivalent for discrete Markovian processes. [pymle](https://github.com/jkirkby3/pymle) fits continuous SDEs but imposes restraints on the underlying energy landscapes, which are better suited to econometrics and financial markets [@kirkby2024pymle].
 [OptLE](https://github.com/physix-repo/optle) [@PalacioRodriguez2022] is an experimental Fortran package that inspired this work. It focuses on method development and was not designed for flexibility or scalability.
@@ -86,7 +88,7 @@ and the log-likelihood is :
 
 The precise form of the transition density depends on a specific time discretization (closely related to the choice of an integrator) of the continuous SDE, several of which are implemented in FOLIE.
 
-# Implementation
+# Software Design
 
 ## Features
 
@@ -126,11 +128,18 @@ Likelihood calculation scales linearly with data size and model complexity, maki
 
 
 
-# Perspectives
+# Research Impact Statement
 
+
+## Perspective
 Further developments are in progress, in particular the more widely applicable underdamped and generalized Langevin dynamics.
 Thanks to the modular design of FOLIE, these will integrate seamlessly into the workflow.
 
+
+
+# AI usage disclosure
+
+No AI-tools were used in the software development or the documention. AI tools (ChatGPT) were used to reduce the size of this paper.
 
 # Acknowledgements
 
