@@ -127,11 +127,13 @@ Likelihood calculation scales linearly with data size and model complexity, maki
 ![Typical workflow in FOLIE. This basic workflow is illustrated in this [example script in the repository](https://github.com/langevinmodel/folie/blob/main/examples/plot_example.py). Several options are available for the model definition and estimation. \label{fig:worklow}](workflow.png)
 
 
-
 # Research Impact Statement
 
+The FOLIE library addresses a critical task in the analysis of complex dynamical systems: inference of Langevin equations from stochastic trajectory data. The implementation is both modular and efficient. By providing a high-level API for both parametric and non-parametric estimation, FOLIE enables researchers to benchmark different physical hypotheses with minimal overhead. The repository includes examples and tutorial notebooks.
 
-## Perspective
+
+## Perspectives
+
 Further developments are in progress, in particular the more widely applicable underdamped and generalized Langevin dynamics.
 Thanks to the modular design of FOLIE, these will integrate seamlessly into the workflow.
 
@@ -145,6 +147,12 @@ No AI-tools were used in the software development or the documention. AI tools (
 
 We are indebted to Fabio Pietrucci for spearheading the scientific effort that led us to develop FOLIE.
 We acknowledge stimulating discussions with Arthur France-Lanord, David Girardier, Léo Hallegot, Léon Huet, and Line Mouaffac.
+
+
+# AI usage disclosure
+
+Generative AI was used for debugging, test creation, and language editing of this manuscript.
+
 
 # References
 
