@@ -98,6 +98,12 @@ class MeshedDomain(Domain):
         loc_x = mapping.invF(X.T[:, :, np.newaxis], tind=cells)
         return cells, loc_x[..., 0].T
 
+    def meshed_histogram(self, X, mapping=None):
+        if mapping is None:
+            mapping = self.mesh.mapping()
+        cells = get_element_finder(self.mesh, mapping=mapping)(*(X.T))
+        return cells
+
     @classmethod
     def create_from_range(cls, *xis, periodic=None):
         """
@@ -131,6 +137,68 @@ class MeshedDomain(Domain):
                 raise ValueError("Too many inputs. Cannot create periodic mesh of dimension higher than 2")
 
             return cls(meshcls.init_tensor(*xis, periodic=periodic))
+
+    @classmethod
+    def create_from_data_with_constraints(cls, data, min_points=10, max_points=None, max_iterations=50, boundary_buffer=0.05, verbose=False):
+        """
+        Create a 2D MeshedDomain ensuring minimum data points per element.
+
+        This factory method creates an unstructured triangular mesh from scattered
+        data points, ensuring that each mesh element contains at least `min_points`
+        data points. This is particularly useful for finite element function
+        estimation where having sufficient data per element is crucial for
+        accurate coefficient estimation.
+
+        Parameters
+        ----------
+        data : array_like, shape (N, 2)
+            Scattered data points to be distributed across the mesh.
+        min_points : int, optional
+            Minimum number of data points required in each element. Default is 10.
+        max_points : int, optional
+            Maximum number of data points allowed in each element. If None,
+            no upper limit is enforced. Default is None.
+        max_iterations : int, optional
+            Maximum number of refinement iterations. Default is 50.
+        boundary_buffer : float, optional
+            Fractional buffer around data bounds for boundary. Default is 0.05.
+        verbose : bool, optional
+            If True, print progress information. Default is False.
+
+        Returns
+        -------
+        MeshedDomain
+            A MeshedDomain instance with the created mesh.
+        point_counts : ndarray
+            Number of data points in each mesh element.
+
+        Raises
+        ------
+        ValueError
+            If data is not a 2D array with shape (N, 2).
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> data = np.random.rand(10000, 2)
+        >>> domain, counts = MeshedDomain.create_from_data_with_constraints(
+        ...     data, min_points=20, max_points=100)
+        >>> print(f"Created mesh with {len(counts)} elements")
+        >>> print(f"Points per element: {counts.min()}-{counts.max()}")
+
+        See Also
+        --------
+        create_minimum_point_mesh : Underlying mesh generation function.
+        MeshedDomain.create_from_range : Create mesh from coordinate ranges.
+        """
+        vertices, simplices, point_counts = create_minimum_point_mesh(
+            data, min_points=min_points, max_points=max_points, max_iterations=max_iterations, boundary_buffer=boundary_buffer, verbose=verbose
+        )
+
+        # Create skfem MeshTri from vertices and simplices
+        mesh = skfem.MeshTri(vertices.T, simplices.T)
+
+        return cls(mesh), point_counts
 
 
 class MeshedDomain1D(MeshedDomain):
