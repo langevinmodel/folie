@@ -20,6 +20,8 @@ class Underdamped(Overdamped):
 
         if friction is diffusion:
             friction = diffusion.copy()
+        if not isinstance(dim, int) or dim < 0:
+            raise ValueError(f"dim must be a non-negative integer, got {dim!r}")
         super().__init__(force, diffusion, dim=dim)
         self.friction = friction.resize(self.diffusion.shape)
 
