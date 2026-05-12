@@ -88,7 +88,7 @@ class KramersMoyalEstimator(Estimator):
             bias = 0.0
             self.model.drift.fit(X, y=dx / dt, sample_weight=None, estimator=estimator, **kwargs)
         # print(self.model.drift.coefficients)
-        dx -= self.model.drift(X, bias, **kwargs) * dt
+        dx = dx- self.model.drift(X, bias, **kwargs) * dt
         if dim <= 1:
             dx_sq = dx**2
         else:
