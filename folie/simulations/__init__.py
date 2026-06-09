@@ -48,11 +48,11 @@ class UnderdampedSimulator(Simulator):
         self.keep_dim = keep_dim
 
         if hasattr(self.stepper.model, 'dim_h'):
-            self.dim = self.stepper.model.dim_x + self.stepper.model.dim
             self.dim_x = self.stepper.model.dim_x
+            self.dim = self.dim_x + self.stepper.model.dim
         else:
-            self.dim = 2*self.stepper.model.dim
             self.dim_x = self.stepper.model.dim
+            self.dim = 2 * self.stepper.model.dim
         
         if keep_dim is None:
             self.keep_dim = self.dim_x
@@ -65,7 +65,7 @@ class UnderdampedSimulator(Simulator):
 
         x_val = np.empty((ntrajs, nsteps // save_every, self.dim))
         for n in range(nsteps):
-            dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, self.dim))
+            dW = np.random.normal(loc=0.0, scale=1.0, size=(ntrajs, 2 * self.stepper.model.dim))
             x = self.stepper.run_step(x, self.dt, dW)
             if n % save_every == 0:
                 x_val[:, n // save_every, :] = x
