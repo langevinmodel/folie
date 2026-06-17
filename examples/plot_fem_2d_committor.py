@@ -7,8 +7,8 @@ Compute committor probabilities and reduced Markov state kinetics
 for a 2D Muller-Brown potential using FEM eigenmode decomposition and PCCA++.
 
 Demonstrates:
-- solve_committor_fem() for committor between two basins
-- reduced_matrix() for PCCA++ coarse-graining
+- RateAnalysis.committor() for committor between two basins
+- RateAnalysis.reduced_matrix() for PCCA++ coarse-graining
 - Eigenmode visualization for collective variables
 """
 
@@ -51,7 +51,8 @@ mesh = mesh.with_subdomains(
 
 
 # Build FEM matrices
-A, M, basis = fl.analysis.fem.build_fem_matrices(model, mesh, element=skfem.ElementTriP1())
+fem = fl.analysis.RateAnalysis(model, fl.MeshedDomain(mesh), element=skfem.ElementTriP1())
+A, M, basis = fem.build_matrices()
 print(f"FEM mesh: {mesh.p.shape[1]} nodes, {mesh.t.shape[1]} elements")
 print(f"FEM basis: {basis.N} DOFs")
 
@@ -61,7 +62,10 @@ print(f"Reactant DOFs: {len(reactant_dofs)}, Product DOFs: {len(product_dofs)} (
 
 # ---- Solve committor equation ----
 
-u_sol, u_bc, fem_basis = fl.analysis.fem.solve_committor_fem(model, mesh, bc="elements")
+committor_result = fem.committor(bc="elements")
+u_sol = committor_result.committor
+u_bc = committor_result.boundary
+fem_basis = fem.basis
 
 # Evaluate committor on grid
 n_plot = 150
@@ -94,7 +98,7 @@ print(f"\nSpectral ratio: {spectral_ratio:.4f}")
 
 # ---- PCCA++ coarse-graining ----
 
-L_reduced, memberships = fl.analysis.fem.reduced_matrix(A, M, fem_basis, n_states, verbose=True)
+L_reduced, memberships = fem.reduced_matrix(A, M, n_states, verbose=True)
 
 # Clip and normalize reduced matrix
 L_clipped = np.clip(L_reduced, 0.0, np.max(L_reduced))

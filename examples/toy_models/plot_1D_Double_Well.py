@@ -105,7 +105,7 @@ axs[0].legend()
 axs[1].legend()
 
 # Compute MFPT from one well to another
-plt.figure()
+plt.figure(title="Mean first passage time")
 
 x_mfpt, mfpt = fl.analysis.mfpt_1d(model_simu, -5.0, [-10.0, 10.0], Npoints=500)
 plt.plot(x_mfpt, mfpt, label="Right to left")

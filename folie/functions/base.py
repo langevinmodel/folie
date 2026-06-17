@@ -82,6 +82,15 @@ class Function(_BaseMethodsMixin, TransformerMixin):
         else:
             y = y.ravel()
         Fx = self.grad_coeffs(x, *args, **kwargs).reshape((x.shape[0] * self.output_size_, -1))
+
+        if sample_weight is not None:
+            # If the user passed an array of weights of length N, expand it to N * output_size_
+            if sample_weight.ndim == 1 and sample_weight.shape[0] == x.shape[0]:
+                sample_weight = np.repeat(sample_weight, self.output_size_)
+            else:
+                # Fallback: just ensure it's flattened if it was passed in the same shape as `y`
+                sample_weight = sample_weight.ravel()
+
         if isinstance(Fx, sparse.SparseArray):
             Fx = Fx.tocsr()
         reg = estimator.fit(Fx, y, sample_weight=sample_weight)

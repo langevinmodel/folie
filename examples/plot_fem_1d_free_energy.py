@@ -58,7 +58,8 @@ n_elem = 50
 # FEM free energy using skfem directly
 mesh = skfem.MeshLine(np.linspace(-7, 7, n_elem))
 fem_basis = skfem.CellBasis(mesh, skfem.ElementLineP1())
-U_coeff = fl.analysis.free_energy_profile(res, fem_basis)
+fem = fl.analysis.FreeEnergyAnalysis(res, fl.MeshedDomain1D.from_mesh(mesh), element=skfem.ElementLineP1())
+U_coeff = fem.free_energy_profile(x="nodal")
 V_fem = fem_basis.probes(xfa.reshape(-1, 1).T) @ U_coeff
 
 # Analytical integration of the 1D free energy
@@ -84,7 +85,11 @@ V_kde -= np.min(V_kde)
 # ---- 5. Compute MFPT via FEM ----
 
 mesh_mfpt = mesh.with_subdomains({"reactant": lambda X: X[0] < -well_pos, "product": lambda X: X[0] > well_pos})
-u_mfpt, states, mfpt_basis = fl.analysis.fem.solve_mfpt_fem(res, mesh_mfpt, skfem.ElementLineP1, bc="elements")
+fem_mfpt = fl.analysis.RateAnalysis(res, fl.MeshedDomain1D.from_mesh(mesh_mfpt), element=skfem.ElementLineP1())
+u_mfpt_result = fem_mfpt.mfpt(bc="elements")
+u_mfpt = u_mfpt_result.to_product[0]
+states = u_mfpt_result.states
+mfpt_basis = fem_mfpt.basis
 mfpt_fem_nodal = u_mfpt[mfpt_basis.nodal_dofs]
 mfpt_fem = mfpt_basis.probes(xfa.reshape(1, -1)) @ u_mfpt
 # Exact MFPT from simulation model
