@@ -179,8 +179,8 @@ class FreeEnergyAnalysis(FemAnalysis):
 
             # --- Apply spatial weight ---
             weight = 1.0
-            if weight_func is not None:
-                weight = weight_func(X).T.reshape(w["x"].shape[1:])
+            if self.weight_func is not None:
+                weight = self.weight_func(X).T.reshape(w["x"].shape[1:])
 
             if isinstance(v_basis.elem, skfem.ElementVector):
                 return weight * dot(v, R)

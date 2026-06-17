@@ -1,5 +1,5 @@
 from .trajectories import *
-from ._data_statistics import traj_stats, DescribeResult, representative_array
+from ._data_statistics import traj_stats, DescribeResult, representative_array, mfpt_from_trajectories, histogram, hexbin
 from .._numpy import np
 
 
